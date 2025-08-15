@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
@@ -9,9 +9,9 @@ import {
   THEME_HEX,
   COMMITTEES,
 } from "./shared/constants";
-import { Calendar, ChevronRight, Sparkles } from "lucide-react";
+import { Calendar, ChevronRight, X } from "lucide-react";
 
-/* ---------- Starfield (very subtle) ---------- */
+/* ---------- Subtle starfield ---------- */
 function Starfield() {
   const ref = useRef(null);
   useEffect(() => {
@@ -34,6 +34,24 @@ function Starfield() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
   return <canvas ref={ref} className="fixed inset-0 -z-10 w-full h-full" />;
+}
+
+/* ---------- Mouse spotlight (no extra deps) ---------- */
+function Spotlight() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const move = (e) => {
+      const x = e.clientX;
+      const y = e.clientY;
+      el.style.background = `radial-gradient(300px 300px at ${x}px ${y}px, rgba(255,255,255,.08), transparent 60%)`;
+    };
+    window.addEventListener("mousemove", move);
+    move({ clientX: window.innerWidth / 2, clientY: 200 });
+    return () => window.removeEventListener("mousemove", move);
+  }, []);
+  return <div ref={ref} className="pointer-events-none fixed inset-0 -z-10" />;
 }
 
 /* ---------- Countdown ---------- */
@@ -59,41 +77,53 @@ const Flip = ({ label, value }) => (
   </div>
 );
 
-/* ---------- Faux live ticker ---------- */
-const TICKER_POOL = [
-  "UNGA: Draft framework on accountability gains momentum",
-  "AIPPM: Heated exchange over land & faith provisions",
-  "UNCSW: Survivors-first reintegration toolkit in focus",
-  "IPL: Mega Auction war room simulations underway",
-  "IP: Breaking—Photo brief drops at 18:00",
-  "YT All Stars: Classified crisis card rumored",
-];
-function Ticker() {
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setI(v => (v + 1) % TICKER_POOL.length), 4000);
-    return () => clearInterval(t);
-  }, []);
+/* ---------- Brief Modal ---------- */
+function BriefModal({ idx, onClose }) {
+  if (idx === null) return null;
+  const c = COMMITTEES[idx];
   return (
-    <div className="mt-10 border border-white/10 bg-white/5 rounded-2xl overflow-hidden">
-      <div className="px-4 py-2 text-xs uppercase tracking-widest text-white/60 border-b border-white/10">
-        Noir Live (simulated)
-      </div>
-      <div className="px-4 py-3 text-white/85 whitespace-nowrap overflow-hidden">
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      >
         <motion.div
-          key={i}
-          initial={{ x: 30, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: -30, opacity: 0 }}
+          initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
+          className="max-w-3xl w-full max-h-[85vh] overflow-auto rounded-2xl border border-white/15 bg-[#0a0a1a] text-white p-6"
         >
-          {TICKER_POOL[i]}
+          <div className="flex items-center gap-3">
+            <img src={c.logo} className="h-12 w-12" alt="committee" />
+            <h3 className="text-xl font-bold">{c.name}</h3>
+            <button onClick={onClose} className="ml-auto p-1 hover:opacity-80"><X size={18} /></button>
+          </div>
+          <div className="mt-4 text-white/80">
+            <span className="font-semibold">Agenda:</span> {c.agenda}
+          </div>
+          <div className="mt-5 grid md:grid-cols-2 gap-5">
+            <div>
+              <div className="text-white font-semibold">Overview</div>
+              <p className="mt-2 text-white/80">{c.brief.overview}</p>
+              <div className="mt-4 text-white font-semibold">Objectives</div>
+              <ul className="mt-2 list-disc list-inside text-white/80 space-y-1">
+                {c.brief.objectives.map((o, i) => <li key={i}>{o}</li>)}
+              </ul>
+            </div>
+            <div>
+              <div className="text-white font-semibold">Format</div>
+              <p className="mt-2 text-white/80">{c.brief.format}</p>
+              <div className="mt-4 text-white font-semibold">Suggested Resources</div>
+              <ul className="mt-2 list-disc list-inside text-white/80 space-y-1">
+                {c.brief.resources.map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            </div>
+          </div>
         </motion.div>
-      </div>
-    </div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
-/* ---------- Dossier intro + Tagline ---------- */
+/* ---------- Intro + Tagline ---------- */
 function Intro() {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur">
@@ -169,7 +199,7 @@ function Intro() {
 function Countdown() {
   const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
   return (
-    <div className="mt-8 flex flex-col items-center gap-3">
+    <div className="mt-10 flex flex-col items-center gap-3">
       {!past ? (
         <>
           <div className="text-white/70 text-xs tracking-[0.25em] uppercase">Countdown</div>
@@ -187,9 +217,25 @@ function Countdown() {
   );
 }
 
-/* ---------- Committee Lobby (glowing doors) ---------- */
-function Lobby() {
-  // 6 doors = committees; rotate slightly on hover → “door opens”
+/* ---------- Echo ribbon (pure visual, no text) ---------- */
+function EchoRibbon() {
+  return (
+    <div
+      className="mt-12 h-16 rounded-2xl border border-white/10 overflow-hidden"
+      style={{
+        background:
+          "repeating-linear-gradient( -45deg, rgba(255,255,255,.06) 0 12px, rgba(255,255,255,.02) 12px 24px )",
+      }}
+    >
+      <div className="h-full w-[200%] animate-[slide_14s_linear_infinite]"
+           style={{ background: "linear-gradient(90deg, rgba(255,255,255,.12), rgba(255,255,255,0), rgba(255,255,255,.12))" }} />
+      <style>{`@keyframes slide { from { transform: translateX(-50%);} to { transform: translateX(0%);} }`}</style>
+    </div>
+  );
+}
+
+/* ---------- Lobby (click → open brief) ---------- */
+function Lobby({ onOpen }) {
   return (
     <section className="mt-16">
       <div className="text-center">
@@ -198,18 +244,19 @@ function Lobby() {
       </div>
       <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {COMMITTEES.map((c, idx) => (
-          <motion.div
+          <motion.button
             key={c.name}
+            onClick={() => onOpen(idx)}
             initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
-            className="group relative h-48 rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02]"
+            className="group relative h-48 rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] text-left"
           >
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                  style={{ boxShadow: "inset 0 0 120px rgba(255,255,255,.12)" }} />
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 blur-2xl rounded-full" />
             <div className="absolute inset-0 grid place-items-center">
               <img src={c.logo} alt={c.name} className="h-14 w-14 object-contain drop-shadow" />
-              <div className="mt-3 text-center">
+              <div className="mt-3 text-center px-4">
                 <div className="font-semibold">{c.name}</div>
                 <div className="text-xs text-white/70 line-clamp-2 mt-1">{c.agenda}</div>
               </div>
@@ -219,7 +266,7 @@ function Lobby() {
               whileHover={{ rotateY: -12, scale: 1.02 }}
               style={{ transformStyle: "preserve-3d" }}
             />
-          </motion.div>
+          </motion.button>
         ))}
       </div>
     </section>
@@ -230,6 +277,7 @@ function Lobby() {
 export default function Home() {
   const { scrollYProgress } = useScroll();
   const yHalo = useTransform(scrollYProgress, [0, 1], [0, -120]);
+  const [briefIdx, setBriefIdx] = useState(null);
 
   useEffect(() => {
     document.documentElement.style.setProperty("--theme", THEME_HEX);
@@ -239,6 +287,7 @@ export default function Home() {
   return (
     <div className="min-h-screen text-white relative">
       <Starfield />
+      <Spotlight />
       {/* soft halos */}
       <motion.div
         className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl"
@@ -264,7 +313,7 @@ export default function Home() {
               className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl border border-white/30 px-4 py-2"
             >
               <span className="absolute inset-0 -translate-x-full bg-white/10 group-hover:translate-x-0 transition-transform" />
-              <Sparkles size={16} /> <span className="relative">Register</span>
+              <span className="relative">Register</span> <ChevronRight size={16} className="relative" />
             </a>
           </nav>
         </div>
@@ -273,8 +322,8 @@ export default function Home() {
       <main className="mx-auto max-w-7xl px-4 py-10">
         <Intro />
         <Countdown />
-        <Ticker />
-        <Lobby />
+        <EchoRibbon />
+        <Lobby onOpen={(i) => setBriefIdx(i)} />
       </main>
 
       <footer className="mt-16 border-t border-white/10">
@@ -283,6 +332,8 @@ export default function Home() {
           <span className="ml-2">“Whispers Today, Echo Tomorrow.”</span>
         </div>
       </footer>
+
+      <BriefModal idx={briefIdx} onClose={() => setBriefIdx(null)} />
 
       <style>{`
         :root { --theme: ${THEME_HEX}; }
