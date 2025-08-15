@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   LOGO_URL,
   REGISTER_URL,
@@ -9,15 +9,15 @@ import {
   DATES_TEXT,
   COMMITTEES,
 } from "../shared/constants";
-import { Sparkles, ExternalLink, Bot, Send, BookOpen, Compass, Award } from "lucide-react";
+import { Sparkles, ExternalLink, Bot, Send, BookOpen, Compass, Award, Menu, X } from "lucide-react";
 
 /* ---------- Minimal starfield bg (subtle) ---------- */
 function Starfield() {
-  const ref = useRef(null);
+  const ref = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     const c = ref.current;
     if (!c) return;
-    const ctx = c.getContext("2d");
+    const ctx = c.getContext("2d")!;
     let w = (c.width = window.innerWidth);
     let h = (c.height = window.innerHeight);
     const s = Array.from({ length: 120 }, () => ({
@@ -25,29 +25,33 @@ function Starfield() {
       y: Math.random() * h,
       v: Math.random() * 0.5 + 0.15,
     }));
+    let raf = 0;
     const draw = () => {
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = "rgba(255,255,255,.4)";
-      s.forEach((p) => {
+      for (const p of s) {
         p.y += p.v;
         if (p.y > h) p.y = 0;
         ctx.fillRect(p.x, p.y, 1, 1);
-      });
-      requestAnimationFrame(draw);
+      }
+      raf = requestAnimationFrame(draw);
     };
     const onResize = () => {
       w = c.width = window.innerWidth;
       h = c.height = window.innerHeight;
     };
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", onResize, { passive: true });
     draw();
-    return () => window.removeEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      cancelAnimationFrame(raf);
+    };
   }, []);
-  return <canvas ref={ref} className="fixed inset-0 -z-10 w-full h-full" />;
+  return <canvas ref={ref} className="fixed inset-0 -z-10 w-full h-full pointer-events-none" />;
 }
 
 /* ---------- Light API helpers ---------- */
-async function fetchWiki(topic) {
+async function fetchWiki(topic: string) {
   const q = topic.replace(/^wiki:|^web:/i, "").trim();
   const res = await fetch(
     "https://en.wikipedia.org/w/rest.php/v1/search/title?q=" +
@@ -55,10 +59,10 @@ async function fetchWiki(topic) {
       "&limit=3&lang=en",
     { headers: { Accept: "application/json" } }
   );
-  const j = await res.json();
+  const j = await res.json().catch(() => null);
   if (!j?.pages?.length) return { text: "Wikipedia: no results.", source: "Wikipedia" };
   const lines = j.pages.map(
-    (p, i) =>
+    (p: any, i: number) =>
       `${i + 1}. ${p.title} — https://en.wikipedia.org/wiki/${encodeURIComponent(
         p.title.replace(/\s/g, "_")
       )}`
@@ -74,7 +78,7 @@ async function fetchWiki(topic) {
   return { text: "Wikipedia:\n" + lines.join("\n"), source: "Wikipedia" };
 }
 
-async function fetchJina(url) {
+async function fetchJina(url: string) {
   const clean = url.replace(/^read:/i, "").trim().replace(/^https?:\/\//, "");
   const r = await fetch("https://r.jina.ai/http://" + clean);
   const txt = await r.text();
@@ -90,11 +94,11 @@ const TABS = [
   { key: "rop", label: "ROP Simulator", icon: <BookOpen size={16} /> },
   { key: "quiz", label: "Committee Quiz", icon: <Compass size={16} /> },
   { key: "rubric", label: "Awards Rubric", icon: <Award size={16} /> },
-];
+] as const;
 
 /* ---------- Chat ---------- */
 function WILTChat() {
-  const [thread, setThread] = useState([
+  const [thread, setThread] = useState<{ from: "bot" | "user"; text: string; source?: string }[]>([
     {
       from: "bot",
       text:
@@ -120,9 +124,10 @@ function WILTChat() {
     []
   );
 
-  const push = (m) => setThread((t) => [...t, m]);
+  const push = (m: { from: "bot" | "user"; text: string; source?: string }) =>
+    setThread((t) => [...t, m]);
 
-  const answer = async (q) => {
+  const answer = async (q: string) => {
     const low = q.toLowerCase();
     const intent =
       /^web:|^wiki:/.test(low) ? "web" :
@@ -147,13 +152,22 @@ function WILTChat() {
       case "rops": return { text: KB.rops };
       case "web": return await fetchWiki(q);
       case "read": return await fetchJina(q);
-      case "escalate": window.open(KB.whatsapp, "_blank"); return { text: "Opening WhatsApp…" };
+      case "escalate":
+        // use an anchor click to avoid iOS popup blocking
+        const a = document.createElement("a");
+        a.href = KB.whatsapp;
+        a.target = "_blank";
+        a.rel = "noreferrer noopener";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return { text: "Opening WhatsApp…" };
       default:
         return { text: "Ask Noir basics, or use: web: <topic> • read: <url>" };
     }
   };
 
-  const send = async (preset) => {
+  const send = async (preset?: string) => {
     const v = (preset ?? input).trim();
     if (!v) return;
     push({ from: "user", text: v });
@@ -161,7 +175,7 @@ function WILTChat() {
     setTyping(true);
     try {
       const r = await answer(v);
-      push({ from: "bot", text: r.text, source: r.source });
+      push({ from: "bot", text: r.text, source: (r as any).source });
     } catch {
       push({ from: "bot", text: "Couldn’t fetch that. Try again?" });
     } finally {
@@ -178,11 +192,11 @@ function WILTChat() {
 
   return (
     <div className="space-y-3">
-      <div className="h-72 overflow-auto space-y-2 rounded-xl bg-white/5 p-3 border border-white/10">
+      <div className="h-[52dvh] min-h-[260px] overflow-auto space-y-2 rounded-xl bg-white/5 p-3 border border-white/10">
         {thread.map((m, i) => (
           <div
             key={i}
-            className={`max-w-[85%] px-3 py-2 rounded-2xl whitespace-pre-wrap leading-relaxed ${
+            className={`max-w-[85%] px-3 py-2 rounded-2xl whitespace-pre-wrap leading-relaxed break-words ${
               m.from === "bot" ? "bg-white/15" : "bg-white/25 ml-auto"
             }`}
           >
@@ -202,22 +216,23 @@ function WILTChat() {
           <button
             key={t}
             onClick={() => send(t)}
-            className="text-xs rounded-full px-3 py-1 bg-white/10 border border-white/15"
+            className="text-xs rounded-full px-3 py-1 bg-white/10 border border-white/15 touch-manipulation"
           >
             {t}
           </button>
         ))}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 ios-safe-bottom">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
           placeholder='Ask WILT… (try "web: UN Charter")'
-          className="flex-1 bg-white/10 px-3 py-2 rounded-lg outline-none border border-white/15"
+          inputMode="text"
+          className="flex-1 bg-white/10 px-3 py-2 rounded-lg outline-none border border-white/15 break-words"
         />
-        <button onClick={() => send()} className="rounded-lg border border-white/20 px-3">
+        <button onClick={() => send()} className="rounded-lg border border-white/20 px-3 touch-manipulation" aria-label="Send">
           <Send size={16} />
         </button>
       </div>
@@ -227,7 +242,7 @@ function WILTChat() {
 
 /* ---------- ROP Simulator (compact) ---------- */
 function ROPSim() {
-  const [log, setLog] = useState([]);
+  const [log, setLog] = useState<string[]>([]);
   const [score, setScore] = useState(50);
 
   const motions = [
@@ -243,7 +258,7 @@ function ROPSim() {
     { k: "Point of Order", p: "Procedural violation; may interrupt.", val: +4 },
   ];
 
-  const add = (txt, delta) => {
+  const add = (txt: string, delta: number) => {
     setLog((l) => [txt, ...l].slice(0, 10));
     setScore((s) => Math.max(0, Math.min(100, s + delta)));
   };
@@ -257,7 +272,7 @@ function ROPSim() {
             <button
               key={m.k}
               onClick={() => add(`Raise: “${m.p}” • Voting: ${m.vote}`, m.val)}
-              className="rounded-lg border border-white/15 px-3 py-2 bg-white/10 text-left hover:bg-white/15"
+              className="rounded-lg border border-white/15 px-3 py-2 bg-white/10 text-left hover:bg-white/15 touch-manipulation"
             >
               <div className="font-semibold">{m.k}</div>
               <div className="text-xs text-white/80">Voting: {m.vote}</div>
@@ -273,10 +288,10 @@ function ROPSim() {
             <button
               key={p.k}
               onClick={() => add(`State: “${p.p}”`, p.val)}
-              className="rounded-lg border border-white/15 px-3 py-2 bg-white/10 text-left hover:bg-white/15"
+              className="rounded-lg border border-white/15 px-3 py-2 bg-white/10 text-left hover:bg-white/15 touch-manipulation"
             >
               <div className="font-semibold">{p.k}</div>
-              <div className="text-xs text-white/80">{p.p}</div>
+              <div className="text-xs text-white/80 break-words">{p.p}</div>
             </button>
           ))}
         </div>
@@ -297,7 +312,7 @@ function ROPSim() {
         <div className="mt-3 text-xs font-semibold text-white/80">Recent actions</div>
         <div className="mt-1 space-y-1 max-h-32 overflow-auto">
           {log.map((l, i) => (
-            <div key={i} className="text-xs text-white/75 bg-white/10 rounded-md px-2 py-1">
+            <div key={i} className="text-xs text-white/75 bg-white/10 rounded-md px-2 py-1 break-words">
               {l}
             </div>
           ))}
@@ -307,7 +322,7 @@ function ROPSim() {
   );
 }
 
-/* ---------- Quiz (short & clear) ---------- */
+/* ---------- Quiz ---------- */
 function Quiz() {
   const Q = [
     { k: "domain", q: "What domain excites you more?", opts: [["global", "Global policy / intl law"], ["domestic", "Domestic politics / governance"]] },
@@ -315,12 +330,12 @@ function Quiz() {
     { k: "skill", q: "Primary strength?", opts: [["writing", "Drafting & documentation"], ["speaking", "Oratory & negotiations"]] },
     { k: "media", q: "Media/PR interests?", opts: [["press", "Yes — journalism / photography"], ["notpress", "Prefer committee floor"]] },
     { k: "sport", q: "Strategy/sports-business?", opts: [["ipl", "Yes — auctions & trades"], ["noipl", "Not really"]] },
-  ];
-  const [ans, setAns] = useState({});
-  const [out, setOut] = useState(null);
+  ] as const;
+  const [ans, setAns] = useState<Record<string, string>>({});
+  const [out, setOut] = useState<null | { pretty: string; agenda: string; scores: [string, number][] }>(null);
 
   const compute = () => {
-    const s = { UNGA: 0, UNCSW: 0, AIPPM: 0, IPL: 0, IP: 0, YT: 0 };
+    const s: Record<string, number> = { UNGA: 0, UNCSW: 0, AIPPM: 0, IPL: 0, IP: 0, YT: 0 };
     if (ans.domain === "global") { s.UNGA += 3; s.UNCSW += 3; } else if (ans.domain === "domestic") { s.AIPPM += 3; s.IPL += 1; }
     if (ans.tempo === "formal") { s.UNGA += 2; s.UNCSW += 2; s.AIPPM += 2; } else if (ans.tempo === "crisis") { s.YT += 3; s.IPL += 3; }
     if (ans.skill === "writing") { s.UNCSW += 3; s.IP += 3; } else if (ans.skill === "speaking") { s.UNGA += 2; s.AIPPM += 2; s.IPL += 1; }
@@ -333,7 +348,7 @@ function Quiz() {
     const priority = ["IP", "IPL", "UNCSW", "AIPPM", "UNGA", "YT"];
     const pick = ties.sort((a, b) => priority.indexOf(a) - priority.indexOf(b))[0];
 
-    const names = {
+    const names: Record<string, string> = {
       UNGA: "United Nations General Assembly (UNGA)",
       UNCSW: "United Nations Commission on the Status of Women (UNCSW)",
       AIPPM: "All India Political Parties Meet (AIPPM)",
@@ -345,7 +360,7 @@ function Quiz() {
     setOut({
       pretty: names[pick],
       agenda: COMMITTEES.find((c) => c.name.startsWith(names[pick]))?.agenda || "",
-      scores: sorted,
+      scores: sorted as [string, number][],
     });
   };
 
@@ -364,7 +379,7 @@ function Quiz() {
                       name={qq.k}
                       value={v}
                       checked={ans[qq.k] === v}
-                      onChange={(e) => setAns({ ...ans, [qq.k]: e.target.value })}
+                      onChange={(e) => setAns({ ...ans, [qq.k]: (e.target as HTMLInputElement).value })}
                     />
                     <span className="text-white/80 text-sm">{label}</span>
                   </label>
@@ -375,7 +390,7 @@ function Quiz() {
         </div>
         <button
           onClick={compute}
-          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/20 px-3 py-2 hover:bg-white/10"
+          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/20 px-3 py-2 hover:bg-white/10 touch-manipulation"
         >
           Compute Result <Sparkles size={16} />
         </button>
@@ -388,9 +403,9 @@ function Quiz() {
           <div className="space-y-3">
             <div className="text-xs uppercase tracking-wider text-white/60">Recommended committee</div>
             <div className="rounded-xl border border-white/20 bg-white/10 p-3">
-              <div className="text-lg font-bold">{out.pretty}</div>
+              <div className="text-lg font-bold break-words">{out.pretty}</div>
               {!!out.agenda && (
-                <div className="text-sm text-white/80 mt-1">Agenda: {out.agenda}</div>
+                <div className="text-sm text-white/80 mt-1 break-words">Agenda: {out.agenda}</div>
               )}
             </div>
             <div className="text-xs uppercase tracking-wider text-white/60">Scoreboard</div>
@@ -416,7 +431,7 @@ function Quiz() {
   );
 }
 
-/* ---------- Rubric (simple) ---------- */
+/* ---------- Rubric ---------- */
 function Rubric() {
   const items = [
     { label: "Substance (35%)", w: 70 },
@@ -442,7 +457,7 @@ function Rubric() {
                 transition={{ type: "spring", stiffness: 60, damping: 16 }}
               />
             </div>
-            <div className="text-xs text-white/70 mt-1">{b.label}</div>
+            <div className="text-xs text-white/70 mt-1 break-words">{b.label}</div>
           </div>
         ))}
       </div>
@@ -452,21 +467,24 @@ function Rubric() {
 
 /* ---------- Page (clean, focus mode) ---------- */
 export default function Assistance() {
-  const [tab, setTab] = useState("chat");
-  const [focus, setFocus] = useState(false); // hides KB column
+  const [tab, setTab] = useState<"chat" | "rop" | "quiz" | "rubric">("chat");
+  const [focus, setFocus] = useState(false);
+  const [openMenu, setOpenMenu] = useState(false);
 
   return (
-    <div className="min-h-screen text-white relative">
+    <div className="min-h-[100dvh] text-white relative pb-[calc(env(safe-area-inset-bottom,0)+8px)]">
       <Starfield />
       <header className="px-4 py-3 flex items-center justify-between border-b border-white/10 bg-white/5 backdrop-blur">
-        <div className="flex items-center gap-3">
-          <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain" />
-          <div className="font-semibold">Noir MUN Assistance</div>
+        <div className="flex items-center gap-3 min-w-0">
+          <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain flex-shrink-0" />
+          <div className="font-semibold truncate">Noir MUN Assistance</div>
         </div>
-        <nav className="flex items-center gap-3">
+
+        {/* Desktop nav */}
+        <nav className="hidden sm:flex items-center gap-3">
           <button
             onClick={() => setFocus((v) => !v)}
-            className="rounded-xl border border-white/20 px-3 py-2"
+            className="rounded-xl border border-white/20 px-3 py-2 touch-manipulation"
             title="Toggle Focus Mode"
           >
             {focus ? "Show Guide" : "Focus Mode"}
@@ -475,15 +493,47 @@ export default function Assistance() {
             href={REGISTER_URL}
             target="_blank"
             rel="noreferrer"
-            className="rounded-xl border border-white/20 px-3 py-2 inline-flex items-center gap-2"
+            className="rounded-xl border border-white/20 px-3 py-2 inline-flex items-center gap-2 touch-manipulation"
           >
             Register <ExternalLink size={14} />
           </a>
-          <Link to="/" className="rounded-xl border border-white/20 px-3 py-2 inline-flex items-center gap-2">
+          <Link to="/" className="rounded-xl border border-white/20 px-3 py-2 inline-flex items-center gap-2 touch-manipulation">
             Home
           </Link>
         </nav>
+
+        {/* Mobile menu button */}
+        <button
+          className="sm:hidden rounded-xl border border-white/20 p-2 touch-manipulation"
+          onClick={() => setOpenMenu((v) => !v)}
+          aria-label="Menu"
+        >
+          {openMenu ? <X size={18} /> : <Menu size={18} />}
+        </button>
       </header>
+
+      {/* Mobile dropdown */}
+      {openMenu && (
+        <div className="sm:hidden px-4 py-2 border-b border-white/10 bg-white/5 backdrop-blur flex items-center gap-2">
+          <button
+            onClick={() => { setFocus((v) => !v); setOpenMenu(false); }}
+            className="rounded-xl border border-white/20 px-3 py-2 text-sm touch-manipulation"
+          >
+            {focus ? "Show Guide" : "Focus Mode"}
+          </button>
+          <a
+            href={REGISTER_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl border border-white/20 px-3 py-2 text-sm touch-manipulation"
+          >
+            Register
+          </a>
+          <Link to="/" className="rounded-xl border border-white/20 px-3 py-2 text-sm touch-manipulation">
+            Home
+          </Link>
+        </div>
+      )}
 
       <main className={`max-w-7xl mx-auto p-4 grid gap-4 ${focus ? "grid-cols-1" : "md:grid-cols-[360px_1fr]"}`}>
         {!focus && (
@@ -491,7 +541,7 @@ export default function Assistance() {
             <div className="flex items-center gap-2 text-white/85">
               <Sparkles size={16} /> UNA-USA ROPs — Lightning Guide
             </div>
-            <pre className="mt-2 whitespace-pre-wrap text-white/80 text-sm leading-relaxed">
+            <pre className="mt-2 whitespace-pre-wrap text-white/80 text-sm leading-relaxed break-words">
 {ASSIST_TEXT}
 
 • Event: {DATES_TEXT}
@@ -507,8 +557,8 @@ export default function Assistance() {
             {TABS.map((t) => (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`rounded-xl border border-white/20 px-3 py-2 inline-flex items-center gap-2 ${
+                onClick={() => setTab(t.key as any)}
+                className={`rounded-xl border border-white/20 px-3 py-2 inline-flex items-center gap-2 touch-manipulation ${
                   tab === t.key ? "bg-white/10" : ""
                 }`}
               >
@@ -525,9 +575,14 @@ export default function Assistance() {
       </main>
 
       <style>{`
+        /* scrollbars */
         ::-webkit-scrollbar { width: 10px; height: 10px; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 999px; }
         ::selection{ background: rgba(255,255,255,.25); }
+        /* iOS bottom safe area */
+        .ios-safe-bottom { padding-bottom: max(0px, env(safe-area-inset-bottom)); }
+        /* faster taps on mobile */
+        .touch-manipulation { touch-action: manipulation; }
       `}</style>
     </div>
   );
