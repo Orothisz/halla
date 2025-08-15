@@ -130,11 +130,10 @@ function BriefModal({ idx, onClose }) {
   );
 }
 
-/* ---------- Hero (with mobile tap fix) ---------- */
+/* ---------- Hero ---------- */
 function Hero() {
   return (
     <section className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
-      {/* decorative glows — ignore taps so they never block CTAs (iOS/Android) */}
       <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-white/10 blur-3xl rounded-full" />
 
@@ -148,7 +147,6 @@ function Hero() {
         </div>
         <div className="mt-5 text-xl md:text-2xl font-semibold">Whispers Today, Echo Tomorrow</div>
 
-        {/* CTA row */}
         <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
             href={REGISTER_URL}
@@ -158,14 +156,12 @@ function Hero() {
           >
             Secure your seat <ChevronRight size={18} />
           </a>
-
           <Link
             to="/signup"
             className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
           >
             Sign Up
           </Link>
-
           <Link
             to="/assistance"
             className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
@@ -185,7 +181,7 @@ function Hero() {
   );
 }
 
-/* ---------- Countdown section ---------- */
+/* ---------- Countdown ---------- */
 function MonumentalCountdown() {
   const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
   return (
@@ -475,10 +471,9 @@ export default function Home() {
   const yHalo = useTransform(scrollYProgress, [0, 1], [0, -120]);
   const [briefIdx, setBriefIdx] = useState(null);
 
-  // Mobile menu state
+  // Mobile menu state (opens ONLY on hamburger click)
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {
-    // Scroll-lock body when menu is open
     document.body.style.overflow = menuOpen ? "hidden" : "";
     return () => (document.body.style.overflow = "");
   }, [menuOpen]);
@@ -503,13 +498,12 @@ export default function Home() {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
-          {/* Brand (no wrap) */}
-          <div className="flex items-center gap-3" style={{ whiteSpace: "nowrap" }}>
+          <div className="flex items-center gap-3 flex-shrink-0" style={{ whiteSpace: "nowrap" }}>
             <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain" />
             <span className="font-semibold tracking-wide">Noir MUN</span>
           </div>
 
-          {/* Pills: desktop only */}
+          {/* Desktop pills only */}
           <nav className="nav-bar hidden sm:flex">
             <Link to="/assistance" className="nav-pill">Assistance</Link>
             <Link to="/legal" className="nav-pill">Legal</Link>
@@ -525,10 +519,12 @@ export default function Home() {
             </a>
           </nav>
 
-          {/* Mobile hamburger */}
+          {/* Mobile hamburger — menu opens ONLY when this is clicked */}
           <button
             className="sm:hidden rounded-xl border border-white/20 p-2"
             aria-label="Menu"
+            aria-controls="mobile-menu"
+            aria-expanded={menuOpen}
             onClick={() => setMenuOpen(true)}
           >
             <Menu size={18} />
@@ -536,7 +532,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Mobile Menu Sheet */}
+      {/* Mobile Menu Sheet (hidden until hamburger is tapped) */}
       <AnimatePresence>
         {menuOpen && (
           <>
@@ -546,6 +542,7 @@ export default function Home() {
               onClick={() => setMenuOpen(false)}
             />
             <motion.div
+              id="mobile-menu"
               className="fixed top-0 left-0 right-0 z-50 rounded-b-2xl border-b border-white/15 bg-[#07071a]/95"
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -606,7 +603,7 @@ export default function Home() {
           overflow: hidden;
         }
 
-        /* --- Mobile-first header nav pills (desktop) --- */
+        /* Desktop nav pills */
         .nav-bar {
           display: flex;
           gap: 8px;
