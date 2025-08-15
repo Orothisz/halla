@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# Extra friendly to AI/search crawlers (optional)
+User-agent: Googlebot
+Allow: /
+User-agent: GoogleOther
+Allow: /
+User-agent: Bingbot
+Allow: /
+User-agent: Applebot
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: GPTBot
+Allow: /
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://YOUR-DOMAIN.com/sitemap.xml
