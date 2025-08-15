@@ -9,7 +9,10 @@ import {
   DATES_TEXT,
   COMMITTEES,
 } from "../shared/constants";
-import { Sparkles, ExternalLink, Bot, Send, BookOpen, Compass, Award, Menu, X } from "lucide-react";
+import {
+  Sparkles, ExternalLink, Bot, Send, BookOpen, Compass, Award,
+  Menu, X, ShieldCheck, Info
+} from "lucide-react";
 
 /* ---------- Minimal starfield bg (subtle) ---------- */
 function Starfield() {
@@ -51,45 +54,53 @@ function Starfield() {
   return <canvas ref={ref} className="fixed inset-0 -z-10 w-full h-full pointer-events-none" />;
 }
 
-/* ---------- Light API helpers ---------- */
-async function fetchWiki(topic) {
-  const q = topic.replace(/^wiki:|^web:/i, "").trim();
-  const res = await fetch(
-    "https://en.wikipedia.org/w/rest.php/v1/search/title?q=" +
-      encodeURIComponent(q) +
-      "&limit=3&lang=en",
-    { headers: { Accept: "application/json" } }
-  ).catch(() => null);
-  const j = res ? await res.json().catch(() => null) : null;
-  if (!j?.pages?.length) return { text: "Wikipedia: no results.", source: "Wikipedia" };
-  const lines = j.pages.map(
-    (p, i) =>
-      `${i + 1}. ${p.title} — https://en.wikipedia.org/wiki/${encodeURIComponent(
-        p.title.replace(/\s/g, "_")
-      )}`
+/* ---------- Welcome Modal (flagship touch) ---------- */
+function WelcomeModal({ open, onClose, onUsePrompt }) {
+  if (!open) return null;
+  const prompts = [
+    "Summarise today’s top UN story in 4 lines.",
+    "Compare UNHRC vs UNGA mandates.",
+    "Best Mod Cauc topics for cyber norms (UNGA)."
+  ];
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full sm:max-w-lg rounded-2xl border border-white/15 bg-gradient-to-b from-white/10 to-white/5 p-4 shadow-xl">
+        <div className="flex items-center gap-2 mb-2">
+          <Bot size={18} />
+          <div className="font-semibold">Meet <span className="font-bold">WILT+</span></div>
+        </div>
+        <div className="text-sm text-white/80 leading-relaxed">
+          Your web‑smart MUN copilot. It searches online, reads pages, and answers with citations.
+        </div>
+        <div className="mt-3 grid gap-2">
+          {prompts.map((p) => (
+            <button
+              key={p}
+              onClick={() => onUsePrompt(p)}
+              className="text-left rounded-xl border border-white/15 bg-white/10 px-3 py-2 hover:bg-white/15"
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <div className="text-[11px] text-white/60 flex items-center gap-1">
+            <Info size={14} /> Auto‑decides when to search vs. use event facts.
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10"
+          >
+            Start
+          </button>
+        </div>
+      </div>
+    </div>
   );
-  try {
-    const t = j.pages[0].title;
-    const sr = await fetch(
-      "https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(t)
-    );
-    const s = await sr.json();
-    if (s?.extract) lines.unshift("Summary: " + s.extract);
-  } catch {}
-  return { text: "Wikipedia:\n" + lines.join("\n"), source: "Wikipedia" };
 }
 
-async function fetchJina(url) {
-  const clean = url.replace(/^read:/i, "").trim().replace(/^https?:\/\//, "");
-  const r = await fetch("https://r.jina.ai/http://" + clean);
-  const txt = await r.text();
-  return {
-    text: "Reader:\n" + txt.slice(0, 800) + (txt.length > 800 ? "…" : ""),
-    source: "Jina Reader",
-  };
-}
-
-/* ---------- Tabs ---------- */
+/* ---------- Tabs meta ---------- */
 const TABS = [
   { key: "chat", label: "Chat (WILT+)", icon: <Bot size={16} /> },
   { key: "rop", label: "ROP Simulator", icon: <BookOpen size={16} /> },
@@ -97,76 +108,75 @@ const TABS = [
   { key: "rubric", label: "Awards Rubric", icon: <Award size={16} /> },
 ];
 
-/* ---------- Chat ---------- */
+/* ---------- Cloud brain call ---------- */
+async function cloudAsk(history, userText) {
+  const msgs = [
+    ...history.slice(-4).map((m) => ({
+      role: m.from === "user" ? "user" : "assistant",
+      content: m.text,
+    })),
+    { role: "user", content: userText },
+  ];
+  const r = await fetch("/api/ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: msgs }),
+  });
+  const j = await r.json().catch(() => ({}));
+  const hasSources = Array.isArray(j.sources) && j.sources.length > 0;
+  let citeBlock = "";
+  if (hasSources) {
+    const lines = j.sources.slice(0, 5).map((s) => `• ${s.title} — ${s.url}`).join("\n");
+    citeBlock = `\n\nSources:\n${lines}`;
+  }
+  return {
+    text: (j.answer || "Sorry, I couldn’t find much for that.") + citeBlock,
+    hasSources,
+  };
+}
+
+/* ---------- Chat (flagship, verified badge, welcome, mobile‑safe) ---------- */
 function WILTChat() {
   const [thread, setThread] = useState([
     {
       from: "bot",
       text:
-        "I’m WILT+. Ask Noir basics (dates, fee, venue, founders, committees).\nTry: web: United Nations  •  read: https://en.wikipedia.org/wiki/United_Nations",
+        "I’m WILT+. Ask Noir basics or anything on world affairs — I can search and cite.\nTry: “Summarise today’s top UN story in 4 lines.”",
     },
   ]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const [verified, setVerified] = useState(false); // lights up when answers include sources
+  const [showWelcome, setShowWelcome] = useState(false);
 
-  const KB = useMemo(
-    () => ({
-      dates: DATES_TEXT,
-      fee: "₹2300",
-      venue: "TBA",
-      founders:
-        "Founder: Sameer Jhamb, Co-Founder: Maahir Gulati, President: Gautam Khera",
-      register: REGISTER_URL,
-      whatsapp: WHATSAPP_ESCALATE,
-      committees: COMMITTEES.map((c) => `${c.name}: ${c.agenda}`),
-      rops:
-        "UNA-USA ROPs quick keys → Motions: Set Agenda • Mod/Unmod • Introduce Draft • Close Debate. Points: Privilege • Inquiry • Order.",
-    }),
-    []
-  );
+  // One-time welcome popup
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem("wilt_welcome_seen");
+      if (!seen) setShowWelcome(true);
+    } catch {}
+  }, []);
+
+  const usePrompt = (p) => {
+    setShowWelcome(false);
+    localStorage.setItem("wilt_welcome_seen", "1");
+    send(p);
+  };
+  const closeWelcome = () => {
+    setShowWelcome(false);
+    localStorage.setItem("wilt_welcome_seen", "1");
+  };
 
   const push = (m) => setThread((t) => [...t, m]);
 
-  const answer = async (q) => {
-    const low = q.toLowerCase();
-    const intent =
-      /^web:|^wiki:/.test(low) ? "web" :
-      /^read:/.test(low) ? "read" :
-      /date|when/.test(low) ? "dates" :
-      /fee|price|cost/.test(low) ? "fee" :
-      /venue|where|location/.test(low) ? "venue" :
-      /founder|organiser|organizer|oc|eb/.test(low) ? "founders" :
-      /register|sign/.test(low) ? "register" :
-      /committee|agenda|topic/.test(low) ? "committees" :
-      /rop|rules|una/.test(low) ? "rops" :
-      /exec|human|someone|whatsapp/.test(low) ? "escalate" :
-      "fallback";
-
-    switch (intent) {
-      case "dates": return { text: "Dates: " + KB.dates };
-      case "fee": return { text: "Delegate fee: " + KB.fee };
-      case "venue": return { text: "Venue: " + KB.venue + " — want WhatsApp updates when we announce?" };
-      case "founders": return { text: "Leadership — " + KB.founders };
-      case "register": return { text: "Open Linktree → " + KB.register };
-      case "committees": return { text: "Committees:\n• " + KB.committees.join("\n• ") };
-      case "rops": return { text: KB.rops };
-      case "web": return await fetchWiki(q);
-      case "read": return await fetchJina(q);
-      case "escalate": {
-        // anchor click avoids iOS popup blocking
-        const a = document.createElement("a");
-        a.href = KB.whatsapp;
-        a.target = "_blank";
-        a.rel = "noreferrer noopener";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        return { text: "Opening WhatsApp…" };
-      }
-      default:
-        return { text: "Ask Noir basics, or use: web: <topic> • read: <url>" };
-    }
-  };
+  const quicks = [
+    "When is Noir MUN?",
+    "Venue?",
+    "Registration link",
+    "Best Mod Cauc topics for UNGA (finance).",
+    "Compare UNHRC vs UNGA mandates.",
+    "Summarise today’s top UN story in 4 lines.",
+  ];
 
   const send = async (preset) => {
     const v = (preset ?? input).trim();
@@ -175,8 +185,9 @@ function WILTChat() {
     setInput("");
     setTyping(true);
     try {
-      const r = await answer(v);
-      push({ from: "bot", text: r.text, source: r.source });
+      const r = await cloudAsk(thread, v);
+      push({ from: "bot", text: r.text, source: r.hasSources ? "Web" : undefined });
+      setVerified(r.hasSources);
     } catch {
       push({ from: "bot", text: "Couldn’t fetch that. Try again?" });
     } finally {
@@ -184,15 +195,19 @@ function WILTChat() {
     }
   };
 
-  const quicks = [
-    "Dates", "Fee", "Venue", "Founders", "Committees", "Register",
-    "web: United Nations",
-    "read: https://en.wikipedia.org/wiki/United_Nations",
-    "Talk to executive",
-  ];
-
   return (
     <div className="space-y-3">
+      {/* Header row with Verified badge */}
+      <div className="flex items-center justify-between mb-1">
+        <div className="text-sm text-white/80 flex items-center gap-2">
+          <Bot size={16} /> WILT+ Chat
+        </div>
+        <div className={`flex items-center gap-1 text-xs ${verified ? "text-emerald-300" : "text-white/50"}`}>
+          <ShieldCheck size={14} />
+          <span>{verified ? "WILT+ Verified (sources attached)" : "Awaiting sources"}</span>
+        </div>
+      </div>
+
       <div className="h-[52dvh] min-h-[260px] overflow-auto space-y-2 rounded-xl bg-white/5 p-3 border border-white/10">
         {thread.map((m, i) => (
           <div
@@ -209,7 +224,7 @@ function WILTChat() {
             )}
           </div>
         ))}
-        {typing && <div className="px-3 py-2 rounded-2xl bg-white/15 w-20">typing…</div>}
+        {typing && <div className="px-3 py-2 rounded-2xl bg-white/15 w-24">thinking…</div>}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -229,7 +244,7 @@ function WILTChat() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder='Ask WILT… (try "web: UN Charter")'
+          placeholder='Ask WILT+ anything… (e.g., "UNGA today?")'
           inputMode="text"
           className="flex-1 bg-white/10 px-3 py-2 rounded-lg outline-none border border-white/15 break-words"
         />
@@ -237,6 +252,9 @@ function WILTChat() {
           <Send size={16} />
         </button>
       </div>
+
+      {/* Welcome modal */}
+      <WelcomeModal open={showWelcome} onClose={closeWelcome} onUsePrompt={usePrompt} />
     </div>
   );
 }
@@ -323,7 +341,7 @@ function ROPSim() {
   );
 }
 
-/* ---------- Quiz ---------- */
+/* ---------- Quiz (short & clear) ---------- */
 function Quiz() {
   const Q = [
     { k: "domain", q: "What domain excites you more?", opts: [["global", "Global policy / intl law"], ["domestic", "Domestic politics / governance"]] },
@@ -432,7 +450,7 @@ function Quiz() {
   );
 }
 
-/* ---------- Rubric ---------- */
+/* ---------- Rubric (simple) ---------- */
 function Rubric() {
   const items = [
     { label: "Substance (35%)", w: 70 },
@@ -466,7 +484,7 @@ function Rubric() {
   );
 }
 
-/* ---------- Page ---------- */
+/* ---------- Page (clean, focus mode, flagship header) ---------- */
 export default function Assistance() {
   const [tab, setTab] = useState("chat");
   const [focus, setFocus] = useState(false);
@@ -535,6 +553,19 @@ export default function Assistance() {
           </Link>
         </div>
       )}
+
+      {/* Flagship banner */}
+      <div className="mx-auto max-w-7xl px-4 pt-3">
+        <div className="rounded-xl border border-white/15 bg-gradient-to-r from-white/10 to-white/5 p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <ShieldCheck size={16} className="opacity-90" />
+            <span className="text-white/85">WILT+ is live — web‑smart answers with citations.</span>
+          </div>
+          <div className="hidden sm:flex items-center gap-2 text-xs text-white/70">
+            <Sparkles size={14} /> Try: “Best Mod Cauc topics for cyber norms.”
+          </div>
+        </div>
+      </div>
 
       <main className={`max-w-7xl mx-auto p-4 grid gap-4 ${focus ? "grid-cols-1" : "md:grid-cols-[360px_1fr]"}`}>
         {!focus && (
