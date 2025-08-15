@@ -490,42 +490,29 @@ export default function Home() {
 
       {/* Header */}
       <header className="sticky top-0 z-20 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={LOGO_URL} alt="Noir" className="h-10 w-10 object-contain" />
+        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
+          {/* Brand (no wrap) */}
+          <div className="flex items-center gap-3" style={{ whiteSpace: "nowrap" }}>
+            <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain" />
             <span className="font-semibold tracking-wide">Noir MUN</span>
           </div>
-          <nav className="flex items-center gap-3">
-            <Link to="/assistance" className="rounded-xl border border-white/20 px-3 py-2">
-              Assistance
-            </Link>
-            <Link to="/legal" className="rounded-xl border border-white/20 px-3 py-2">
-              Legal
-            </Link>
 
-            {/* NEW: Auth buttons in header (hidden on very small screens) */}
-            <Link
-              to="/login"
-              className="rounded-xl border border-white/20 px-3 py-2 hidden sm:inline-flex"
-            >
-              Login
-            </Link>
-            <Link
-              to="/signup"
-              className="rounded-xl bg-white/15 hover:bg-white/25 px-3 py-2 border border-white/20 hidden sm:inline-flex"
-            >
-              Sign Up
-            </Link>
+          {/* Pills: horizontal scroll on mobile, no wrap */}
+          <nav className="nav-bar">
+            <Link to="/assistance" className="nav-pill">Assistance</Link>
+            <Link to="/legal" className="nav-pill">Legal</Link>
+
+            {/* Auth pills (also present in hero) */}
+            <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
+            <Link to="/signup" className="nav-pill">Sign Up</Link>
 
             <a
               href={REGISTER_URL}
               target="_blank"
               rel="noreferrer"
-              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl border border-white/30 px-4 py-2"
+              className="nav-pill nav-pill--primary"
             >
-              <span className="absolute inset-0 -translate-x-full bg-white/10 group-hover:translate-x-0 transition-transform" />
-              <span className="relative">Register</span>{" "}
-              <ChevronRight size={16} className="relative" />
+              Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
             </a>
           </nav>
         </div>
@@ -553,6 +540,42 @@ export default function Home() {
           -webkit-line-clamp: 3;
           -webkit-box-orient: vertical;
           overflow: hidden;
+        }
+
+        /* --- Mobile-first header nav pills --- */
+        .nav-bar {
+          display: flex;
+          gap: 8px;
+          flex-wrap: nowrap;                 /* don't wrap under the logo */
+          overflow-x: auto;                  /* allow sideways scroll when tight */
+          -webkit-overflow-scrolling: touch; /* smooth iOS scroll */
+          scrollbar-width: none;             /* hide scrollbar on Firefox */
+          max-width: 70vw;                   /* prevents crowding the brand on tiny phones */
+        }
+        .nav-bar::-webkit-scrollbar { display: none; } /* hide scrollbar on WebKit */
+
+        .nav-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(255,255,255,.20);
+          padding: 8px 12px;                 /* compact on phones */
+          border-radius: 14px;
+          color: #fff;
+          text-decoration: none;
+          white-space: nowrap;
+          background: rgba(255,255,255,.06);
+          transition: background .2s ease, border-color .2s ease, transform .15s ease;
+        }
+        .nav-pill:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.28); transform: translateY(-1px); }
+
+        .nav-pill--ghost { background: rgba(255,255,255,.04); }
+        .nav-pill--primary { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.30); }
+
+        /* Slightly roomier pills on >=640px screens */
+        @media (min-width: 640px) {
+          .nav-bar { max-width: none; }
+          .nav-pill { padding: 10px 14px; border-radius: 16px; }
         }
       `}</style>
     </div>
