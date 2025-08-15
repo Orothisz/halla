@@ -10,7 +10,7 @@ import {
   THEME_HEX,
   COMMITTEES,
   WHATSAPP_ESCALATE,
-} from "./shared/constants";
+} from "../shared/constants";
 import { Calendar, ChevronRight, X, Send, MessageCircle, ChevronRightSquare } from "lucide-react";
 
 /* ---------- Subtle atmosphere (lightweight) ---------- */
