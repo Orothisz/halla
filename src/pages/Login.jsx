@@ -1,67 +1,50 @@
-// src/pages/login.js — Noir Login with Turnstile + Supabase
-import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, LogIn, ShieldCheck, Shield, Sparkles } from "lucide-react";
+import React, { useRef, useState, useMemo } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Mail, Lock, Eye, EyeOff, ChevronRight, ShieldCheck } from "lucide-react";
 import Turnstile from "react-turnstile";
 import { supabase } from "../lib/supabase";
+import { LOGO_URL, THEME_HEX } from "../shared/constants";
 
-const BRAND = {
-  name: "Noir MUN",
-  Logo: ({ className = "h-6 w-6" }) => (
-    <svg viewBox="0 0 72 72" className={className} aria-hidden>
-      <defs>
-        <linearGradient id="g" x1="0" x2="1">
-          <stop offset="0" stopColor="#6366F1" />
-          <stop offset="1" stopColor="#EC4899" />
-        </linearGradient>
-      </defs>
-      <rect x="4" y="4" width="64" height="64" rx="14" fill="url(#g)" opacity="0.25" />
-      <path d="M20 50V22h6l18 21.2V22h8v28h-6L28 28.6V50h-8z" fill="url(#g)" stroke="url(#g)" strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
-  ),
-};
-
-// Safe env read
-function getEnv(key) {
-  try {
-    // @ts-ignore
-    const vite = (import.meta && import.meta.env) ? import.meta.env : undefined;
-    const v = (vite?.[key] || (typeof window !== "undefined" && window.__ENV__?.[key]) || (typeof process !== "undefined" && process.env?.[key]) || "").toString();
-    return v;
-  } catch {
-    return "";
-  }
+/* --- Background (matches Assistance/Home) --- */
+function NoirBg() {
+  return (
+    <>
+      <div className="fixed inset-0 -z-20 bg-[radial-gradient(1200px_800px_at_80%_-20%,rgba(255,255,255,0.08),rgba(0,0,0,0)),radial-gradient(1000px_600px_at_10%_20%,rgba(255,255,255,0.06),rgba(0,0,0,0))]" />
+      <div
+        className="fixed inset-0 -z-10 opacity-[.06] pointer-events-none"
+        style={{
+          backgroundImage:
+            "url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22 viewBox=%220 0 160 160%22><filter id=%22n%22><feTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%222%22 stitchTiles=%22stitch%22/></filter><rect width=%22160%22 height=%22160%22 filter=%22url(%23n)%22 opacity=%220.35%22/></svg>')",
+        }}
+      />
+    </>
+  );
 }
 
 export default function Login() {
-  const SITE_KEY = (getEnv("VITE_TURNSTILE_SITE_KEY") || "").trim(); // require your real site key
-  const rawMode = (getEnv("VITE_TURNSTILE_MODE") || "managed").toLowerCase();
-  const CAPTCHA_MODE = rawMode === "invisible" ? "invisible" : "managed";
-
+  const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPass, setShowPass] = useState(false);
-  const [agree, setAgree] = useState(true);
+  const [pw, setPw] = useState("");
+  const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  // Turnstile
   const [token, setToken] = useState(null);
   const [captchaReady, setCaptchaReady] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const turnstileRef = useRef(null);
-
+  const tsRef = useRef(null);
+  const SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY || "").trim(); // required in prod
   const prefersReducedMotion = useMemo(
-    () => typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     []
   );
 
-  useEffect(() => {
-    if (!SITE_KEY) console.warn("Set VITE_TURNSTILE_SITE_KEY to your widget's Site key.");
-  }, [SITE_KEY]);
-
-  useEffect(() => {
-    if (CAPTCHA_MODE === "invisible" && captchaReady) {
-      try { turnstileRef.current?.reset?.(); } catch {}
-    }
-  }, [CAPTCHA_MODE, captchaReady]);
+  const from = (location.state && location.state.from) || "/";
 
   async function verifyCaptcha(tok) {
     const r = await fetch("/api/turnstile-verify", {
@@ -72,204 +55,160 @@ export default function Login() {
     return r.ok;
   }
 
-  async function onSubmit(e) {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
+    setErr("");
+    if (!/\S+@\S+\.\S+/.test(email)) return setErr("Enter a valid email.");
+    if (pw.length < 6) return setErr("Password must be at least 6 characters.");
+    if (!SITE_KEY) return setErr("Captcha site key missing. Set VITE_TURNSTILE_SITE_KEY.");
+    if (!token) return setErr("Please complete the captcha.");
 
-    if (!SITE_KEY) { setError("Captcha site key missing. Set VITE_TURNSTILE_SITE_KEY."); return; }
-    if (!agree) { setError("Please accept the terms to continue."); return; }
-
-    setSubmitting(true);
-
-    const doLogin = async () => {
-      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-      setSubmitting(false);
-      if (authError) {
-        setError(authError.message || "Sign-in failed");
-      } else {
-        // redirect as you prefer:
-        window.location.assign("/");
-      }
-    };
-
-    if (CAPTCHA_MODE === "invisible") {
-      try {
-        // onVerify will run and continue
-        turnstileRef.current?.execute?.();
-      } catch {
-        setSubmitting(false);
-        setError("Captcha failed to execute. Please retry.");
-      }
-    } else {
-      if (!token) { setSubmitting(false); setError("Please complete the captcha."); return; }
+    setLoading(true);
+    try {
       const ok = await verifyCaptcha(token);
-      if (!ok) { setSubmitting(false); setError("Captcha verification failed."); return; }
-      await doLogin();
-    }
-  }
+      if (!ok) throw new Error("Captcha verification failed.");
 
-  /* UI */
-  const Blob = ({ className = "" }) => (
-    <motion.div
-      aria-hidden
-      className={`pointer-events-none absolute blur-3xl opacity-50 ${className}`}
-      initial={prefersReducedMotion ? {} : { scale: 0.92, opacity: 0.35 }}
-      animate={prefersReducedMotion ? {} : { scale: 1.06, opacity: 0.6 }}
-      transition={{ duration: 6, repeat: Infinity, repeatType: "reverse" }}
-      style={{ background: "radial-gradient(45% 60% at 50% 50%, rgba(99,102,241,0.55), rgba(236,72,153,0.25) 60%, transparent 70%)" }}
-    />
-  );
+      const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
+      if (error) throw new Error(error.message || "Login failed.");
+
+      navigate(from, { replace: true });
+    } catch (e2) {
+      setErr(e2.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(1200px_800px_at_80%_-10%,rgba(99,102,241,0.14),transparent),radial-gradient(1000px_600px_at_0%_110%,rgba(236,72,153,0.12),transparent)] text-white">
-      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:36px_36px] opacity-20" />
-      <Blob className="top-[-10%] right-[-10%] w-[60vw] h-[60vh]" />
-      <Blob className="bottom-[-20%] left-[-10%] w-[55vw] h-[55vh]" />
+    <div className="min-h-[100dvh] text-white relative grid place-items-center px-4">
+      <NoirBg />
+      {/* floating glows */}
+      <motion.div
+        initial={prefersReducedMotion ? {} : { opacity: 0, y: -20 }}
+        animate={prefersReducedMotion ? {} : { opacity: 0.7, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full blur-3xl"
+        style={{ background: THEME_HEX }}
+      />
+      <motion.div
+        initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
+        animate={prefersReducedMotion ? {} : { opacity: 0.6, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.1 }}
+        className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full blur-3xl"
+        style={{ background: THEME_HEX }}
+      />
 
-      <header className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6">
+      <motion.div
+        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 90, damping: 16 }}
+        className="w-full max-w-md rounded-2xl border border-white/12 bg-white/5 backdrop-blur p-5 shadow-2xl"
+      >
+        {/* header */}
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 backdrop-blur border border-white/20 shadow-md">
-            <BRAND.Logo className="h-6 w-6" />
-          </div>
-          <div className="font-semibold tracking-tight text-white/90">{BRAND.name}</div>
+          <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain" />
+          <div className="font-semibold text-lg tracking-wide">Noir MUN — Sign in</div>
         </div>
-        <div className="hidden sm:flex items-center gap-3 text-sm">
-          <Shield className="h-4 w-4 opacity-70" />
-          <span className="opacity-70">Protected with Cloudflare Turnstile</span>
-        </div>
-      </header>
 
-      <main className="relative z-10 mx-auto grid min-h-[80vh] w-full max-w-7xl place-items-center px-6 pb-16">
-        <motion.div
-          initial={prefersReducedMotion ? {} : { y: 20, opacity: 0 }}
-          animate={prefersReducedMotion ? {} : { y: 0, opacity: 1 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="w-full overflow-hidden rounded-3xl border border-white/15 bg-white/5 backdrop-blur-xl shadow-2xl"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2">
-            <div className="relative hidden md:block">
-              <div className="absolute inset-0 bg-[radial-gradient(1200px_800px_at_50%_10%,rgba(59,130,246,0.15),transparent)]" />
-              <div className="relative h-full p-10">
-                <div className="flex h-full flex-col justify-between">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs text-white/80">
-                      <ShieldCheck className="h-4 w-4" />
-                      <span>Bot-resistant login</span>
-                    </div>
-                    <h2 className="mt-6 text-4xl font-semibold leading-tight tracking-tight">
-                      Welcome back
-                      <span className="block text-white/70 text-base font-normal mt-2">Sign in to manage registrations, committees & more.</span>
-                    </h2>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {["99.99% Uptime", "Privacy-first", "1-tap Social"].map((t, i) => (
-                      <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/80">{t}</div>
-                    ))}
-                  </div>
-                </div>
+        {/* trust bar */}
+        <div className="mt-3 text-[11px] text-white/70 flex items-center gap-1">
+          <ShieldCheck size={14} /> Protected by Cloudflare Turnstile.
+        </div>
+
+        <form onSubmit={onSubmit} className="mt-5 space-y-4">
+          {err && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-sm text-red-300 bg-red-500/10 border border-red-400/30 rounded-lg px-3 py-2"
+            >
+              {err}
+            </motion.div>
+          )}
+
+          <label className="block">
+            <div className="text-xs mb-1 text-white/70">Email</div>
+            <div className="flex items-center gap-2 bg-white/5 border border-white/12 rounded-xl px-3 py-2 focus-within:border-white/25 transition-colors">
+              <Mail size={16} className="opacity-80" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@college.edu"
+                className="w-full bg-transparent outline-none text-sm"
+                autoComplete="email"
+              />
+            </div>
+          </label>
+
+          <label className="block">
+            <div className="flex items-center justify-between">
+              <div className="text-xs mb-1 text-white/70">Password</div>
+              <Link to="/reset" className="text-xs text-white/70 hover:underline">
+                Forgot?
+              </Link>
+            </div>
+            <div className="flex items-center gap-2 bg-white/5 border border-white/12 rounded-xl px-3 py-2 focus-within:border-white/25 transition-colors">
+              <Lock size={16} className="opacity-80" />
+              <input
+                type={show ? "text" : "password"}
+                value={pw}
+                onChange={(e) => setPw(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-transparent outline-none text-sm"
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShow((v) => !v)}
+                className="opacity-80 hover:opacity-100"
+                aria-label="Toggle visibility"
+              >
+                {show ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </label>
+
+          {/* Turnstile captcha */}
+          <div className="rounded-xl border border-white/12 bg-white/5 p-3">
+            {!SITE_KEY ? (
+              <div className="text-xs text-red-300">
+                Set <code>VITE_TURNSTILE_SITE_KEY</code> to render the captcha.
               </div>
-            </div>
-
-            <div className="relative p-6 sm:p-10">
-              <form onSubmit={onSubmit} className="mx-auto w-full max-w-md space-y-5">
-                <div className="flex items-center gap-2 text-sm">
-                  <div className="grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-white/10">
-                    <LogIn className="h-4 w-4" />
-                  </div>
-                  <span className="font-medium">Sign in to your account</span>
-                </div>
-
-                <div>
-                  <label htmlFor="email" className="text-sm opacity-90">Email</label>
-                  <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-white/20 bg-black/20 px-3 py-2 focus-within:border-white/40">
-                    <Mail className="h-4 w-4 opacity-60" />
-                    <input id="email" type="email" required placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-transparent outline-none placeholder:text-white/40" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="password" className="text-sm opacity-90">Password</label>
-                    <a className="text-xs opacity-70 underline-offset-2 hover:underline" href="#">Forgot?</a>
-                  </div>
-                  <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-white/20 bg-black/20 px-3 py-2 focus-within:border-white/40">
-                    <Lock className="h-4 w-4 opacity-60" />
-                    <input id="password" type={showPass ? "text" : "password"} required placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-transparent outline-none placeholder:text-white/40" />
-                    <button type="button" aria-label={showPass ? "Hide password" : "Show password"} onClick={() => setShowPass((s) => !s)} className="rounded-lg p-1.5 text-white/70 hover:bg-white/10">
-                      {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <label className="flex cursor-pointer select-none items-center gap-2 text-sm opacity-90">
-                  <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="h-4 w-4 rounded border-white/30 bg-transparent accent-white" />
-                  <span>I agree to the <a className="underline underline-offset-2" href="#">Terms</a> & <a className="underline underline-offset-2" href="#">Privacy</a></span>
-                </label>
-
-                <div className="rounded-2xl border border-white/15 bg-white/5 p-3" data-testid="captcha-box">
-                  {!SITE_KEY ? (
-                    <p className="text-sm text-red-300">Set <code>VITE_TURNSTILE_SITE_KEY</code> to render the captcha.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs opacity-80">
-                        <ShieldCheck className="h-4 w-4" />
-                        <span>Protected by Cloudflare Turnstile ({CAPTCHA_MODE})</span>
-                      </div>
-                      <Turnstile
-                        ref={turnstileRef}
-                        sitekey={SITE_KEY}
-                        options={{ theme: "dark", size: CAPTCHA_MODE === "invisible" ? "invisible" : "normal", retry: "auto" }}
-                        onLoad={() => setCaptchaReady(true)}
-                        onVerify={async (tok) => {
-                          setToken(tok);
-                          setError(null);
-                          if (CAPTCHA_MODE === "invisible") {
-                            const ok = await verifyCaptcha(tok);
-                            if (!ok) { setSubmitting(false); setError("Captcha verification failed."); return; }
-                            // After invisible verify, proceed directly:
-                            const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-                            setSubmitting(false);
-                            if (authError) setError(authError.message || "Sign-in failed");
-                            else window.location.assign("/");
-                          }
-                        }}
-                        onExpire={() => setToken(null)}
-                        onError={() => setError("Captcha error — please retry.")}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <AnimatePresence>
-                  {error && (
-                    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200" data-testid="error-box">
-                      {error}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <button
-                  type="submit"
-                  disabled={submitting || !agree || (CAPTCHA_MODE === "managed" && !token)}
-                  className="group inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 font-medium tracking-tight text-white transition hover:border-white/40 hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <span>{submitting ? "Signing in…" : "Sign in"}</span>
-                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-                </button>
-
-                <div className="text-center text-sm opacity-80">
-                  New here? <a href="#" className="underline underline-offset-2">Create an account</a>
-                </div>
-              </form>
-            </div>
+            ) : (
+              <Turnstile
+                ref={tsRef}
+                sitekey={SITE_KEY}
+                options={{ theme: "dark", size: "normal", retry: "auto" }}
+                onLoad={() => setCaptchaReady(true)}
+                onVerify={(tok) => {
+                  setToken(tok);
+                  setErr("");
+                }}
+                onExpire={() => setToken(null)}
+                onError={() => setErr("Captcha error — please retry.")}
+              />
+            )}
           </div>
-        </motion.div>
-      </main>
 
-      <footer className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 pb-10 text-xs text-white/60">
-        <span>© {new Date().getFullYear()} Noir MUN</span>
-        <a href="https://instagram.com/sameerjhambb" target="_blank" rel="noreferrer" className="underline underline-offset-2">Built with ♥ by Sameer</a>
-      </footer>
+          <motion.button
+            whileHover={{ y: -1 }}
+            whileTap={{ y: 0 }}
+            type="submit"
+            disabled={loading}
+            className="w-full mt-1 inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 hover:bg-white/15 px-4 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {loading ? "Signing in…" : "Sign In"} <ChevronRight size={16} />
+          </motion.button>
+
+          <div className="text-xs text-white/70 text-center mt-1">
+            Don’t have an account? <Link to="/signup" className="underline">Create one</Link>
+          </div>
+        </form>
+      </motion.div>
+
+      {/* tiny css polish */}
+      <style>{`::selection{ background: rgba(255,255,255,.22); }`}</style>
     </div>
   );
 }
