@@ -14,6 +14,83 @@ import {
   WHATSAPP_ESCALATE,
 } from "../shared/constants";
 
+/* --------------------------------------------------
+ * Staff Directory (for WILT Mini lookups)
+ * -------------------------------------------------- */
+const STAFF = {
+  "sameer jhamb": "Founder",
+  "maahir gulati": "Co-Founder",
+  "gautam khera": "President",
+  "daanesh narang": "Chief Advisor", // user typed Daanish → keep tolerant matching
+  "daanesh narang": "Chief Advisor",
+  "daanish narang": "Chief Advisor",
+  "vishesh kumar": "Junior Advisor",
+  "jhalak batra": "Secretary General",
+  "anushka dua": "Director General",
+  "mahi choudharie": "Deputy Director General",
+  "namya negi": "Deputy Secretary General",
+  "shambhavi sharma": "Vice President",
+  "shubh dahiya": "Executive Director",
+  "nimay gupta": "Deputy Executive Director",
+  "gauri khatter": "Charge D'Affaires",
+  "garima": "Conference Director",
+  "madhav sadana": "Conference Director",
+  "shreyas kalra": "Chef D Cabinet",
+};
+
+// Normalize helpers
+function norm(s = "") {
+  return s.toLowerCase().replace(/\s+/g, " ").trim();
+}
+function titleCase(s = "") {
+  return s.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Build reverse map Role → [names]
+const ROLE_TO_NAMES = Object.entries(STAFF).reduce((acc, [name, role]) => {
+  const k = norm(role);
+  acc[k] = acc[k] || [];
+  acc[k].push(name);
+  return acc;
+}, {});
+
+// Role synonyms to improve recall
+const ROLE_SYNONYMS = {
+  "ed": "executive director",
+  "executive director": "executive director",
+  "deputy ed": "deputy executive director",
+  "deputy executive director": "deputy executive director",
+  "cofounder": "co-founder",
+  "co founder": "co-founder",
+  "co-founder": "co-founder",
+  "sg": "secretary general",
+  "sec gen": "secretary general",
+  "dg": "director general",
+  "vps": "vice president",
+  "vp": "vice president",
+  "pres": "president",
+  "president": "president",
+  "junior advisor": "junior advisor",
+  "chief advisor": "chief advisor",
+  "charge d affaires": "charge d'affaires",
+  "charge d' affaires": "charge d'affaires",
+  "charge d'affaires": "charge d'affaires",
+  "chef d cabinet": "chef d cabinet",
+  "conference director": "conference director",
+  "founder": "founder",
+  "co-founder": "co-founder",
+};
+
+// Special override: per user request → "Who is the ED?" should reply with Nimay Gupta
+function specialEDIntercept(q) {
+  const isWho = /\bwho(\s+is|'?s)?\b/.test(q);
+  const mentionsED = /(\bthe\s+)?\bed\b|executive\s+director/.test(q);
+  if (isWho && mentionsED) {
+    return "Nimay Gupta — Deputy Executive Director (ED)"; // explicit answer wanted
+  }
+  return null;
+}
+
 /* ---------- Atmosphere (subtle starfield) ---------- */
 function Atmosphere() {
   const star = useRef(null);
@@ -274,7 +351,68 @@ function ImpactCTA() {
   );
 }
 
-/* ---------- WILT Mini (Talk to us) ---------- */
+/* --------------------------------------------------
+ * WILT Mini (Talk to us) — with Staff Q&A
+ * -------------------------------------------------- */
+function answerStaffQuery(qRaw) {
+  const q = norm(qRaw);
+
+  // 0) Hard override: "Who is the ED?" → Nimay Gupta
+  const special = specialEDIntercept(q);
+  if (special) return special;
+
+  // 1) If message includes any staff NAME → return their role
+  for (const [name, role] of Object.entries(STAFF)) {
+    const n = norm(name);
+    if (q.includes(n)) {
+      return `${titleCase(name)} — ${role}`;
+    }
+  }
+
+  // 2) If message includes a ROLE or its synonym → return name(s)
+  // Extract plausible role tokens from the question
+  const possible = Object.keys(ROLE_TO_NAMES)
+    .concat(Object.keys(ROLE_SYNONYMS))
+    .sort((a, b) => b.length - a.length); // longest first
+
+  for (const token of possible) {
+    const key = ROLE_SYNONYMS[token] ? ROLE_SYNONYMS[token] : token;
+    if (q.includes(token)) {
+      const names = ROLE_TO_NAMES[norm(key)];
+      if (names && names.length) {
+        const pretty = names.map((n) => titleCase(n)).join(", ");
+        return `${pretty} — ${titleCase(key)}`;
+      }
+    }
+  }
+
+  // 3) Common natural language forms: "who is <role>?"
+  const whoRole = q.match(/who(?:\s+is|'?s)?\s+(the\s+)?([a-z\s']{2,40})\??$/);
+  if (whoRole) {
+    const roleText = norm((whoRole[2] || "").replace(/\bof\b.*$/, "").trim());
+    const key = ROLE_SYNONYMS[roleText] || roleText;
+    const names = ROLE_TO_NAMES[key];
+    if (names && names.length) {
+      const pretty = names.map((n) => titleCase(n)).join(", ");
+      return `${pretty} — ${titleCase(key)}`;
+    }
+  }
+
+  // 4) Common natural language forms: "who is <name>?"
+  const whoName = q.match(/who(?:\s+is|'?s)?\s+([a-z\s']{2,40})\??$/);
+  if (whoName) {
+    const nameGuess = norm(whoName[1]);
+    // fuzzy contains for given names (first name only)
+    for (const [name, role] of Object.entries(STAFF)) {
+      if (name.includes(nameGuess) || nameGuess.includes(name.split(" ")[0])) {
+        return `${titleCase(name)} — ${role}`;
+      }
+    }
+  }
+
+  return null;
+}
+
 function TalkToUs() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -282,41 +420,59 @@ function TalkToUs() {
     {
       from: "bot",
       text:
-        "Hey! I’m WILT Mini — ask dates, fee, venue, founders, committees… or say ‘executive’.",
+        "Hey! I’m WILT Mini — ask dates, fee, venue, founders, committees, or any staff role like ‘Who is the ED?’",
     },
   ]);
   const add = (m) => setThread((t) => [...t, m]);
+
   const send = () => {
     if (!input.trim()) return;
     const msg = input.trim();
     setInput("");
     add({ from: "user", text: msg });
 
-    const q = msg.toLowerCase();
-    if (/date|when/.test(q)) return add({ from: "bot", text: "Dates: 11–12 October, 2025." });
-    if (/fee|price|cost/.test(q)) return add({ from: "bot", text: "Delegate fee: ₹2300." });
-    if (/venue|where|location/.test(q))
-      return add({
-        from: "bot",
-        text: "Venue: TBA — want WhatsApp updates when we announce?",
-      });
-    if (/founder|organiser|organizer|oc|eb/.test(q))
+    const q = norm(msg);
+
+    // 1) Dates
+    if (/\b(date|when)\b/.test(q)) return add({ from: "bot", text: "Dates: 11–12 October, 2025." });
+
+    // 2) Fee
+    if (/\b(fee|price|cost)\b/.test(q)) return add({ from: "bot", text: "Delegate fee: ₹2300." });
+
+    // 3) Venue
+    if (/\b(venue|where|location)\b/.test(q))
+      return add({ from: "bot", text: "Venue: TBA — want WhatsApp updates when we announce?" });
+
+    // 4) Staff Directory (names or roles)
+    const staffAnswer = answerStaffQuery(q);
+    if (staffAnswer) return add({ from: "bot", text: staffAnswer });
+
+    // 5) Founders / OC (fallback)
+    if (/\b(founder|organiser|organizer|oc|eb|lead|leadership|team)\b/.test(q))
       return add({
         from: "bot",
         text:
-          "Leadership — Founder: Sameer Jhamb, Co-Founder: Maahir Gulati, President: Gautam Khera.",
+          "Leadership — Founder: Sameer Jhamb, Co‑Founder: Maahir Gulati, President: Gautam Khera. Ask me any role by name too, e.g., ‘Who is the ED?’",
       });
-    if (/committee|agenda|topic/.test(q))
+
+    // 6) Committees
+    if (/\b(committee|agenda|topic)\b/.test(q))
       return add({ from: "bot", text: "Open Assistance for full briefs → /assistance" });
-    if (/register|sign/.test(q)) return add({ from: "bot", text: "Open Linktree → " + REGISTER_URL });
-    if (/exec|human|someone|whatsapp/.test(q)) {
-      window.open(WHATSAPP_ESCALATE, "_blank");
+
+    // 7) Registration link
+    if (/\b(register|sign)\b/.test(q)) return add({ from: "bot", text: "Open Linktree → " + REGISTER_URL });
+
+    // 8) Escalate to human on WhatsApp
+    if (/\b(exec|human|someone|whatsapp|help)\b/.test(q)) {
+      try { window.open(WHATSAPP_ESCALATE, "_blank"); } catch {}
       return add({ from: "bot", text: "Opening WhatsApp…" });
     }
+
+    // 9) Fallback prompt
     return add({
       from: "bot",
       text:
-        "Try: dates • fee • venue • founders • committees • register • executive",
+        "Try: dates • fee • venue • founders • committees • register • ‘Who is the ED?’ • ‘Who is Nimay Gupta?’",
     });
   };
 
@@ -339,14 +495,9 @@ function TalkToUs() {
 
             <div className="max-h-96 overflow-auto p-3 space-y-3">
               {thread.map((m, i) => (
-                <div
-                  key={i}
-                  className={`flex ${m.from === "bot" ? "justify-start" : "justify-end"}`}
-                >
+                <div key={i} className={`flex ${m.from === "bot" ? "justify-start" : "justify-end"}`}>
                   <div
-                    className={`${
-                      m.from === "bot" ? "bg-white/20" : "bg-white/30"
-                    } text-sm px-3 py-2 rounded-2xl max-w-[85%] whitespace-pre-wrap leading-relaxed`}
+                    className={`${m.from === "bot" ? "bg-white/20" : "bg-white/30"} text-sm px-3 py-2 rounded-2xl max-w-[85%] whitespace-pre-wrap leading-relaxed`}
                   >
                     {m.text}
                   </div>
@@ -355,29 +506,17 @@ function TalkToUs() {
             </div>
 
             <div className="px-3 pb-2 flex flex-wrap gap-2">
-              <button
-                onClick={() => (setInput("Dates?"), send())}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
+              <button onClick={() => (setInput("Dates?"), setTimeout(send))} className="text-xs rounded-full px-3 py-1 bg-white/15">
                 Dates
               </button>
-              <button
-                onClick={() => (setInput("Fee?"), send())}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
+              <button onClick={() => (setInput("Fee?"), setTimeout(send))} className="text-xs rounded-full px-3 py-1 bg-white/15">
                 Fee
               </button>
-              <button
-                onClick={() => (setInput("Venue?"), send())}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
+              <button onClick={() => (setInput("Venue?"), setTimeout(send))} className="text-xs rounded-full px-3 py-1 bg-white/15">
                 Venue
               </button>
-              <button
-                onClick={() => (setInput("Founders?"), send())}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
-                Founders
+              <button onClick={() => (setInput("Who is the ED?"), setTimeout(send))} className="text-xs rounded-full px-3 py-1 bg-white/15">
+                Who is the ED?
               </button>
               <Link to="/assistance" className="text-xs rounded-full px-3 py-1 bg-white/15">
                 Open Assistance
@@ -389,13 +528,10 @@ function TalkToUs() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
-                placeholder="Ask anything…"
+                placeholder="Ask anything… e.g., Who is Nimay Gupta?"
                 className="flex-1 bg-white/15 px-3 py-2 rounded-xl outline-none placeholder-white/60"
               />
-              <button
-                onClick={send}
-                className="px-3 py-2 rounded-xl bg-white/20 hover:bg-white/30"
-              >
+              <button onClick={send} className="px-3 py-2 rounded-xl bg-white/20 hover:bg-white/30">
                 <Send size={16} />
               </button>
             </div>
@@ -442,12 +578,7 @@ function InlineFooter() {
           <Link to="/signup" className="block text-sm hover:underline">
             Sign Up
           </Link>
-          <a
-            href={REGISTER_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="block text-sm hover:underline"
-          >
+          <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="block text-sm hover:underline">
             Register
           </a>
         </div>
@@ -456,9 +587,7 @@ function InlineFooter() {
           <Link to="/legal" className="block text-sm hover:underline">
             Terms & Privacy
           </Link>
-          <div className="text-xs text-white/60">
-            © {new Date().getFullYear()} Noir MUN — “Whispers Today, Echo Tomorrow.”
-          </div>
+          <div className="text-xs text-white/60">© {new Date().getFullYear()} Noir MUN — “Whispers Today, Echo Tomorrow.”</div>
         </div>
       </div>
     </footer>
@@ -486,14 +615,8 @@ export default function Home() {
   return (
     <div className="min-h-screen text-white relative">
       <Atmosphere />
-      <motion.div
-        className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl"
-        style={{ y: yHalo }}
-      />
-      <motion.div
-        className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl"
-        style={{ y: yHalo }}
-      />
+      <motion.div className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
+      <motion.div className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
 
       {/* Header */}
       <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
@@ -509,12 +632,7 @@ export default function Home() {
             <Link to="/legal" className="nav-pill">Legal</Link>
             <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
             <Link to="/signup" className="nav-pill">Sign Up</Link>
-            <a
-              href={REGISTER_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="nav-pill nav-pill--primary"
-            >
+            <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
               Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
             </a>
           </nav>
@@ -538,7 +656,9 @@ export default function Home() {
           <>
             <motion.div
               className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => setMenuOpen(false)}
             />
             <motion.div
@@ -564,13 +684,7 @@ export default function Home() {
                 <Link onClick={() => setMenuOpen(false)} to="/legal" className="menu-item">Legal</Link>
                 <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">Login</Link>
                 <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">Sign Up</Link>
-                <a
-                  onClick={() => setMenuOpen(false)}
-                  href={REGISTER_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="menu-item menu-item--primary"
-                >
+                <a onClick={() => setMenuOpen(false)} href={REGISTER_URL} target="_blank" rel="noreferrer" className="menu-item menu-item--primary">
                   Register <ChevronRight size={16} className="inline-block ml-1" />
                 </a>
               </div>
