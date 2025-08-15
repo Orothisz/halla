@@ -21,7 +21,6 @@ const STAFF = {
   "sameer jhamb": "Founder",
   "maahir gulati": "Co-Founder",
   "gautam khera": "President",
-  "daanesh narang": "Chief Advisor", // user typed Daanish → keep tolerant matching
   "daanesh narang": "Chief Advisor",
   "daanish narang": "Chief Advisor",
   "vishesh kumar": "Junior Advisor",
@@ -49,27 +48,26 @@ function titleCase(s = "") {
 // Build reverse map Role → [names]
 const ROLE_TO_NAMES = Object.entries(STAFF).reduce((acc, [name, role]) => {
   const k = norm(role);
-  acc[k] = acc[k] || [];
-  acc[k].push(name);
+  (acc[k] ||= []).push(name);
   return acc;
 }, {});
 
 // Role synonyms to improve recall
 const ROLE_SYNONYMS = {
-  "ed": "executive director",
+  ed: "executive director",
   "executive director": "executive director",
   "deputy ed": "deputy executive director",
   "deputy executive director": "deputy executive director",
-  "cofounder": "co-founder",
+  cofounder: "co-founder",
   "co founder": "co-founder",
   "co-founder": "co-founder",
-  "sg": "secretary general",
+  sg: "secretary general",
   "sec gen": "secretary general",
-  "dg": "director general",
-  "vps": "vice president",
-  "vp": "vice president",
-  "pres": "president",
-  "president": "president",
+  dg: "director general",
+  vps: "vice president",
+  vp: "vice president",
+  pres: "president",
+  president: "president",
   "junior advisor": "junior advisor",
   "chief advisor": "chief advisor",
   "charge d affaires": "charge d'affaires",
@@ -77,17 +75,15 @@ const ROLE_SYNONYMS = {
   "charge d'affaires": "charge d'affaires",
   "chef d cabinet": "chef d cabinet",
   "conference director": "conference director",
-  "founder": "founder",
+  founder: "founder",
   "co-founder": "co-founder",
 };
 
-// Special override: per user request → "Who is the ED?" should reply with Nimay Gupta
+// Special override: “Who is the ED?” → Nimay Gupta
 function specialEDIntercept(q) {
   const isWho = /\bwho(\s+is|'?s)?\b/.test(q);
   const mentionsED = /(\bthe\s+)?\bed\b|executive\s+director/.test(q);
-  if (isWho && mentionsED) {
-    return "Nimay Gupta — Deputy Executive Director (ED)"; // explicit answer wanted
-  }
+  if (isWho && mentionsED) return "Nimay Gupta — Deputy Executive Director (ED)";
   return null;
 }
 
@@ -281,13 +277,20 @@ function MonumentalCountdown() {
 }
 
 /* ---------- Committee cards ---------- */
+/* NEW: Proportional, responsive logo well with clamp() */
 function LogoBadge({ src, alt }) {
   return (
-    <div className="mx-auto mt-2 shrink-0 rounded-full border border-white/20 bg-white/[0.06] w-14 h-14 md:w-16 md:h-16 grid place-items-center">
+    <div
+      className="mx-auto mt-2 shrink-0 grid place-items-center rounded-2xl border border-white/18 bg-white/[0.06] aspect-square"
+      style={{ width: "clamp(56px, 8.5vw, 96px)" }}
+    >
       <img
         src={src}
         alt={alt}
-        className="max-w-[72%] max-h-[72%] object-contain"
+        loading="lazy"
+        decoding="async"
+        className="block object-contain"
+        style={{ width: "78%", height: "78%", imageRendering: "auto" }}
         onError={(e) => {
           e.currentTarget.style.opacity = 0.35;
         }}
@@ -311,7 +314,7 @@ function PosterWall({ onOpen }) {
             onClick={() => onOpen(idx)}
             className="group relative rounded-[26px] overflow-hidden border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.025] text-left focus:outline-none focus:ring-2 focus:ring-white/40"
           >
-            <div className="aspect-[16/10] md:aspect-[16/9] w-full grid place-items-center px-6 text-center">
+            <div className="aspect-[16/10] md:aspect-[16/9] w-full grid place-items-center px-6 pt-6 text-center">
               <LogoBadge src={c.logo} alt={`${c.name} logo`} />
               <div className="mt-4">
                 <div className="font-semibold text-lg leading-tight">{c.name}</div>
@@ -357,52 +360,48 @@ function ImpactCTA() {
 function answerStaffQuery(qRaw) {
   const q = norm(qRaw);
 
-  // 0) Hard override: "Who is the ED?" → Nimay Gupta
+  // 0) “Who is the ED?”
   const special = specialEDIntercept(q);
   if (special) return special;
 
   // 1) If message includes any staff NAME → return their role
   for (const [name, role] of Object.entries(STAFF)) {
     const n = norm(name);
-    if (q.includes(n)) {
-      return `${titleCase(name)} — ${role}`;
-    }
+    if (q.includes(n)) return `${titleCase(name)} — ${role}`;
   }
 
   // 2) If message includes a ROLE or its synonym → return name(s)
-  // Extract plausible role tokens from the question
   const possible = Object.keys(ROLE_TO_NAMES)
     .concat(Object.keys(ROLE_SYNONYMS))
-    .sort((a, b) => b.length - a.length); // longest first
+    .sort((a, b) => b.length - a.length);
 
   for (const token of possible) {
     const key = ROLE_SYNONYMS[token] ? ROLE_SYNONYMS[token] : token;
     if (q.includes(token)) {
       const names = ROLE_TO_NAMES[norm(key)];
-      if (names && names.length) {
+      if (names?.length) {
         const pretty = names.map((n) => titleCase(n)).join(", ");
         return `${pretty} — ${titleCase(key)}`;
       }
     }
   }
 
-  // 3) Common natural language forms: "who is <role>?"
+  // 3) “who is <role>?”
   const whoRole = q.match(/who(?:\s+is|'?s)?\s+(the\s+)?([a-z\s']{2,40})\??$/);
   if (whoRole) {
     const roleText = norm((whoRole[2] || "").replace(/\bof\b.*$/, "").trim());
     const key = ROLE_SYNONYMS[roleText] || roleText;
     const names = ROLE_TO_NAMES[key];
-    if (names && names.length) {
+    if (names?.length) {
       const pretty = names.map((n) => titleCase(n)).join(", ");
       return `${pretty} — ${titleCase(key)}`;
     }
   }
 
-  // 4) Common natural language forms: "who is <name>?"
+  // 4) “who is <name>?”
   const whoName = q.match(/who(?:\s+is|'?s)?\s+([a-z\s']{2,40})\??$/);
   if (whoName) {
     const nameGuess = norm(whoName[1]);
-    // fuzzy contains for given names (first name only)
     for (const [name, role] of Object.entries(STAFF)) {
       if (name.includes(nameGuess) || nameGuess.includes(name.split(" ")[0])) {
         return `${titleCase(name)} — ${role}`;
@@ -433,21 +432,14 @@ function TalkToUs() {
 
     const q = norm(msg);
 
-    // 1) Dates
     if (/\b(date|when)\b/.test(q)) return add({ from: "bot", text: "Dates: 11–12 October, 2025." });
-
-    // 2) Fee
     if (/\b(fee|price|cost)\b/.test(q)) return add({ from: "bot", text: "Delegate fee: ₹2300." });
-
-    // 3) Venue
     if (/\b(venue|where|location)\b/.test(q))
       return add({ from: "bot", text: "Venue: TBA — want WhatsApp updates when we announce?" });
 
-    // 4) Staff Directory (names or roles)
     const staffAnswer = answerStaffQuery(q);
     if (staffAnswer) return add({ from: "bot", text: staffAnswer });
 
-    // 5) Founders / OC (fallback)
     if (/\b(founder|organiser|organizer|oc|eb|lead|leadership|team)\b/.test(q))
       return add({
         from: "bot",
@@ -455,20 +447,19 @@ function TalkToUs() {
           "Leadership — Founder: Sameer Jhamb, Co‑Founder: Maahir Gulati, President: Gautam Khera. Ask me any role by name too, e.g., ‘Who is the ED?’",
       });
 
-    // 6) Committees
     if (/\b(committee|agenda|topic)\b/.test(q))
       return add({ from: "bot", text: "Open Assistance for full briefs → /assistance" });
 
-    // 7) Registration link
-    if (/\b(register|sign)\b/.test(q)) return add({ from: "bot", text: "Open Linktree → " + REGISTER_URL });
+    if (/\b(register|sign)\b/.test(q))
+      return add({ from: "bot", text: "Open Linktree → " + REGISTER_URL });
 
-    // 8) Escalate to human on WhatsApp
     if (/\b(exec|human|someone|whatsapp|help)\b/.test(q)) {
-      try { window.open(WHATSAPP_ESCALATE, "_blank"); } catch {}
+      try {
+        window.open(WHATSAPP_ESCALATE, "_blank");
+      } catch {}
       return add({ from: "bot", text: "Opening WhatsApp…" });
     }
 
-    // 9) Fallback prompt
     return add({
       from: "bot",
       text:
@@ -497,7 +488,9 @@ function TalkToUs() {
               {thread.map((m, i) => (
                 <div key={i} className={`flex ${m.from === "bot" ? "justify-start" : "justify-end"}`}>
                   <div
-                    className={`${m.from === "bot" ? "bg-white/20" : "bg-white/30"} text-sm px-3 py-2 rounded-2xl max-w-[85%] whitespace-pre-wrap leading-relaxed`}
+                    className={`${
+                      m.from === "bot" ? "bg-white/20" : "bg-white/30"
+                    } text-sm px-3 py-2 rounded-2xl max-w-[85%] whitespace-pre-wrap leading-relaxed`}
                   >
                     {m.text}
                   </div>
@@ -768,8 +761,15 @@ export default function Home() {
           border-color: rgba(255,255,255,.24);
         }
 
-        /* ensure CTAs always receive taps even if other layers exist */
+        /* Ensure CTAs always receive taps even if other layers exist */
         .click-safe { position: relative; z-index: 30; pointer-events: auto; }
+
+        /* --- Logo polish --- */
+        img[decoding="async"] { vertical-align: middle; }
+        @media (max-width: 360px) {
+          /* Slight bump for very small phones */
+          .mx-auto.mt-2.shrink-0.grid.place-items-center.rounded-2xl { width: 68px !important; }
+        }
       `}</style>
     </div>
   );
