@@ -14,102 +14,27 @@ import {
   Menu, X, ShieldCheck, Info
 } from "lucide-react";
 
-/* ---------- Minimal starfield bg (softer + lighter) ---------- */
-function Starfield() {
-  const ref = useRef(null);
-  useEffect(() => {
-    const c = ref.current;
-    if (!c) return;
-    const ctx = c.getContext("2d");
-    if (!ctx) return;
-    let w = (c.width = window.innerWidth);
-    let h = (c.height = window.innerHeight);
-    const stars = Array.from({ length: 80 }, () => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      v: Math.random() * 0.35 + 0.08,
-      a: Math.random() * 0.3 + 0.2,
-    }));
-    let raf = 0;
-    const draw = () => {
-      ctx.clearRect(0, 0, w, h);
-      for (const p of stars) {
-        p.y += p.v;
-        if (p.y > h) p.y = 0;
-        ctx.globalAlpha = p.a;
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(p.x, p.y, 1, 1);
-      }
-      ctx.globalAlpha = 1;
-      raf = requestAnimationFrame(draw);
-    };
-    const onResize = () => {
-      w = (c.width = window.innerWidth);
-      h = (c.height = window.innerHeight);
-    };
-    window.addEventListener("resize", onResize, { passive: true });
-    draw();
-    return () => {
-      window.removeEventListener("resize", onResize);
-      cancelAnimationFrame(raf);
-    };
-  }, []);
-  return <canvas ref={ref} className="fixed inset-0 -z-10 w-full h-full pointer-events-none" />;
-}
-
-/* ---------- Welcome Modal (minimal, crisp) ---------- */
-function WelcomeModal({ open, onClose, onUsePrompt }) {
-  if (!open) return null;
-  const prompts = [
-    "Summarise today’s top UN story in 4 lines.",
-    "Compare UNHRC vs UNGA mandates.",
-    "Best Mod Cauc topics for cyber norms (UNGA).",
-  ];
+/* ===================== Minimal Background ===================== */
+function Bg() {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w/full sm:max-w-lg rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-2xl">
-        <div className="flex items-center gap-2 mb-1">
-          <Bot size={18} />
-          <div className="font-semibold">Meet <span className="font-bold">WILT+</span></div>
-        </div>
-        <div className="text-sm text-white/80">Your web‑smart MUN copilot — searches, reads, cites.</div>
-        <div className="mt-3 grid gap-2">
-          {prompts.map((p) => (
-            <button
-              key={p}
-              onClick={() => onUsePrompt(p)}
-              className="text-left rounded-xl border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10"
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 flex items-center justify-between">
-          <div className="text-[11px] text-white/60 flex items-center gap-1">
-            <Info size={14} /> Auto‑decides when to search vs. use event facts.
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10"
-          >
-            Start
-          </button>
-        </div>
-      </div>
-    </div>
+    <>
+      {/* Radial gradient */}
+      <div className="fixed inset-0 -z-20 bg-[radial-gradient(1200px_800px_at_80%_-20%,rgba(255,255,255,0.08),rgba(0,0,0,0)),radial-gradient(1000px_600px_at_10%_20%,rgba(255,255,255,0.06),rgba(0,0,0,0))]"></div>
+      {/* Subtle noise */}
+      <div className="fixed inset-0 -z-10 opacity-[.06] pointer-events-none" style={{ backgroundImage: "url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22 viewBox=%220 0 160 160%22><filter id=%22n%22><feTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%222%22 stitchTiles=%22stitch%22/></filter><rect width=%22160%22 height=%22160%22 filter=%22url(%23n)%22 opacity=%220.35%22/></svg>')" }} />
+    </>
   );
 }
 
-/* ---------- Tabs ---------- */
+/* ===================== Tabs ===================== */
 const TABS = [
-  { key: "chat", label: "Chat (WILT+)", icon: <Bot size={16} /> },
-  { key: "rop", label: "ROP Simulator", icon: <BookOpen size={16} /> },
-  { key: "quiz", label: "Committee Quiz", icon: <Compass size={16} /> },
-  { key: "rubric", label: "Awards Rubric", icon: <Award size={16} /> },
+  { key: "chat", label: "Chat", icon: <Bot size={14} /> },
+  { key: "rop", label: "ROP", icon: <BookOpen size={14} /> },
+  { key: "quiz", label: "Quiz", icon: <Compass size={14} /> },
+  { key: "rubric", label: "Rubric", icon: <Award size={14} /> },
 ];
 
-/* ---------- Cloud brain call ---------- */
+/* ===================== Cloud ask ===================== */
 async function cloudAsk(history, userText) {
   const msgs = [
     ...history.slice(-4).map((m) => ({
@@ -136,10 +61,54 @@ async function cloudAsk(history, userText) {
   };
 }
 
-/* ---------- Chat (trimmed UI) ---------- */
+/* ===================== Welcome ===================== */
+function WelcomeModal({ open, onClose, onUsePrompt }) {
+  if (!open) return null;
+  const prompts = [
+    "Summarise today’s top UN story in 4 lines.",
+    "Compare UNHRC vs UNGA mandates.",
+    "Best Mod Cauc topics for cyber norms (UNGA).",
+  ];
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        className="relative w-full sm:max-w-md rounded-2xl bg-white/5 border border-white/10 p-4"
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <Bot size={18} />
+          <div className="font-semibold">Meet WILT+</div>
+        </div>
+        <div className="text-sm text-white/80">Your web‑smart MUN copilot — searches, reads, cites.</div>
+        <div className="mt-3 grid gap-2">
+          {prompts.map((p) => (
+            <button
+              key={p}
+              onClick={() => onUsePrompt(p)}
+              className="text-left rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2"
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <div className="text-[11px] text-white/60 flex items-center gap-1">
+            <Info size={14} /> Auto‑decides when to search vs. use event facts.
+          </div>
+          <button onClick={onClose} className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10">
+            Start
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ===================== Chat ===================== */
 function WILTChat() {
   const [thread, setThread] = useState([
-    { from: "bot", text: "I’m WILT+. Ask Noir basics or anything on world affairs — I can search and cite.\nTry: “Summarise today’s top UN story in 4 lines.”" },
+    { from: "bot", text: "I’m WILT+. Ask Noir basics or world affairs — I can search and cite.\nTry: “Summarise today’s top UN story in 4 lines.”" },
   ]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
@@ -147,22 +116,11 @@ function WILTChat() {
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
-    try {
-      const seen = localStorage.getItem("wilt_welcome_seen");
-      if (!seen) setShowWelcome(true);
-    } catch {}
+    try { if (!localStorage.getItem("wilt_welcome_seen")) setShowWelcome(true); } catch {}
   }, []);
 
-  const usePrompt = (p) => {
-    setShowWelcome(false);
-    localStorage.setItem("wilt_welcome_seen", "1");
-    send(p);
-  };
-  const closeWelcome = () => {
-    setShowWelcome(false);
-    localStorage.setItem("wilt_welcome_seen", "1");
-  };
-
+  const usePrompt = (p) => { setShowWelcome(false); localStorage.setItem("wilt_welcome_seen","1"); send(p); };
+  const closeWelcome = () => { setShowWelcome(false); localStorage.setItem("wilt_welcome_seen","1"); };
   const push = (m) => setThread((t) => [...t, m]);
 
   const quicks = [
@@ -178,8 +136,7 @@ function WILTChat() {
     const v = (preset ?? input).trim();
     if (!v) return;
     push({ from: "user", text: v });
-    setInput("");
-    setTyping(true);
+    setInput(""); setTyping(true);
     try {
       const r = await cloudAsk(thread, v);
       push({ from: "bot", text: r.text, source: r.hasSources ? "Web" : undefined });
@@ -193,34 +150,34 @@ function WILTChat() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between">
         <div className="text-sm text-white/80 flex items-center gap-2">
           <Bot size={16} /> WILT+ Chat
         </div>
         <div className={`flex items-center gap-1 text-xs ${verified ? "text-emerald-300" : "text-white/50"}`}>
           <ShieldCheck size={14} />
-          <span>{verified ? "WILT+ Verified (sources attached)" : "Awaiting sources"}</span>
+          <span>{verified ? "Sources attached" : "Awaiting sources"}</span>
         </div>
       </div>
 
-      <div className="h-[52dvh] min-h-[260px] overflow-auto space-y-2 rounded-2xl bg-white/[0.06] p-3 border border-white/10">
+      <div className="h-[50dvh] min-h-[240px] overflow-auto space-y-2 rounded-xl bg-white/5 p-3 border border-white/10">
         {thread.map((m, i) => (
           <div
             key={i}
-            className={`max-w-[85%] px-3 py-2 rounded-2xl whitespace-pre-wrap leading-relaxed break-words ${
-              m.from === "bot" ? "bg-white/10" : "bg-white/20 ml-auto"
+            className={`max-w-[85%] px-3 py-2 rounded-xl whitespace-pre-wrap leading-relaxed break-words ${
+              m.from === "bot" ? "bg-white/5 border border-white/10" : "bg-white/10 ml-auto"
             }`}
           >
             {m.text}
             {m.source && <div className="mt-1 text-[10px] uppercase tracking-wider text-white/70">Source: {m.source}</div>}
           </div>
         ))}
-        {typing && <div className="px-3 py-2 rounded-2xl bg-white/10 w-24">thinking…</div>}
+        {typing && <div className="px-3 py-2 rounded-xl bg-white/10 w-24">thinking…</div>}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1">
         {quicks.map((t) => (
-          <button key={t} onClick={() => send(t)} className="text-xs rounded-full px-3 py-1 bg-white/10 border border-white/10 touch-manipulation">
+          <button key={t} onClick={() => send(t)} className="text-[11px] rounded-full px-3 py-1 bg-white/5 border border-white/10 hover:bg-white/10">
             {t}
           </button>
         ))}
@@ -231,11 +188,11 @@ function WILTChat() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder='Ask WILT+ anything… (e.g., "UNGA today?")'
+          placeholder='Ask WILT+ anything…'
           inputMode="text"
-          className="flex-1 bg-white/10 px-3 py-2 rounded-lg outline-none border border-white/10"
+          className="flex-1 bg-white/5 px-3 py-2 rounded-lg outline-none border border-white/10"
         />
-        <button onClick={() => send()} className="rounded-lg border border-white/15 px-3 touch-manipulation" aria-label="Send">
+        <button onClick={() => send()} className="rounded-lg border border-white/10 px-3 hover:bg-white/10" aria-label="Send">
           <Send size={16} />
         </button>
       </div>
@@ -245,7 +202,7 @@ function WILTChat() {
   );
 }
 
-/* ---------- ROP Simulator (compact) ---------- */
+/* ===================== ROP (minimal cards) ===================== */
 function ROPSim() {
   const [log, setLog] = useState([]);
   const [score, setScore] = useState(50);
@@ -270,44 +227,44 @@ function ROPSim() {
 
   return (
     <div className="grid lg:grid-cols-3 gap-4">
-      <div className="rounded-2xl bg-white/[0.06] p-3 border border-white/10">
-        <div className="font-semibold text-white/90 mb-2">Motions</div>
+      <div className="rounded-xl bg-white/5 p-3 border border-white/10">
+        <div className="font-semibold mb-2">Motions</div>
         <div className="flex flex-col gap-2">
           {motions.map((m) => (
             <button
               key={m.k}
               onClick={() => add(`Raise: “${m.p}” • Voting: ${m.vote}`, m.val)}
-              className="rounded-lg border border-white/10 px-3 py-2 bg-white/5 text-left hover:bg-white/10 touch-manipulation"
+              className="rounded-lg border border-white/10 px-3 py-2 bg-white/5 text-left hover:bg-white/10"
             >
-              <div className="font-semibold">{m.k}</div>
-              <div className="text-xs text-white/80">Voting: {m.vote}</div>
+              <div className="font-medium">{m.k}</div>
+              <div className="text-xs text-white/70">Voting: {m.vote}</div>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white/[0.06] p-3 border border-white/10">
-        <div className="font-semibold text-white/90 mb-2">Points</div>
+      <div className="rounded-xl bg-white/5 p-3 border border-white/10">
+        <div className="font-semibold mb-2">Points</div>
         <div className="flex flex-col gap-2">
           {points.map((p) => (
             <button
               key={p.k}
               onClick={() => add(`State: “${p.p}”`, p.val)}
-              className="rounded-lg border border-white/10 px-3 py-2 bg-white/5 text-left hover:bg-white/10 touch-manipulation"
+              className="rounded-lg border border-white/10 px-3 py-2 bg-white/5 text-left hover:bg-white/10"
             >
-              <div className="font-semibold">{p.k}</div>
-              <div className="text-xs text-white/80 break-words">{p.p}</div>
+              <div className="font-medium">{p.k}</div>
+              <div className="text-xs text-white/70">{p.p}</div>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white/[0.06] p-3 border border-white/10">
-        <div className="font-semibold text-white/90 mb-2">Floor Confidence</div>
+      <div className="rounded-xl bg-white/5 p-3 border border-white/10">
+        <div className="font-semibold mb-2">Floor Confidence</div>
         <div className="h-2 bg-white/10 rounded-full overflow-hidden">
           <motion.div
             className="h-full"
-            style={{ background: "linear-gradient(90deg, rgba(255,255,255,.85), rgba(255,255,255,.2))" }}
+            style={{ background: "linear-gradient(90deg, rgba(255,255,255,.85), rgba(255,255,255,.25))" }}
             initial={{ width: "0%" }}
             animate={{ width: score + "%" }}
             transition={{ type: "spring", stiffness: 60, damping: 20 }}
@@ -317,7 +274,7 @@ function ROPSim() {
         <div className="mt-3 text-xs font-semibold text-white/80">Recent actions</div>
         <div className="mt-1 space-y-1 max-h-32 overflow-auto">
           {log.map((l, i) => (
-            <div key={i} className="text-xs text-white/75 bg-white/10 rounded-md px-2 py-1 break-words">
+            <div key={i} className="text-xs text-white/80 bg-white/5 border border-white/10 rounded-md px-2 py-1">
               {l}
             </div>
           ))}
@@ -327,7 +284,7 @@ function ROPSim() {
   );
 }
 
-/* ---------- SMART QUIZ (JS version) ---------- */
+/* ===================== Smart, Minimal Quiz ===================== */
 const NAMES = {
   UNGA: "United Nations General Assembly (UNGA)",
   UNCSW: "United Nations Commission on the Status of Women (UNCSW)",
@@ -339,16 +296,16 @@ const NAMES = {
 
 function Quiz() {
   const Q = [
-    { k: "domain", q: "What space excites you most?", opts: [["global","Global policy / intl law"],["domestic","Indian politics / governance"]] },
-    { k: "tempo", q: "Preferred tempo?", opts: [["formal","Formal + structured"],["crisis","Fast, spicy, interruptions"]] },
-    { k: "strength", q: "Your core strength?", opts: [["writing","Drafting & research"],["speaking","Oratory & live persuasion"],["both","Balanced"]] },
-    { k: "negotiation", q: "Negotiation style?", opts: [["bloc","Bloc‑builder / consensus"],["attack","Aggressive / adversarial"],["solo","Independent / swing"]] },
-    { k: "evidence", q: "Comfort with citations/data?", opts: [["high","Love evidence"],["mid","Some evidence"],["low","Prefer rhetoric"]] },
-    { k: "topic", q: "Pick a topic lane.", opts: [["rights","Gender/Human rights"],["econ","Economics/finance"],["tech","Cyber/AI"],["media","Media/PR"],["sports","Sports‑biz"]] },
-    { k: "press", q: "Do you enjoy journalism or photography?", opts: [["yes","Yes"],["no","No"]] },
-    { k: "sportbiz", q: "Interested in auctions/trades strategy?", opts: [["yes","Yes"],["no","No"]] },
-    { k: "crisis", q: "Crisis-room chaos tolerance?", opts: [["high","Give me chaos"],["low","Keep it orderly"]] },
-    { k: "creative", q: "How much flair/creativity do you want?", opts: [["high","High — performative"],["mid","Moderate"],["low","Low — sober"]] },
+    { k: "domain", q: "Space?", opts: [["global","Global policy"],["domestic","Indian politics"]] },
+    { k: "tempo", q: "Tempo?", opts: [["formal","Formal"],["crisis","Fast/Crisis"]] },
+    { k: "strength", q: "Core strength?", opts: [["writing","Writing"],["speaking","Speaking"],["both","Both"]] },
+    { k: "negotiation", q: "Negotiation style?", opts: [["bloc","Consensus"],["attack","Adversarial"],["solo","Independent"]] },
+    { k: "evidence", q: "Evidence comfort?", opts: [["high","High"],["mid","Medium"],["low","Low"]] },
+    { k: "topic", q: "Topic lane?", opts: [["rights","Rights"],["econ","Economics"],["tech","Cyber/AI"],["media","Media"],["sports","Sports‑biz"]] },
+    { k: "press", q: "Like journalism/photo?", opts: [["yes","Yes"],["no","No"]] },
+    { k: "sportbiz", q: "Auctions/trades?", opts: [["yes","Yes"],["no","No"]] },
+    { k: "crisis", q: "Chaos tolerance?", opts: [["high","High"],["low","Low"]] },
+    { k: "creative", q: "Creativity?", opts: [["high","High"],["mid","Medium"],["low","Low"]] },
   ];
 
   const [ans, setAns] = useState({});
@@ -358,48 +315,39 @@ function Quiz() {
     const s = { UNGA:0, UNCSW:0, AIPPM:0, IPL:0, IP:0, YT:0 };
     const reasons = [];
 
-    // Domain
-    if (ans.domain === "global") { s.UNGA+=4; s.UNCSW+=4; reasons.push("You prefer global policy."); }
-    if (ans.domain === "domestic") { s.AIPPM+=4; s.IPL+=1; reasons.push("You lean domestic politics."); }
+    if (ans.domain === "global") { s.UNGA+=4; s.UNCSW+=4; reasons.push("Global policy fit."); }
+    if (ans.domain === "domestic") { s.AIPPM+=4; s.IPL+=1; reasons.push("Domestic politics fit."); }
 
-    // Tempo & crisis tolerance
     if (ans.tempo === "formal") { s.UNGA+=2; s.UNCSW+=2; s.AIPPM+=2; }
     if (ans.tempo === "crisis") { s.YT+=3; s.IPL+=3; s.IP+=1; }
     if (ans.crisis === "high") { s.YT+=2; s.IPL+=2; }
     if (ans.crisis === "low")  { s.UNGA+=1; s.UNCSW+=1; }
 
-    // Strength
-    if (ans.strength === "writing") { s.UNCSW+=4; s.IP+=3; reasons.push("Strong writer/researcher."); }
-    if (ans.strength === "speaking") { s.UNGA+=3; s.AIPPM+=3; s.IPL+=1; reasons.push("Strong orator."); }
+    if (ans.strength === "writing") { s.UNCSW+=4; s.IP+=3; reasons.push("Strong writer."); }
+    if (ans.strength === "speaking") { s.UNGA+=3; s.AIPPM+=3; s.IPL+=1; reasons.push("Strong speaker."); }
     if (ans.strength === "both") { s.UNGA+=2; s.AIPPM+=2; s.UNCSW+=2; }
 
-    // Negotiation style
     if (ans.negotiation === "bloc") { s.UNGA+=2; s.UNCSW+=2; }
     if (ans.negotiation === "attack") { s.AIPPM+=3; s.YT+=2; }
     if (ans.negotiation === "solo") { s.IP+=2; s.YT+=1; }
 
-    // Evidence comfort
-    if (ans.evidence === "high") { s.UNCSW+=3; s.UNGA+=2; s.IP+=2; reasons.push("Comfortable with citations."); }
+    if (ans.evidence === "high") { s.UNCSW+=3; s.UNGA+=2; s.IP+=2; reasons.push("Evidence‑driven."); }
     if (ans.evidence === "mid")  { s.UNGA+=1; s.AIPPM+=1; }
     if (ans.evidence === "low")  { s.YT+=1; s.AIPPM+=1; }
 
-    // Topic lane
-    if (ans.topic === "rights") { s.UNCSW+=4; s.UNGA+=2; reasons.push("Rights lens fits UNCSW/UNGA."); }
+    if (ans.topic === "rights") { s.UNCSW+=4; s.UNGA+=2; reasons.push("Rights lens."); }
     if (ans.topic === "econ")   { s.UNGA+=3; s.AIPPM+=2; }
     if (ans.topic === "tech")   { s.UNGA+=2; s.YT+=2; }
-    if (ans.topic === "media")  { s.IP+=4; s.YT+=2; reasons.push("Media/PR suits IP."); }
-    if (ans.topic === "sports") { s.IPL+=5; reasons.push("Sports‑biz → IPL."); }
+    if (ans.topic === "media")  { s.IP+=4; s.YT+=2; reasons.push("Media/PR leaning."); }
+    if (ans.topic === "sports") { s.IPL+=5; reasons.push("Sports‑biz."); }
 
-    // Media & sports toggles
-    if (ans.press === "yes") { s.IP+=5; reasons.push("You like journalism/photography."); }
+    if (ans.press === "yes") { s.IP+=5; }
     if (ans.sportbiz === "yes") { s.IPL+=4; }
 
-    // Creativity
     if (ans.creative === "high") { s.YT+=3; s.AIPPM+=1; }
     if (ans.creative === "mid")  { s.UNGA+=1; s.UNCSW+=1; }
     if (ans.creative === "low")  { s.UNCSW+=1; }
 
-    // Tie-breaker nudges
     if (ans.domain === "global" && ans.tempo === "formal") s.UNGA += 0.5;
     if (ans.domain === "domestic" && ans.tempo === "formal") s.AIPPM += 0.5;
     if (ans.tempo === "crisis" && ans.creative === "high") s.YT += 0.5;
@@ -410,85 +358,61 @@ function Quiz() {
     const total = sorted.reduce((acc, [,v]) => acc+v, 0) || 1;
     const confidence = Math.round(Math.max(5, Math.min(95, (spread/total)*100 + 55)));
 
-    const agenda =
-      (COMMITTEES.find((c) => (c.name || "").startsWith(NAMES[top[0]])) || {}).agenda;
+    const agenda = (COMMITTEES.find((c) => (c.name || "").startsWith(NAMES[top[0]])) || {}).agenda;
 
-    setOut({
-      top, alt, confidence,
-      reasons: Array.from(new Set(reasons)).slice(0,3),
-      agenda
-    });
+    setOut({ top, alt, confidence, reasons: Array.from(new Set(reasons)).slice(0,3), agenda });
   };
 
   return (
     <div className="grid lg:grid-cols-2 gap-4">
-      <div className="rounded-2xl bg-white/[0.06] p-4 border border-white/10">
+      <div className="rounded-xl bg-white/5 p-4 border border-white/10">
         <div className="space-y-4">
           {Q.map((qq) => (
-            <div key={qq.k}>
-              <div className="font-semibold">{qq.q}</div>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <div key={qq.k} className="space-y-2">
+              <div className="font-medium">{qq.q}</div>
+              <div className="flex flex-wrap gap-2">
                 {qq.opts.map(([v,label]) => (
-                  <label key={v} className="flex items-center gap-2 cursor-pointer">
+                  <label key={v} className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3 py-1 cursor-pointer">
                     <input
                       type="radio"
+                      className="accent-white"
                       name={qq.k}
                       value={v}
                       checked={ans[qq.k] === v}
                       onChange={(e) => setAns({ ...ans, [qq.k]: e.target.value })}
                     />
-                    <span className="text-white/80 text-sm">{label}</span>
+                    <span className="text-sm text-white/85">{label}</span>
                   </label>
                 ))}
               </div>
             </div>
           ))}
         </div>
-        <button
-          onClick={compute}
-          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-2 hover:bg-white/10 touch-manipulation"
-        >
-          Compute Result <Sparkles size={16}/>
+        <button onClick={compute} className="mt-4 inline-flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 hover:bg-white/10">
+          Compute <Sparkles size={16}/>
         </button>
       </div>
 
-      <div className="rounded-2xl bg-white/[0.06] p-4 border border-white/10">
+      <div className="rounded-xl bg-white/5 p-4 border border-white/10">
         {!out ? (
           <div className="text-white/70 text-sm">Results will appear here.</div>
         ) : (
           <div className="space-y-3">
-            <div className="text-xs uppercase tracking-wider text-white/60">Recommended committee</div>
-            <div className="rounded-xl border border-white/15 bg-white/10 p-3">
-              <div className="text-lg font-bold break-words">{NAMES[out.top[0]]}</div>
-              {!!out.agenda && <div className="text-sm text-white/80 mt-1 break-words">Agenda: {out.agenda}</div>}
+            <div className="text-xs uppercase tracking-wider text-white/60">Recommended</div>
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+              <div className="text-lg font-semibold">{NAMES[out.top[0]]}</div>
+              {!!out.agenda && <div className="text-sm text-white/80 mt-1">Agenda: {out.agenda}</div>}
               <div className="text-xs text-white/70 mt-2">Confidence: {out.confidence}%</div>
             </div>
 
-            <div className="text-xs uppercase tracking-wider text-white/60">Why this fits you</div>
-            <ul className="text-sm text-white/80 list-disc pl-5 space-y-1">
+            <div className="text-xs uppercase tracking-wider text-white/60">Why</div>
+            <ul className="text-sm text-white/85 list-disc pl-5 space-y-1">
               {out.reasons.map((r,i)=> <li key={i}>{r}</li>)}
             </ul>
 
             <div className="text-xs uppercase tracking-wider text-white/60">Runner‑up</div>
-            <div className="rounded-lg bg-white/10 p-2 text-sm">
+            <div className="rounded-lg bg-white/5 border border-white/10 p-2 text-sm">
               {NAMES[out.alt[0]]}
-            </div>
-
-            <div className="text-xs uppercase tracking-wider text-white/60">Scoreboard</div>
-            <div className="grid grid-cols-2 gap-2">
-              {[out.top, out.alt].map(([k,v])=>(
-                <div key={k} className="rounded-lg bg-white/10 p-2">
-                  <div className="text-xs text-white/70">{k}</div>
-                  <div className="h-2 bg-white/10 rounded-full overflow-hidden mt-1">
-                    <motion.div
-                      className="h-full"
-                      style={{ background:"linear-gradient(90deg, rgba(255,255,255,.85), rgba(255,255,255,.2))" }}
-                      initial={{ width: 0 }}
-                      animate={{ width: Math.min(100, v*10) + "%" }}
-                    />
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         )}
@@ -497,7 +421,7 @@ function Quiz() {
   );
 }
 
-/* ---------- Rubric (minimal) ---------- */
+/* ===================== Rubric (clean) ===================== */
 function Rubric() {
   const items = [
     { label: "Substance (35%)", w: 70 },
@@ -506,24 +430,22 @@ function Rubric() {
     { label: "Procedure/Decorum (12.5%)", w: 35 },
   ];
   return (
-    <div className="rounded-2xl bg-white/[0.06] p-4 border border-white/10">
-      <div className="text-white/80 text-sm mb-3">
-        Aim for balance. Keep content tight, build coalitions, convert ideas into paper.
-      </div>
+    <div className="rounded-xl bg-white/5 p-4 border border-white/10">
+      <div className="text-white/80 text-sm mb-3">Aim for balance. Keep content tight, build coalitions, convert ideas into paper.</div>
       <div className="grid gap-3">
         {items.map((b) => (
           <div key={b.label}>
             <div className="h-2 bg-white/10 rounded-full overflow-hidden">
               <motion.div
                 className="h-full"
-                style={{ background: "linear-gradient(90deg, rgba(255,255,255,.85), rgba(255,255,255,.2))" }}
+                style={{ background: "linear-gradient(90deg, rgba(255,255,255,.9), rgba(255,255,255,.25))" }}
                 initial={{ width: 0 }}
                 whileInView={{ width: b.w + "%" }}
                 viewport={{ once: true }}
                 transition={{ type: "spring", stiffness: 60, damping: 16 }}
               />
             </div>
-            <div className="text-xs text-white/70 mt-1 break-words">{b.label}</div>
+            <div className="text-xs text-white/70 mt-1">{b.label}</div>
           </div>
         ))}
       </div>
@@ -531,7 +453,7 @@ function Rubric() {
   );
 }
 
-/* ---------- Page ---------- */
+/* ===================== Page ===================== */
 export default function Assistance() {
   const [tab, setTab] = useState("chat");
   const [focus, setFocus] = useState(false);
@@ -539,76 +461,49 @@ export default function Assistance() {
 
   return (
     <div className="min-h-[100dvh] text-white relative pb-[calc(env(safe-area-inset-bottom,0)+8px)]">
-      <Starfield />
-      <header className="px-4 py-3 flex items-center justify-between border-b border-white/10 bg-white/[0.06] backdrop-blur">
-        <div className="flex items-center gap-3 min-w-0">
-          <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain flex-shrink-0" />
-          <div className="font-semibold truncate">Noir MUN Assistance</div>
+      <Bg />
+
+      <header className="px-4 py-3 flex items-center justify-between border-b border-white/10/50 bg-black/20 backdrop-blur-sm">
+        <div className="flex items-center gap-2 min-w-0">
+          <img src={LOGO_URL} alt="Noir" className="h-8 w-8 object-contain" />
+          <div className="font-semibold truncate">Noir MUN Assistant</div>
         </div>
 
         {/* Desktop nav */}
-        <nav className="hidden sm:flex items-center gap-3">
-          <button
-            onClick={() => setFocus((v) => !v)}
-            className="rounded-xl border border-white/15 px-3 py-2 touch-manipulation"
-          >
+        <nav className="hidden sm:flex items-center gap-2">
+          <button onClick={() => setFocus((v) => !v)} className="rounded-lg border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10">
             {focus ? "Show Guide" : "Focus Mode"}
           </button>
-          <a
-            href={REGISTER_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-xl border border-white/15 px-3 py-2 inline-flex items-center gap-2 touch-manipulation"
-          >
-            Register <ExternalLink size={14}/>
+          <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 px-3 py-1.5 text-sm inline-flex items-center gap-1 hover:bg-white/10">
+            Register <ExternalLink size={12}/>
           </a>
-          <Link
-            to="/"
-            className="rounded-xl border border-white/15 px-3 py-2 inline-flex items-center gap-2 touch-manipulation"
-          >
-            Home
-          </Link>
+          <Link to="/" className="rounded-lg border border-white/10 px-3 py-1.5 text-sm hover:bg-white/10">Home</Link>
         </nav>
 
-        {/* Mobile menu button */}
-        <button
-          className="sm:hidden rounded-xl border border-white/15 p-2 touch-manipulation"
-          onClick={() => setOpenMenu((v) => !v)}
-          aria-label="Menu"
-        >
+        {/* Mobile menu */}
+        <button className="sm:hidden rounded-lg border border-white/10 p-2" onClick={() => setOpenMenu((v) => !v)} aria-label="Menu">
           {openMenu ? <X size={18} /> : <Menu size={18} />}
         </button>
       </header>
 
-      {/* Mobile dropdown */}
       {openMenu && (
-        <div className="sm:hidden px-4 py-2 border-b border-white/10 bg-white/[0.06] backdrop-blur flex items-center gap-2">
-          <button
-            onClick={() => { setFocus((v) => !v); setOpenMenu(false); }}
-            className="rounded-xl border border-white/15 px-3 py-2 text-sm touch-manipulation"
-          >
+        <div className="sm:hidden px-4 py-2 border-b border-white/10 bg-black/30 backdrop-blur flex items-center gap-2">
+          <button onClick={() => { setFocus((v) => !v); setOpenMenu(false); }} className="rounded-lg border border-white/10 px-3 py-1.5 text-sm">
             {focus ? "Show Guide" : "Focus Mode"}
           </button>
-          <a
-            href={REGISTER_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-xl border border-white/15 px-3 py-2 text-sm touch-manipulation"
-          >
+          <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 px-3 py-1.5 text-sm">
             Register
           </a>
-          <Link to="/" className="rounded-xl border border-white/15 px-3 py-2 text-sm touch-manipulation">
-            Home
-          </Link>
+          <Link to="/" className="rounded-lg border border-white/10 px-3 py-1.5 text-sm">Home</Link>
         </div>
       )}
 
-      {/* Flagship banner */}
-      <div className="mx-auto max-w-7xl px-4 pt-3">
-        <div className="rounded-xl border border-white/10 bg-white/[0.05] p-3 flex items-center justify-between">
+      {/* Banner */}
+      <div className="mx-auto max-w-6xl px-4 pt-4">
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
-            <ShieldCheck size={16} className="opacity-90" />
-            <span className="text-white/85">WILT+ is live — web‑smart answers with citations.</span>
+            <ShieldCheck size={14} className="opacity-90" />
+            <span className="text-white/85">WILT+ — web‑smart answers with citations</span>
           </div>
           <div className="hidden sm:flex items-center gap-2 text-xs text-white/70">
             <Sparkles size={14} /> Try: “Best Mod Cauc topics for cyber norms.”
@@ -616,13 +511,13 @@ export default function Assistance() {
         </div>
       </div>
 
-      <main className={`max-w-7xl mx-auto p-4 grid gap-4 ${focus ? "grid-cols-1" : "md:grid-cols-[360px_1fr]"}`}>
+      <main className={`max-w-6xl mx-auto p-4 grid gap-4 ${focus ? "grid-cols-1" : "md:grid-cols-[320px_1fr]"}`}>
         {!focus && (
-          <aside className="rounded-2xl bg-white/[0.06] p-4 border border-white/10">
-            <div className="flex items-center gap-2 text-white/85">
-              <Sparkles size={16} /> UNA‑USA ROPs — Lightning Guide
+          <aside className="rounded-xl bg-white/5 p-4 border border-white/10">
+            <div className="flex items-center gap-2 text-white/90">
+              <Sparkles size={14} /> UNA‑USA ROPs — Lightning Guide
             </div>
-            <pre className="mt-2 whitespace-pre-wrap text-white/80 text-sm leading-relaxed">
+            <pre className="mt-3 whitespace-pre-wrap text-white/80 text-[13px] leading-relaxed">
 {ASSIST_TEXT}
 
 • Event: {DATES_TEXT}
@@ -633,17 +528,23 @@ export default function Assistance() {
           </aside>
         )}
 
-        <section className="rounded-2xl bg-white/[0.06] p-4 border border-white/10">
-          <div className="flex flex-wrap gap-2 mb-4">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`rounded-xl border border-white/15 px-3 py-2 inline-flex items-center gap-2 touch-manipulation ${tab === t.key ? "bg-white/10" : ""}`}
-              >
-                {t.icon} {t.label}
-              </button>
-            ))}
+        <section className="rounded-xl bg-white/5 p-4 border border-white/10">
+          {/* Segmented Tabs */}
+          <div className="inline-flex rounded-full bg-white/5 border border-white/10 p-1 mb-4">
+            {TABS.map((t) => {
+              const active = tab === t.key;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`px-3 py-1.5 text-sm rounded-full inline-flex items-center gap-1 transition ${
+                    active ? "bg-white/15" : "hover:bg-white/10"
+                  }`}
+                >
+                  {t.icon} {t.label}
+                </button>
+              );
+            })}
           </div>
 
           {tab === "chat" && <WILTChat />}
