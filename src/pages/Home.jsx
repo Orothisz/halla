@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Calendar, ChevronRight, X, Send, MessageCircle } from "lucide-react";
+import { Calendar, ChevronRight, X, Send, MessageCircle, Menu } from "lucide-react";
 
 import {
   LOGO_URL,
@@ -475,6 +475,14 @@ export default function Home() {
   const yHalo = useTransform(scrollYProgress, [0, 1], [0, -120]);
   const [briefIdx, setBriefIdx] = useState(null);
 
+  // Mobile menu state
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    // Scroll-lock body when menu is open
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => (document.body.style.overflow = "");
+  }, [menuOpen]);
+
   useEffect(() => {
     document.documentElement.style.setProperty("--theme", THEME_HEX);
     document.body.style.background = THEME_HEX;
@@ -493,7 +501,7 @@ export default function Home() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
+      <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
           {/* Brand (no wrap) */}
           <div className="flex items-center gap-3" style={{ whiteSpace: "nowrap" }}>
@@ -501,8 +509,8 @@ export default function Home() {
             <span className="font-semibold tracking-wide">Noir MUN</span>
           </div>
 
-          {/* Pills: horizontal scroll on mobile, no wrap */}
-          <nav className="nav-bar">
+          {/* Pills: desktop only */}
+          <nav className="nav-bar hidden sm:flex">
             <Link to="/assistance" className="nav-pill">Assistance</Link>
             <Link to="/legal" className="nav-pill">Legal</Link>
             <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
@@ -516,8 +524,63 @@ export default function Home() {
               Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
             </a>
           </nav>
+
+          {/* Mobile hamburger */}
+          <button
+            className="sm:hidden rounded-xl border border-white/20 p-2"
+            aria-label="Menu"
+            onClick={() => setMenuOpen(true)}
+          >
+            <Menu size={18} />
+          </button>
         </div>
       </header>
+
+      {/* Mobile Menu Sheet */}
+      <AnimatePresence>
+        {menuOpen && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setMenuOpen(false)}
+            />
+            <motion.div
+              className="fixed top-0 left-0 right-0 z-50 rounded-b-2xl border-b border-white/15 bg-[#07071a]/95"
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -20, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 24 }}
+            >
+              <div className="px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <img src={LOGO_URL} alt="Noir" className="h-8 w-8 object-contain" />
+                  <span className="font-semibold">Noir MUN</span>
+                </div>
+                <button className="p-2 rounded-lg border border-white/15" onClick={() => setMenuOpen(false)}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="px-4 pb-4 grid gap-2">
+                <Link onClick={() => setMenuOpen(false)} to="/assistance" className="menu-item">Assistance</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/legal" className="menu-item">Legal</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">Login</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">Sign Up</Link>
+                <a
+                  onClick={() => setMenuOpen(false)}
+                  href={REGISTER_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="menu-item menu-item--primary"
+                >
+                  Register <ChevronRight size={16} className="inline-block ml-1" />
+                </a>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Main */}
       <main className="mx-auto max-w-7xl px-4 py-10">
@@ -543,24 +606,24 @@ export default function Home() {
           overflow: hidden;
         }
 
-        /* --- Mobile-first header nav pills --- */
+        /* --- Mobile-first header nav pills (desktop) --- */
         .nav-bar {
           display: flex;
           gap: 8px;
-          flex-wrap: nowrap;                 /* don't wrap under the logo */
-          overflow-x: auto;                  /* allow sideways scroll when tight */
-          -webkit-overflow-scrolling: touch; /* smooth iOS scroll */
-          scrollbar-width: none;             /* hide scrollbar on Firefox */
-          max-width: 70vw;                   /* prevents crowding the brand on tiny phones */
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          max-width: 70vw;
         }
-        .nav-bar::-webkit-scrollbar { display: none; } /* hide scrollbar on WebKit */
+        .nav-bar::-webkit-scrollbar { display: none; }
 
         .nav-pill {
           display: inline-flex;
           align-items: center;
           justify-content: center;
           border: 1px solid rgba(255,255,255,.20);
-          padding: 8px 12px;                 /* compact on phones */
+          padding: 8px 12px;
           border-radius: 14px;
           color: #fff;
           text-decoration: none;
@@ -575,6 +638,23 @@ export default function Home() {
         @media (min-width: 640px) {
           .nav-bar { max-width: none; }
           .nav-pill { padding: 10px 14px; border-radius: 16px; }
+        }
+
+        /* Mobile menu items */
+        .menu-item {
+          display: inline-flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 14px;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,.14);
+          background: rgba(255,255,255,.06);
+          color: #fff;
+          text-decoration: none;
+        }
+        .menu-item--primary {
+          background: rgba(255,255,255,.12);
+          border-color: rgba(255,255,255,.24);
         }
 
         /* ensure CTAs always receive taps even if other layers exist */
