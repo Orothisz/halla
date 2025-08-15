@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -18,10 +18,16 @@ import {
 function Bg() {
   return (
     <>
-      {/* Radial gradient */}
-      <div className="fixed inset-0 -z-20 bg-[radial-gradient(1200px_800px_at_80%_-20%,rgba(255,255,255,0.08),rgba(0,0,0,0)),radial-gradient(1000px_600px_at_10%_20%,rgba(255,255,255,0.06),rgba(0,0,0,0))]"></div>
+      {/* Radial gradients */}
+      <div className="fixed inset-0 -z-20 bg-[radial-gradient(1200px_800px_at_80%_-20%,rgba(255,255,255,0.08),rgba(0,0,0,0)),radial-gradient(1000px_600px_at_10%_20%,rgba(255,255,255,0.06),rgba(0,0,0,0))]" />
       {/* Subtle noise */}
-      <div className="fixed inset-0 -z-10 opacity-[.06] pointer-events-none" style={{ backgroundImage: "url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22 viewBox=%220 0 160 160%22><filter id=%22n%22><feTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%222%22 stitchTiles=%22stitch%22/></filter><rect width=%22160%22 height=%22160%22 filter=%22url(%23n)%22 opacity=%220.35%22/></svg>')" }} />
+      <div
+        className="fixed inset-0 -z-10 opacity-[.06] pointer-events-none"
+        style={{
+          backgroundImage:
+            "url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22 viewBox=%220 0 160 160%22><filter id=%22n%22><feTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%222%22 stitchTiles=%22stitch%22/></filter><rect width=%22160%22 height=%22160%22 filter=%22url(%23n)%22 opacity=%220.35%22/></svg>')",
+        }}
+      />
     </>
   );
 }
@@ -61,7 +67,7 @@ async function cloudAsk(history, userText) {
   };
 }
 
-/* ===================== Welcome ===================== */
+/* ===================== Welcome (always on open) ===================== */
 function WelcomeModal({ open, onClose, onUsePrompt }) {
   if (!open) return null;
   const prompts = [
@@ -113,14 +119,13 @@ function WILTChat() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [verified, setVerified] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
 
-  useEffect(() => {
-    try { if (!localStorage.getItem("wilt_welcome_seen")) setShowWelcome(true); } catch {}
-  }, []);
+  // Always show welcome on page open
+  const [showWelcome, setShowWelcome] = useState(true);
+  useEffect(() => { setShowWelcome(true); }, []);
 
-  const usePrompt = (p) => { setShowWelcome(false); localStorage.setItem("wilt_welcome_seen","1"); send(p); };
-  const closeWelcome = () => { setShowWelcome(false); localStorage.setItem("wilt_welcome_seen","1"); };
+  const usePrompt = (p) => { setShowWelcome(false); send(p); };
+  const closeWelcome = () => setShowWelcome(false);
   const push = (m) => setThread((t) => [...t, m]);
 
   const quicks = [
@@ -188,7 +193,7 @@ function WILTChat() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder='Ask WILT+ anything…'
+          placeholder="Ask WILT+ anything…"
           inputMode="text"
           className="flex-1 bg-white/5 px-3 py-2 rounded-lg outline-none border border-white/10"
         />
@@ -463,7 +468,7 @@ export default function Assistance() {
     <div className="min-h-[100dvh] text-white relative pb-[calc(env(safe-area-inset-bottom,0)+8px)]">
       <Bg />
 
-      <header className="px-4 py-3 flex items-center justify-between border-b border-white/10/50 bg-black/20 backdrop-blur-sm">
+      <header className="px-4 py-3 flex items-center justify-between border-b border-white/10 bg-black/20 backdrop-blur-sm">
         <div className="flex items-center gap-2 min-w-0">
           <img src={LOGO_URL} alt="Noir" className="h-8 w-8 object-contain" />
           <div className="font-semibold truncate">Noir MUN Assistant</div>
@@ -553,6 +558,13 @@ export default function Assistance() {
           {tab === "rubric" && <Rubric />}
         </section>
       </main>
+
+      {/* Disclaimer bar (like ChatGPT) */}
+      <footer className="w-full border-t border-white/10 bg-black/20 backdrop-blur-sm">
+        <div className="max-w-6xl mx-auto px-4 py-2 text-center text-[11px] text-white/70">
+          Wilt, and Wilt + can make mistakes. Check Important info.
+        </div>
+      </footer>
 
       <style>{`
         ::-webkit-scrollbar { width: 10px; height: 10px; }
