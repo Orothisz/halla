@@ -350,6 +350,10 @@ function InlineFooter() {
         <div className="space-y-2">
           <div className="font-semibold">Explore</div>
           <Link to="/assistance" className="block text-sm hover:underline">Assistance</Link>
+          {/* NEW: SEO link so users + Google can find the page */}
+          <Link to="/best-mun-delhi-faridabad" className="block text-sm hover:underline">
+            Best MUN in Delhi &amp; Faridabad
+          </Link>
           <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm hover:underline">
             Register <ChevronRightSquare size={14} />
           </a>
@@ -397,6 +401,10 @@ export default function Home() {
           <nav className="flex items-center gap-3">
             <Link to="/assistance" className="rounded-xl border border-white/20 px-3 py-2">
               Assistance
+            </Link>
+            {/* NEW: Header link to SEO page */}
+            <Link to="/best-mun-delhi-faridabad" className="rounded-xl border border-white/20 px-3 py-2">
+              Best MUN in Delhi
             </Link>
             <Link to="/legal" className="rounded-xl border border-white/20 px-3 py-2">
               Legal
