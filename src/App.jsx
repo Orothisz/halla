@@ -1212,4 +1212,3 @@ export default function NoirMUN_v2() {
     </div>
   );
 }
-export default NoirMUN_v2;
