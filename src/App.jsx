@@ -6,6 +6,9 @@ import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
 import Admin from "./pages/Admin.jsx";
 
+// NEW: SEO landing page (best-mun-delhi-faridabad)
+import BestMunDelhi from "./pages/BestMunDelhi.jsx";
+
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RedirectIfAuthed from "./components/RedirectIfAuthed.jsx";
 
@@ -15,6 +18,12 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/assistance" element={<Assistance />} />
       <Route path="/legal" element={<Legal />} />
+
+      {/* SEO magnet page */}
+      <Route
+        path="/best-mun-delhi-faridabad"
+        element={<BestMunDelhi />}
+      />
 
       {/* If already signed in, don’t show login/signup */}
       <Route
