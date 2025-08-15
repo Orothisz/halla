@@ -13,11 +13,12 @@ import { Sparkles, ExternalLink, Bot, Send, BookOpen, Compass, Award, Menu, X } 
 
 /* ---------- Minimal starfield bg (subtle) ---------- */
 function Starfield() {
-  const ref = useRef<HTMLCanvasElement | null>(null);
+  const ref = useRef(null);
   useEffect(() => {
     const c = ref.current;
     if (!c) return;
-    const ctx = c.getContext("2d")!;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
     let w = (c.width = window.innerWidth);
     let h = (c.height = window.innerHeight);
     const s = Array.from({ length: 120 }, () => ({
@@ -37,8 +38,8 @@ function Starfield() {
       raf = requestAnimationFrame(draw);
     };
     const onResize = () => {
-      w = c.width = window.innerWidth;
-      h = c.height = window.innerHeight;
+      w = (c.width = window.innerWidth);
+      h = (c.height = window.innerHeight);
     };
     window.addEventListener("resize", onResize, { passive: true });
     draw();
@@ -51,18 +52,18 @@ function Starfield() {
 }
 
 /* ---------- Light API helpers ---------- */
-async function fetchWiki(topic: string) {
+async function fetchWiki(topic) {
   const q = topic.replace(/^wiki:|^web:/i, "").trim();
   const res = await fetch(
     "https://en.wikipedia.org/w/rest.php/v1/search/title?q=" +
       encodeURIComponent(q) +
       "&limit=3&lang=en",
     { headers: { Accept: "application/json" } }
-  );
-  const j = await res.json().catch(() => null);
+  ).catch(() => null);
+  const j = res ? await res.json().catch(() => null) : null;
   if (!j?.pages?.length) return { text: "Wikipedia: no results.", source: "Wikipedia" };
   const lines = j.pages.map(
-    (p: any, i: number) =>
+    (p, i) =>
       `${i + 1}. ${p.title} — https://en.wikipedia.org/wiki/${encodeURIComponent(
         p.title.replace(/\s/g, "_")
       )}`
@@ -78,7 +79,7 @@ async function fetchWiki(topic: string) {
   return { text: "Wikipedia:\n" + lines.join("\n"), source: "Wikipedia" };
 }
 
-async function fetchJina(url: string) {
+async function fetchJina(url) {
   const clean = url.replace(/^read:/i, "").trim().replace(/^https?:\/\//, "");
   const r = await fetch("https://r.jina.ai/http://" + clean);
   const txt = await r.text();
@@ -88,17 +89,17 @@ async function fetchJina(url: string) {
   };
 }
 
-/* ---------- Tabs meta ---------- */
+/* ---------- Tabs ---------- */
 const TABS = [
   { key: "chat", label: "Chat (WILT+)", icon: <Bot size={16} /> },
   { key: "rop", label: "ROP Simulator", icon: <BookOpen size={16} /> },
   { key: "quiz", label: "Committee Quiz", icon: <Compass size={16} /> },
   { key: "rubric", label: "Awards Rubric", icon: <Award size={16} /> },
-] as const;
+];
 
 /* ---------- Chat ---------- */
 function WILTChat() {
-  const [thread, setThread] = useState<{ from: "bot" | "user"; text: string; source?: string }[]>([
+  const [thread, setThread] = useState([
     {
       from: "bot",
       text:
@@ -124,10 +125,9 @@ function WILTChat() {
     []
   );
 
-  const push = (m: { from: "bot" | "user"; text: string; source?: string }) =>
-    setThread((t) => [...t, m]);
+  const push = (m) => setThread((t) => [...t, m]);
 
-  const answer = async (q: string) => {
+  const answer = async (q) => {
     const low = q.toLowerCase();
     const intent =
       /^web:|^wiki:/.test(low) ? "web" :
@@ -152,8 +152,8 @@ function WILTChat() {
       case "rops": return { text: KB.rops };
       case "web": return await fetchWiki(q);
       case "read": return await fetchJina(q);
-      case "escalate":
-        // use an anchor click to avoid iOS popup blocking
+      case "escalate": {
+        // anchor click avoids iOS popup blocking
         const a = document.createElement("a");
         a.href = KB.whatsapp;
         a.target = "_blank";
@@ -162,12 +162,13 @@ function WILTChat() {
         a.click();
         a.remove();
         return { text: "Opening WhatsApp…" };
+      }
       default:
         return { text: "Ask Noir basics, or use: web: <topic> • read: <url>" };
     }
   };
 
-  const send = async (preset?: string) => {
+  const send = async (preset) => {
     const v = (preset ?? input).trim();
     if (!v) return;
     push({ from: "user", text: v });
@@ -175,7 +176,7 @@ function WILTChat() {
     setTyping(true);
     try {
       const r = await answer(v);
-      push({ from: "bot", text: r.text, source: (r as any).source });
+      push({ from: "bot", text: r.text, source: r.source });
     } catch {
       push({ from: "bot", text: "Couldn’t fetch that. Try again?" });
     } finally {
@@ -242,7 +243,7 @@ function WILTChat() {
 
 /* ---------- ROP Simulator (compact) ---------- */
 function ROPSim() {
-  const [log, setLog] = useState<string[]>([]);
+  const [log, setLog] = useState([]);
   const [score, setScore] = useState(50);
 
   const motions = [
@@ -258,7 +259,7 @@ function ROPSim() {
     { k: "Point of Order", p: "Procedural violation; may interrupt.", val: +4 },
   ];
 
-  const add = (txt: string, delta: number) => {
+  const add = (txt, delta) => {
     setLog((l) => [txt, ...l].slice(0, 10));
     setScore((s) => Math.max(0, Math.min(100, s + delta)));
   };
@@ -330,12 +331,12 @@ function Quiz() {
     { k: "skill", q: "Primary strength?", opts: [["writing", "Drafting & documentation"], ["speaking", "Oratory & negotiations"]] },
     { k: "media", q: "Media/PR interests?", opts: [["press", "Yes — journalism / photography"], ["notpress", "Prefer committee floor"]] },
     { k: "sport", q: "Strategy/sports-business?", opts: [["ipl", "Yes — auctions & trades"], ["noipl", "Not really"]] },
-  ] as const;
-  const [ans, setAns] = useState<Record<string, string>>({});
-  const [out, setOut] = useState<null | { pretty: string; agenda: string; scores: [string, number][] }>(null);
+  ];
+  const [ans, setAns] = useState({});
+  const [out, setOut] = useState(null);
 
   const compute = () => {
-    const s: Record<string, number> = { UNGA: 0, UNCSW: 0, AIPPM: 0, IPL: 0, IP: 0, YT: 0 };
+    const s = { UNGA: 0, UNCSW: 0, AIPPM: 0, IPL: 0, IP: 0, YT: 0 };
     if (ans.domain === "global") { s.UNGA += 3; s.UNCSW += 3; } else if (ans.domain === "domestic") { s.AIPPM += 3; s.IPL += 1; }
     if (ans.tempo === "formal") { s.UNGA += 2; s.UNCSW += 2; s.AIPPM += 2; } else if (ans.tempo === "crisis") { s.YT += 3; s.IPL += 3; }
     if (ans.skill === "writing") { s.UNCSW += 3; s.IP += 3; } else if (ans.skill === "speaking") { s.UNGA += 2; s.AIPPM += 2; s.IPL += 1; }
@@ -348,7 +349,7 @@ function Quiz() {
     const priority = ["IP", "IPL", "UNCSW", "AIPPM", "UNGA", "YT"];
     const pick = ties.sort((a, b) => priority.indexOf(a) - priority.indexOf(b))[0];
 
-    const names: Record<string, string> = {
+    const names = {
       UNGA: "United Nations General Assembly (UNGA)",
       UNCSW: "United Nations Commission on the Status of Women (UNCSW)",
       AIPPM: "All India Political Parties Meet (AIPPM)",
@@ -359,8 +360,8 @@ function Quiz() {
 
     setOut({
       pretty: names[pick],
-      agenda: COMMITTEES.find((c) => c.name.startsWith(names[pick]))?.agenda || "",
-      scores: sorted as [string, number][],
+      agenda: (COMMITTEES.find((c) => c.name.startsWith(names[pick])) || {}).agenda || "",
+      scores: sorted,
     });
   };
 
@@ -379,7 +380,7 @@ function Quiz() {
                       name={qq.k}
                       value={v}
                       checked={ans[qq.k] === v}
-                      onChange={(e) => setAns({ ...ans, [qq.k]: (e.target as HTMLInputElement).value })}
+                      onChange={(e) => setAns({ ...ans, [qq.k]: e.target.value })}
                     />
                     <span className="text-white/80 text-sm">{label}</span>
                   </label>
@@ -465,9 +466,9 @@ function Rubric() {
   );
 }
 
-/* ---------- Page (clean, focus mode) ---------- */
+/* ---------- Page ---------- */
 export default function Assistance() {
-  const [tab, setTab] = useState<"chat" | "rop" | "quiz" | "rubric">("chat");
+  const [tab, setTab] = useState("chat");
   const [focus, setFocus] = useState(false);
   const [openMenu, setOpenMenu] = useState(false);
 
@@ -557,7 +558,7 @@ export default function Assistance() {
             {TABS.map((t) => (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key as any)}
+                onClick={() => setTab(t.key)}
                 className={`rounded-xl border border-white/20 px-3 py-2 inline-flex items-center gap-2 touch-manipulation ${
                   tab === t.key ? "bg-white/10" : ""
                 }`}
@@ -575,13 +576,10 @@ export default function Assistance() {
       </main>
 
       <style>{`
-        /* scrollbars */
         ::-webkit-scrollbar { width: 10px; height: 10px; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 999px; }
         ::selection{ background: rgba(255,255,255,.25); }
-        /* iOS bottom safe area */
         .ios-safe-bottom { padding-bottom: max(0px, env(safe-area-inset-bottom)); }
-        /* faster taps on mobile */
         .touch-manipulation { touch-action: manipulation; }
       `}</style>
     </div>
