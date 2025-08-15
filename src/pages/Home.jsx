@@ -14,7 +14,7 @@ import {
   WHATSAPP_ESCALATE,
 } from "../shared/constants";
 
-/* Atmosphere (subtle starfield) */
+/* ---------- Atmosphere (subtle starfield) ---------- */
 function Atmosphere() {
   const star = useRef(null);
   useEffect(() => {
@@ -49,7 +49,7 @@ function Atmosphere() {
   return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
 }
 
-/* Countdown hook */
+/* ---------- Countdown hook ---------- */
 function useCountdown(targetISO) {
   const [diff, setDiff] = useState(() => new Date(targetISO).getTime() - Date.now());
   useEffect(() => {
@@ -65,7 +65,6 @@ function useCountdown(targetISO) {
   return { past, d, h, m, s };
 }
 
-/* Countdown blocks */
 const BigBlock = ({ label, value }) => (
   <div className="flex flex-col items-center">
     <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-white/8 border border-white/15 grid place-items-center text-4xl md:text-5xl font-black">
@@ -75,7 +74,7 @@ const BigBlock = ({ label, value }) => (
   </div>
 );
 
-/* Committee Brief Modal */
+/* ---------- Committee Brief Modal ---------- */
 function BriefModal({ idx, onClose }) {
   if (idx === null) return null;
   const c = COMMITTEES[idx];
@@ -131,13 +130,15 @@ function BriefModal({ idx, onClose }) {
   );
 }
 
-/* Hero */
+/* ---------- Hero (with mobile tap fix) ---------- */
 function Hero() {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
-      <div className="absolute -top-24 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
-      <div className="absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-white/10 blur-3xl rounded-full" />
-      <div className="px-6 md:px-10 pt-12 pb-14 text-center">
+    <section className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
+      {/* decorative glows — ignore taps so they never block CTAs (iOS/Android) */}
+      <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
+      <div className="pointer-events-none absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-white/10 blur-3xl rounded-full" />
+
+      <div className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
         <img src={LOGO_URL} alt="Noir" className="h-20 w-20 mx-auto object-contain drop-shadow" />
         <h1 className="mt-6 text-[40px] md:text-[68px] leading-none font-black tracking-tight">
           NOIR&nbsp;MUN&nbsp;2025
@@ -147,40 +148,44 @@ function Hero() {
         </div>
         <div className="mt-5 text-xl md:text-2xl font-semibold">Whispers Today, Echo Tomorrow</div>
 
-        {/* CTA row with Register / Sign Up / Assistance and mobile login link */}
-        <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
+        {/* CTA row */}
+        <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
             href={REGISTER_URL}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
+            className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
           >
             Secure your seat <ChevronRight size={18} />
           </a>
 
           <Link
             to="/signup"
-            className="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
+            className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
           >
             Sign Up
           </Link>
 
           <Link
             to="/assistance"
-            className="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
+            className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
           >
             MUN Assistance
           </Link>
         </div>
+
         <div className="mt-2 text-white/70 text-sm">
-          Already have an account? <Link to="/login" className="underline">Log in</Link>
+          Already have an account?{" "}
+          <Link to="/login" className="click-safe underline">
+            Log in
+          </Link>
         </div>
       </div>
     </section>
   );
 }
 
-/* Countdown section */
+/* ---------- Countdown section ---------- */
 function MonumentalCountdown() {
   const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
   return (
@@ -202,7 +207,7 @@ function MonumentalCountdown() {
   );
 }
 
-/* Logo badge for committee cards */
+/* ---------- Committee cards ---------- */
 function LogoBadge({ src, alt }) {
   return (
     <div className="mx-auto mt-2 shrink-0 rounded-full border border-white/20 bg-white/[0.06] w-14 h-14 md:w-16 md:h-16 grid place-items-center">
@@ -218,7 +223,6 @@ function LogoBadge({ src, alt }) {
   );
 }
 
-/* Committees wall */
 function PosterWall({ onOpen }) {
   return (
     <section className="mt-16">
@@ -242,7 +246,7 @@ function PosterWall({ onOpen }) {
               </div>
             </div>
             <div
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
               style={{ boxShadow: "inset 0 0 140px rgba(255,255,255,.09)" }}
             />
           </button>
@@ -252,7 +256,7 @@ function PosterWall({ onOpen }) {
   );
 }
 
-/* CTA */
+/* ---------- CTA ---------- */
 function ImpactCTA() {
   return (
     <section className="mt-16 rounded-[28px] border border-white/12 p-8 md:p-10 bg-white/[0.04] text-center">
@@ -274,7 +278,7 @@ function ImpactCTA() {
   );
 }
 
-/* WILT Mini (Talk to us) */
+/* ---------- WILT Mini (Talk to us) ---------- */
 function TalkToUs() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -419,7 +423,7 @@ function TalkToUs() {
   );
 }
 
-/* Inline Footer */
+/* ---------- Inline Footer ---------- */
 function InlineFooter() {
   return (
     <footer className="mt-16 border-t border-white/10">
@@ -465,7 +469,7 @@ function InlineFooter() {
   );
 }
 
-/* Main Page */
+/* ---------- Main Page ---------- */
 export default function Home() {
   const { scrollYProgress } = useScroll();
   const yHalo = useTransform(scrollYProgress, [0, 1], [0, -120]);
@@ -501,11 +505,8 @@ export default function Home() {
           <nav className="nav-bar">
             <Link to="/assistance" className="nav-pill">Assistance</Link>
             <Link to="/legal" className="nav-pill">Legal</Link>
-
-            {/* Auth pills (also present in hero) */}
             <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
             <Link to="/signup" className="nav-pill">Sign Up</Link>
-
             <a
               href={REGISTER_URL}
               target="_blank"
@@ -526,7 +527,7 @@ export default function Home() {
         <ImpactCTA />
       </main>
 
-      {/* Footer + Chat Widget */}
+      {/* Footer + Chat */}
       <InlineFooter />
       <TalkToUs />
 
@@ -568,15 +569,16 @@ export default function Home() {
           transition: background .2s ease, border-color .2s ease, transform .15s ease;
         }
         .nav-pill:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.28); transform: translateY(-1px); }
-
         .nav-pill--ghost { background: rgba(255,255,255,.04); }
         .nav-pill--primary { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.30); }
 
-        /* Slightly roomier pills on >=640px screens */
         @media (min-width: 640px) {
           .nav-bar { max-width: none; }
           .nav-pill { padding: 10px 14px; border-radius: 16px; }
         }
+
+        /* ensure CTAs always receive taps even if other layers exist */
+        .click-safe { position: relative; z-index: 30; pointer-events: auto; }
       `}</style>
     </div>
   );
