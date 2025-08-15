@@ -14,9 +14,9 @@ import {
   Menu, X, ShieldCheck, Info
 } from "lucide-react";
 
-/* ---------- Minimal starfield bg (subtle) ---------- */
+/* ---------- Minimal starfield bg (softer + lighter) ---------- */
 function Starfield() {
-  const ref = useRef(null);
+  const ref = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     const c = ref.current;
     if (!c) return;
@@ -24,20 +24,23 @@ function Starfield() {
     if (!ctx) return;
     let w = (c.width = window.innerWidth);
     let h = (c.height = window.innerHeight);
-    const s = Array.from({ length: 120 }, () => ({
+    const stars = Array.from({ length: 80 }, () => ({
       x: Math.random() * w,
       y: Math.random() * h,
-      v: Math.random() * 0.5 + 0.15,
+      v: Math.random() * 0.35 + 0.08,
+      a: Math.random() * 0.3 + 0.2,
     }));
     let raf = 0;
     const draw = () => {
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = "rgba(255,255,255,.4)";
-      for (const p of s) {
+      for (const p of stars) {
         p.y += p.v;
         if (p.y > h) p.y = 0;
+        ctx.globalAlpha = p.a;
+        ctx.fillStyle = "#fff";
         ctx.fillRect(p.x, p.y, 1, 1);
       }
+      ctx.globalAlpha = 1;
       raf = requestAnimationFrame(draw);
     };
     const onResize = () => {
@@ -54,53 +57,42 @@ function Starfield() {
   return <canvas ref={ref} className="fixed inset-0 -z-10 w-full h-full pointer-events-none" />;
 }
 
-/* ---------- Welcome Modal (flagship touch) ---------- */
-function WelcomeModal({ open, onClose, onUsePrompt }) {
+/* ---------- Welcome Modal (minimal, crisp) ---------- */
+function WelcomeModal({ open, onClose, onUsePrompt }: { open: boolean; onClose: () => void; onUsePrompt: (s: string) => void; }) {
   if (!open) return null;
   const prompts = [
     "Summarise today’s top UN story in 4 lines.",
     "Compare UNHRC vs UNGA mandates.",
-    "Best Mod Cauc topics for cyber norms (UNGA)."
+    "Best Mod Cauc topics for cyber norms (UNGA).",
   ];
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full sm:max-w-lg rounded-2xl border border-white/15 bg-gradient-to-b from-white/10 to-white/5 p-4 shadow-xl">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="relative w-full sm:max-w-lg rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-2xl">
+        <div className="flex items-center gap-2 mb-1">
           <Bot size={18} />
           <div className="font-semibold">Meet <span className="font-bold">WILT+</span></div>
         </div>
-        <div className="text-sm text-white/80 leading-relaxed">
-          Your web‑smart MUN copilot. It searches online, reads pages, and answers with citations.
-        </div>
+        <div className="text-sm text-white/80">Your web‑smart MUN copilot — searches, reads, cites.</div>
         <div className="mt-3 grid gap-2">
           {prompts.map((p) => (
-            <button
-              key={p}
-              onClick={() => onUsePrompt(p)}
-              className="text-left rounded-xl border border-white/15 bg-white/10 px-3 py-2 hover:bg-white/15"
-            >
+            <button key={p} onClick={() => onUsePrompt(p)} className="text-left rounded-xl border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10">
               {p}
             </button>
           ))}
         </div>
-        <div className="mt-3 flex items-center justify-between gap-2">
+        <div className="mt-3 flex items-center justify-between">
           <div className="text-[11px] text-white/60 flex items-center gap-1">
             <Info size={14} /> Auto‑decides when to search vs. use event facts.
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10"
-          >
-            Start
-          </button>
+          <button onClick={onClose} className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10">Start</button>
         </div>
       </div>
     </div>
   );
 }
 
-/* ---------- Tabs meta ---------- */
+/* ---------- Tabs ---------- */
 const TABS = [
   { key: "chat", label: "Chat (WILT+)", icon: <Bot size={16} /> },
   { key: "rop", label: "ROP Simulator", icon: <BookOpen size={16} /> },
@@ -109,12 +101,9 @@ const TABS = [
 ];
 
 /* ---------- Cloud brain call ---------- */
-async function cloudAsk(history, userText) {
+async function cloudAsk(history: {from: "user"|"bot"; text: string}[], userText: string) {
   const msgs = [
-    ...history.slice(-4).map((m) => ({
-      role: m.from === "user" ? "user" : "assistant",
-      content: m.text,
-    })),
+    ...history.slice(-4).map((m) => ({ role: m.from === "user" ? "user" : "assistant", content: m.text })),
     { role: "user", content: userText },
   ];
   const r = await fetch("/api/ask", {
@@ -122,11 +111,11 @@ async function cloudAsk(history, userText) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages: msgs }),
   });
-  const j = await r.json().catch(() => ({}));
+  const j = await r.json().catch(() => ({} as any));
   const hasSources = Array.isArray(j.sources) && j.sources.length > 0;
   let citeBlock = "";
   if (hasSources) {
-    const lines = j.sources.slice(0, 5).map((s) => `• ${s.title} — ${s.url}`).join("\n");
+    const lines = j.sources.slice(0, 5).map((s: any) => `• ${s.title} — ${s.url}`).join("\n");
     citeBlock = `\n\nSources:\n${lines}`;
   }
   return {
@@ -135,21 +124,16 @@ async function cloudAsk(history, userText) {
   };
 }
 
-/* ---------- Chat (flagship, verified badge, welcome, mobile‑safe) ---------- */
+/* ---------- Chat (trimmed UI) ---------- */
 function WILTChat() {
-  const [thread, setThread] = useState([
-    {
-      from: "bot",
-      text:
-        "I’m WILT+. Ask Noir basics or anything on world affairs — I can search and cite.\nTry: “Summarise today’s top UN story in 4 lines.”",
-    },
+  const [thread, setThread] = useState<{from:"user"|"bot";text:string;source?:string}[]>([
+    { from: "bot", text: "I’m WILT+. Ask Noir basics or anything on world affairs — I can search and cite.\nTry: “Summarise today’s top UN story in 4 lines.”" },
   ]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [verified, setVerified] = useState(false); // lights up when answers include sources
+  const [verified, setVerified] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
 
-  // One-time welcome popup
   useEffect(() => {
     try {
       const seen = localStorage.getItem("wilt_welcome_seen");
@@ -157,7 +141,7 @@ function WILTChat() {
     } catch {}
   }, []);
 
-  const usePrompt = (p) => {
+  const usePrompt = (p: string) => {
     setShowWelcome(false);
     localStorage.setItem("wilt_welcome_seen", "1");
     send(p);
@@ -167,7 +151,7 @@ function WILTChat() {
     localStorage.setItem("wilt_welcome_seen", "1");
   };
 
-  const push = (m) => setThread((t) => [...t, m]);
+  const push = (m: {from:"user"|"bot";text:string;source?:string}) => setThread((t) => [...t, m]);
 
   const quicks = [
     "When is Noir MUN?",
@@ -178,7 +162,7 @@ function WILTChat() {
     "Summarise today’s top UN story in 4 lines.",
   ];
 
-  const send = async (preset) => {
+  const send = async (preset?: string) => {
     const v = (preset ?? input).trim();
     if (!v) return;
     push({ from: "user", text: v });
@@ -197,7 +181,6 @@ function WILTChat() {
 
   return (
     <div className="space-y-3">
-      {/* Header row with Verified badge */}
       <div className="flex items-center justify-between mb-1">
         <div className="text-sm text-white/80 flex items-center gap-2">
           <Bot size={16} /> WILT+ Chat
@@ -208,32 +191,19 @@ function WILTChat() {
         </div>
       </div>
 
-      <div className="h-[52dvh] min-h-[260px] overflow-auto space-y-2 rounded-xl bg-white/5 p-3 border border-white/10">
+      <div className="h-[52dvh] min-h-[260px] overflow-auto space-y-2 rounded-2xl bg-white/[0.06] p-3 border border-white/10">
         {thread.map((m, i) => (
-          <div
-            key={i}
-            className={`max-w-[85%] px-3 py-2 rounded-2xl whitespace-pre-wrap leading-relaxed break-words ${
-              m.from === "bot" ? "bg-white/15" : "bg-white/25 ml-auto"
-            }`}
-          >
+          <div key={i} className={`max-w-[85%] px-3 py-2 rounded-2xl whitespace-pre-wrap leading-relaxed break-words ${m.from === "bot" ? "bg-white/10" : "bg-white/20 ml-auto"}`}>
             {m.text}
-            {m.source && (
-              <div className="mt-1 text-[10px] uppercase tracking-wider text-white/70">
-                Source: {m.source}
-              </div>
-            )}
+            {m.source && <div className="mt-1 text-[10px] uppercase tracking-wider text-white/70">Source: {m.source}</div>}
           </div>
         ))}
-        {typing && <div className="px-3 py-2 rounded-2xl bg-white/15 w-24">thinking…</div>}
+        {typing && <div className="px-3 py-2 rounded-2xl bg-white/10 w-24">thinking…</div>}
       </div>
 
       <div className="flex flex-wrap gap-2">
         {quicks.map((t) => (
-          <button
-            key={t}
-            onClick={() => send(t)}
-            className="text-xs rounded-full px-3 py-1 bg-white/10 border border-white/15 touch-manipulation"
-          >
+          <button key={t} onClick={() => send(t)} className="text-xs rounded-full px-3 py-1 bg-white/10 border border-white/10 touch-manipulation">
             {t}
           </button>
         ))}
@@ -246,14 +216,13 @@ function WILTChat() {
           onKeyDown={(e) => e.key === "Enter" && send()}
           placeholder='Ask WILT+ anything… (e.g., "UNGA today?")'
           inputMode="text"
-          className="flex-1 bg-white/10 px-3 py-2 rounded-lg outline-none border border-white/15 break-words"
+          className="flex-1 bg-white/10 px-3 py-2 rounded-lg outline-none border border-white/10"
         />
-        <button onClick={() => send()} className="rounded-lg border border-white/20 px-3 touch-manipulation" aria-label="Send">
+        <button onClick={() => send()} className="rounded-lg border border-white/15 px-3 touch-manipulation" aria-label="Send">
           <Send size={16} />
         </button>
       </div>
 
-      {/* Welcome modal */}
       <WelcomeModal open={showWelcome} onClose={closeWelcome} onUsePrompt={usePrompt} />
     </div>
   );
@@ -261,7 +230,7 @@ function WILTChat() {
 
 /* ---------- ROP Simulator (compact) ---------- */
 function ROPSim() {
-  const [log, setLog] = useState([]);
+  const [log, setLog] = useState<string[]>([]);
   const [score, setScore] = useState(50);
 
   const motions = [
@@ -277,22 +246,18 @@ function ROPSim() {
     { k: "Point of Order", p: "Procedural violation; may interrupt.", val: +4 },
   ];
 
-  const add = (txt, delta) => {
+  const add = (txt: string, delta: number) => {
     setLog((l) => [txt, ...l].slice(0, 10));
     setScore((s) => Math.max(0, Math.min(100, s + delta)));
   };
 
   return (
     <div className="grid lg:grid-cols-3 gap-4">
-      <div className="rounded-xl bg-white/5 p-3 border border-white/10">
+      <div className="rounded-2xl bg-white/[0.06] p-3 border border-white/10">
         <div className="font-semibold text-white/90 mb-2">Motions</div>
         <div className="flex flex-col gap-2">
           {motions.map((m) => (
-            <button
-              key={m.k}
-              onClick={() => add(`Raise: “${m.p}” • Voting: ${m.vote}`, m.val)}
-              className="rounded-lg border border-white/15 px-3 py-2 bg-white/10 text-left hover:bg-white/15 touch-manipulation"
-            >
+            <button key={m.k} onClick={() => add(`Raise: “${m.p}” • Voting: ${m.vote}`, m.val)} className="rounded-lg border border-white/10 px-3 py-2 bg-white/5 text-left hover:bg-white/10 touch-manipulation">
               <div className="font-semibold">{m.k}</div>
               <div className="text-xs text-white/80">Voting: {m.vote}</div>
             </button>
@@ -300,15 +265,11 @@ function ROPSim() {
         </div>
       </div>
 
-      <div className="rounded-xl bg-white/5 p-3 border border-white/10">
+      <div className="rounded-2xl bg-white/[0.06] p-3 border border-white/10">
         <div className="font-semibold text-white/90 mb-2">Points</div>
         <div className="flex flex-col gap-2">
           {points.map((p) => (
-            <button
-              key={p.k}
-              onClick={() => add(`State: “${p.p}”`, p.val)}
-              className="rounded-lg border border-white/15 px-3 py-2 bg-white/10 text-left hover:bg-white/15 touch-manipulation"
-            >
+            <button key={p.k} onClick={() => add(`State: “${p.p}”`, p.val)} className="rounded-lg border border-white/10 px-3 py-2 bg-white/5 text-left hover:bg-white/10 touch-manipulation">
               <div className="font-semibold">{p.k}</div>
               <div className="text-xs text-white/80 break-words">{p.p}</div>
             </button>
@@ -316,16 +277,10 @@ function ROPSim() {
         </div>
       </div>
 
-      <div className="rounded-xl bg-white/5 p-3 border border-white/10">
+      <div className="rounded-2xl bg-white/[0.06] p-3 border border-white/10">
         <div className="font-semibold text-white/90 mb-2">Floor Confidence</div>
         <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full"
-            style={{ background: "linear-gradient(90deg, rgba(255,255,255,.8), rgba(255,255,255,.2))" }}
-            initial={{ width: "0%" }}
-            animate={{ width: score + "%" }}
-            transition={{ type: "spring", stiffness: 60, damping: 20 }}
-          />
+          <motion.div className="h-full" style={{ background: "linear-gradient(90deg, rgba(255,255,255,.85), rgba(255,255,255,.2))" }} initial={{ width: "0%" }} animate={{ width: score + "%" }} transition={{ type: "spring", stiffness: 60, damping: 20 }} />
         </div>
         <div className="text-xs text-white/70 mt-2">{score}/100</div>
         <div className="mt-3 text-xs font-semibold text-white/80">Recent actions</div>
@@ -341,65 +296,114 @@ function ROPSim() {
   );
 }
 
-/* ---------- Quiz (short & clear) ---------- */
+/* ---------- SMART QUIZ ---------- */
+type PickKey = "UNGA" | "UNCSW" | "AIPPM" | "IPL" | "IP" | "YT";
+const NAMES: Record<PickKey, string> = {
+  UNGA: "United Nations General Assembly (UNGA)",
+  UNCSW: "United Nations Commission on the Status of Women (UNCSW)",
+  AIPPM: "All India Political Parties Meet (AIPPM)",
+  IPL: "Indian Premier League (IPL)",
+  IP: "International Press (IP)",
+  YT: "YouTube All Stars",
+};
+
 function Quiz() {
+  /* Questions: short, targeted, decisive */
   const Q = [
-    { k: "domain", q: "What domain excites you more?", opts: [["global", "Global policy / intl law"], ["domestic", "Domestic politics / governance"]] },
-    { k: "tempo", q: "Preferred tempo?", opts: [["formal", "Formal & structured"], ["crisis", "Fast, crisis turns"]] },
-    { k: "skill", q: "Primary strength?", opts: [["writing", "Drafting & documentation"], ["speaking", "Oratory & negotiations"]] },
-    { k: "media", q: "Media/PR interests?", opts: [["press", "Yes — journalism / photography"], ["notpress", "Prefer committee floor"]] },
-    { k: "sport", q: "Strategy/sports-business?", opts: [["ipl", "Yes — auctions & trades"], ["noipl", "Not really"]] },
-  ];
-  const [ans, setAns] = useState({});
-  const [out, setOut] = useState(null);
+    { k: "domain", q: "What space excites you most?", opts: [["global","Global policy / intl law"],["domestic","Indian politics / governance"]] },
+    { k: "tempo", q: "Preferred tempo?", opts: [["formal","Formal + structured"],["crisis","Fast, spicy, interruptions"]] },
+    { k: "strength", q: "Your core strength?", opts: [["writing","Drafting & research"],["speaking","Oratory & live persuasion"],["both","Balanced"]] },
+    { k: "negotiation", q: "Negotiation style?", opts: [["bloc","Bloc‑builder / consensus"],["attack","Aggressive / adversarial"],["solo","Independent / swing"]] },
+    { k: "evidence", q: "Comfort with citations/data?", opts: [["high","Love evidence"],["mid","Some evidence"],["low","Prefer rhetoric"]] },
+    { k: "topic", q: "Pick a topic lane.", opts: [["rights","Gender/Human rights"],["econ","Economics/finance"],["tech","Cyber/AI"],["media","Media/PR"],["sports","Sports‑biz"]] },
+    { k: "press", q: "Do you enjoy journalism or photography?", opts: [["yes","Yes"],["no","No"]] },
+    { k: "sportbiz", q: "Interested in auctions/trades strategy?", opts: [["yes","Yes"],["no","No"]] },
+    { k: "crisis", q: "Crisis-room chaos tolerance?", opts: [["high","Give me chaos"],["low","Keep it orderly"]] },
+    { k: "creative", q: "How much flair/creativity do you want?", opts: [["high","High — performative"],["mid","Moderate"],["low","Low — sober"]] },
+  ] as const;
 
+  const [ans, setAns] = useState<Record<string,string>>({});
+  const [out, setOut] = useState<null | {
+    top: [PickKey, number],
+    alt: [PickKey, number],
+    confidence: number,
+    reasons: string[],
+    agenda?: string
+  }>(null);
+
+  /* Scoring brain: weighted, with light negatives to break ties */
   const compute = () => {
-    const s = { UNGA: 0, UNCSW: 0, AIPPM: 0, IPL: 0, IP: 0, YT: 0 };
-    if (ans.domain === "global") { s.UNGA += 3; s.UNCSW += 3; } else if (ans.domain === "domestic") { s.AIPPM += 3; s.IPL += 1; }
-    if (ans.tempo === "formal") { s.UNGA += 2; s.UNCSW += 2; s.AIPPM += 2; } else if (ans.tempo === "crisis") { s.YT += 3; s.IPL += 3; }
-    if (ans.skill === "writing") { s.UNCSW += 3; s.IP += 3; } else if (ans.skill === "speaking") { s.UNGA += 2; s.AIPPM += 2; s.IPL += 1; }
-    if (ans.media === "press") s.IP += 4;
-    if (ans.sport === "ipl") s.IPL += 4;
+    const s: Record<PickKey, number> = { UNGA:0, UNCSW:0, AIPPM:0, IPL:0, IP:0, YT:0 };
+    const reasons: string[] = [];
 
-    const sorted = Object.entries(s).sort((a, b) => b[1] - a[1]);
-    const topScore = sorted[0][1];
-    const ties = sorted.filter(([, v]) => v === topScore).map(([k]) => k);
-    const priority = ["IP", "IPL", "UNCSW", "AIPPM", "UNGA", "YT"];
-    const pick = ties.sort((a, b) => priority.indexOf(a) - priority.indexOf(b))[0];
+    // Domain
+    if (ans.domain === "global") { s.UNGA+=4; s.UNCSW+=4; reasons.push("You prefer global policy."); }
+    if (ans.domain === "domestic") { s.AIPPM+=4; s.IPL+=1; reasons.push("You lean domestic politics."); }
 
-    const names = {
-      UNGA: "United Nations General Assembly (UNGA)",
-      UNCSW: "United Nations Commission on the Status of Women (UNCSW)",
-      AIPPM: "All India Political Parties Meet (AIPPM)",
-      IPL: "Indian Premier League (IPL)",
-      IP: "International Press (IP)",
-      YT: "YouTube All Stars",
-    };
+    // Tempo & crisis tolerance
+    if (ans.tempo === "formal") { s.UNGA+=2; s.UNCSW+=2; s.AIPPM+=2; }
+    if (ans.tempo === "crisis") { s.YT+=3; s.IPL+=3; s.IP+=1; }
+    if (ans.crisis === "high") { s.YT+=2; s.IPL+=2; }
+    if (ans.crisis === "low")  { s.UNGA+=1; s.UNCSW+=1; }
 
-    setOut({
-      pretty: names[pick],
-      agenda: (COMMITTEES.find((c) => c.name.startsWith(names[pick])) || {}).agenda || "",
-      scores: sorted,
-    });
+    // Strength
+    if (ans.strength === "writing") { s.UNCSW+=4; s.IP+=3; reasons.push("Strong writer/researcher."); }
+    if (ans.strength === "speaking") { s.UNGA+=3; s.AIPPM+=3; s.IPL+=1; reasons.push("Strong orator."); }
+    if (ans.strength === "both") { s.UNGA+=2; s.AIPPM+=2; s.UNCSW+=2; }
+
+    // Negotiation style
+    if (ans.negotiation === "bloc") { s.UNGA+=2; s.UNCSW+=2; }
+    if (ans.negotiation === "attack") { s.AIPPM+=3; s.YT+=2; }
+    if (ans.negotiation === "solo") { s.IP+=2; s.YT+=1; }
+
+    // Evidence comfort
+    if (ans.evidence === "high") { s.UNCSW+=3; s.UNGA+=2; s.IP+=2; reasons.push("Comfortable with citations."); }
+    if (ans.evidence === "mid")  { s.UNGA+=1; s.AIPPM+=1; }
+    if (ans.evidence === "low")  { s.YT+=1; s.AIPPM+=1; }
+
+    // Topic lane
+    if (ans.topic === "rights") { s.UNCSW+=4; s.UNGA+=2; reasons.push("Rights lens fits UNCSW/UNGA."); }
+    if (ans.topic === "econ")   { s.UNGA+=3; s.AIPPM+=2; }
+    if (ans.topic === "tech")   { s.UNGA+=2; s.YT+=2; }
+    if (ans.topic === "media")  { s.IP+=4; s.YT+=2; reasons.push("Media/PR suits IP."); }
+    if (ans.topic === "sports") { s.IPL+=5; reasons.push("Sports‑biz → IPL."); }
+
+    // Media & sports toggles
+    if (ans.press === "yes") { s.IP+=5; reasons.push("You like journalism/photography."); }
+    if (ans.sportbiz === "yes") { s.IPL+=4; }
+
+    // Creativity
+    if (ans.creative === "high") { s.YT+=3; s.AIPPM+=1; }
+    if (ans.creative === "mid")  { s.UNGA+=1; s.UNCSW+=1; }
+    if (ans.creative === "low")  { s.UNCSW+=1; }
+
+    // Small tie-breaker nudges
+    if (ans.domain === "global" && ans.tempo === "formal") s.UNGA += 0.5;
+    if (ans.domain === "domestic" && ans.tempo === "formal") s.AIPPM += 0.5;
+    if (ans.tempo === "crisis" && ans.creative === "high") s.YT += 0.5;
+
+    const sorted = Object.entries(s).sort((a,b) => b[1]-a[1]) as [PickKey, number][];
+    const top = sorted[0], alt = sorted[1];
+    const spread = top[1] - alt[1];
+    const total = sorted.reduce((acc, [,v]) => acc+v, 0) || 1;
+    const confidence = Math.round(Math.max(5, Math.min(95, (spread/total)*100 + 55)));
+
+    const agenda = (COMMITTEES.find((c) => c.name.startsWith(NAMES[top[0]])) || {}).agenda;
+
+    setOut({ top, alt, confidence, reasons: Array.from(new Set(reasons)).slice(0,3), agenda });
   };
 
   return (
     <div className="grid lg:grid-cols-2 gap-4">
-      <div className="rounded-xl bg-white/5 p-4 border border-white/10">
+      <div className="rounded-2xl bg-white/[0.06] p-4 border border-white/10">
         <div className="space-y-4">
           {Q.map((qq) => (
             <div key={qq.k}>
               <div className="font-semibold">{qq.q}</div>
-              <div className="mt-2 grid gap-2">
-                {qq.opts.map(([v, label]) => (
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {qq.opts.map(([v,label]) => (
                   <label key={v} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name={qq.k}
-                      value={v}
-                      checked={ans[qq.k] === v}
-                      onChange={(e) => setAns({ ...ans, [qq.k]: e.target.value })}
-                    />
+                    <input type="radio" name={qq.k} value={v} checked={ans[qq.k] === v} onChange={(e) => setAns({ ...ans, [qq.k]: e.target.value })}/>
                     <span className="text-white/80 text-sm">{label}</span>
                   </label>
                 ))}
@@ -407,38 +411,40 @@ function Quiz() {
             </div>
           ))}
         </div>
-        <button
-          onClick={compute}
-          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/20 px-3 py-2 hover:bg-white/10 touch-manipulation"
-        >
-          Compute Result <Sparkles size={16} />
+        <button onClick={compute} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-2 hover:bg-white/10 touch-manipulation">
+          Compute Result <Sparkles size={16}/>
         </button>
       </div>
 
-      <div className="rounded-xl bg-white/5 p-4 border border-white/10">
+      <div className="rounded-2xl bg-white/[0.06] p-4 border border-white/10">
         {!out ? (
           <div className="text-white/70 text-sm">Results will appear here.</div>
         ) : (
           <div className="space-y-3">
             <div className="text-xs uppercase tracking-wider text-white/60">Recommended committee</div>
-            <div className="rounded-xl border border-white/20 bg-white/10 p-3">
-              <div className="text-lg font-bold break-words">{out.pretty}</div>
-              {!!out.agenda && (
-                <div className="text-sm text-white/80 mt-1 break-words">Agenda: {out.agenda}</div>
-              )}
+            <div className="rounded-xl border border-white/15 bg-white/10 p-3">
+              <div className="text-lg font-bold break-words">{NAMES[out.top[0]]}</div>
+              {!!out.agenda && <div className="text-sm text-white/80 mt-1 break-words">Agenda: {out.agenda}</div>}
+              <div className="text-xs text-white/70 mt-2">Confidence: {out.confidence}%</div>
             </div>
+
+            <div className="text-xs uppercase tracking-wider text-white/60">Why this fits you</div>
+            <ul className="text-sm text-white/80 list-disc pl-5 space-y-1">
+              {out.reasons.map((r,i)=> <li key={i}>{r}</li>)}
+            </ul>
+
+            <div className="text-xs uppercase tracking-wider text-white/60">Runner‑up</div>
+            <div className="rounded-lg bg-white/10 p-2 text-sm">
+              {NAMES[out.alt[0]]}
+            </div>
+
             <div className="text-xs uppercase tracking-wider text-white/60">Scoreboard</div>
             <div className="grid grid-cols-2 gap-2">
-              {out.scores.map(([k, v]) => (
+              {[out.top, out.alt].map(([k,v])=>(
                 <div key={k} className="rounded-lg bg-white/10 p-2">
                   <div className="text-xs text-white/70">{k}</div>
                   <div className="h-2 bg-white/10 rounded-full overflow-hidden mt-1">
-                    <motion.div
-                      className="h-full"
-                      style={{ background: "linear-gradient(90deg, rgba(255,255,255,.8), rgba(255,255,255,.2))" }}
-                      initial={{ width: 0 }}
-                      animate={{ width: Math.min(100, v * 10) + "%" }}
-                    />
+                    <motion.div className="h-full" style={{ background:"linear-gradient(90deg, rgba(255,255,255,.85), rgba(255,255,255,.2))" }} initial={{ width: 0 }} animate={{ width: Math.min(100, v*10) + "%" }}/>
                   </div>
                 </div>
               ))}
@@ -450,7 +456,7 @@ function Quiz() {
   );
 }
 
-/* ---------- Rubric (simple) ---------- */
+/* ---------- Rubric (minimal) ---------- */
 function Rubric() {
   const items = [
     { label: "Substance (35%)", w: 70 },
@@ -459,22 +465,13 @@ function Rubric() {
     { label: "Procedure/Decorum (12.5%)", w: 35 },
   ];
   return (
-    <div className="rounded-xl bg-white/5 p-4 border border-white/10">
-      <div className="text-white/80 text-sm mb-3">
-        Aim for balance. Keep content tight, build coalitions, convert ideas into paper.
-      </div>
+    <div className="rounded-2xl bg-white/[0.06] p-4 border border-white/10">
+      <div className="text-white/80 text-sm mb-3">Aim for balance. Keep content tight, build coalitions, convert ideas into paper.</div>
       <div className="grid gap-3">
         {items.map((b) => (
           <div key={b.label}>
             <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full"
-                style={{ background: "linear-gradient(90deg, rgba(255,255,255,.8), rgba(255,255,255,.2))" }}
-                initial={{ width: 0 }}
-                whileInView={{ width: b.w + "%" }}
-                viewport={{ once: true }}
-                transition={{ type: "spring", stiffness: 60, damping: 16 }}
-              />
+              <motion.div className="h-full" style={{ background: "linear-gradient(90deg, rgba(255,255,255,.85), rgba(255,255,255,.2))" }} initial={{ width: 0 }} whileInView={{ width: b.w + "%" }} viewport={{ once: true }} transition={{ type: "spring", stiffness: 60, damping: 16 }}/>
             </div>
             <div className="text-xs text-white/70 mt-1 break-words">{b.label}</div>
           </div>
@@ -484,16 +481,16 @@ function Rubric() {
   );
 }
 
-/* ---------- Page (clean, focus mode, flagship header) ---------- */
+/* ---------- Page ---------- */
 export default function Assistance() {
-  const [tab, setTab] = useState("chat");
+  const [tab, setTab] = useState<"chat"|"rop"|"quiz"|"rubric">("chat");
   const [focus, setFocus] = useState(false);
   const [openMenu, setOpenMenu] = useState(false);
 
   return (
     <div className="min-h-[100dvh] text-white relative pb-[calc(env(safe-area-inset-bottom,0)+8px)]">
       <Starfield />
-      <header className="px-4 py-3 flex items-center justify-between border-b border-white/10 bg-white/5 backdrop-blur">
+      <header className="px-4 py-3 flex items-center justify-between border-b border-white/10 bg-white/[0.06] backdrop-blur">
         <div className="flex items-center gap-3 min-w-0">
           <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain flex-shrink-0" />
           <div className="font-semibold truncate">Noir MUN Assistance</div>
@@ -501,62 +498,31 @@ export default function Assistance() {
 
         {/* Desktop nav */}
         <nav className="hidden sm:flex items-center gap-3">
-          <button
-            onClick={() => setFocus((v) => !v)}
-            className="rounded-xl border border-white/20 px-3 py-2 touch-manipulation"
-            title="Toggle Focus Mode"
-          >
-            {focus ? "Show Guide" : "Focus Mode"}
-          </button>
-          <a
-            href={REGISTER_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-xl border border-white/20 px-3 py-2 inline-flex items-center gap-2 touch-manipulation"
-          >
-            Register <ExternalLink size={14} />
-          </a>
-          <Link to="/" className="rounded-xl border border-white/20 px-3 py-2 inline-flex items-center gap-2 touch-manipulation">
-            Home
-          </Link>
+          <button onClick={() => setFocus((v) => !v)} className="rounded-xl border border-white/15 px-3 py-2 touch-manipulation">{focus ? "Show Guide" : "Focus Mode"}</button>
+          <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="rounded-xl border border-white/15 px-3 py-2 inline-flex items-center gap-2 touch-manipulation">Register <ExternalLink size={14}/></a>
+          <Link to="/" className="rounded-xl border border-white/15 px-3 py-2 inline-flex items-center gap-2 touch-manipulation">Home</Link>
         </nav>
 
         {/* Mobile menu button */}
-        <button
-          className="sm:hidden rounded-xl border border-white/20 p-2 touch-manipulation"
-          onClick={() => setOpenMenu((v) => !v)}
-          aria-label="Menu"
-        >
+        <button className="sm:hidden rounded-xl border border-white/15 p-2 touch-manipulation" onClick={() => setOpenMenu((v) => !v)} aria-label="Menu">
           {openMenu ? <X size={18} /> : <Menu size={18} />}
         </button>
       </header>
 
       {/* Mobile dropdown */}
       {openMenu && (
-        <div className="sm:hidden px-4 py-2 border-b border-white/10 bg-white/5 backdrop-blur flex items-center gap-2">
-          <button
-            onClick={() => { setFocus((v) => !v); setOpenMenu(false); }}
-            className="rounded-xl border border-white/20 px-3 py-2 text-sm touch-manipulation"
-          >
+        <div className="sm:hidden px-4 py-2 border-b border-white/10 bg-white/[0.06] backdrop-blur flex items-center gap-2">
+          <button onClick={() => { setFocus((v) => !v); setOpenMenu(false); }} className="rounded-xl border border-white/15 px-3 py-2 text-sm touch-manipulation">
             {focus ? "Show Guide" : "Focus Mode"}
           </button>
-          <a
-            href={REGISTER_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-xl border border-white/20 px-3 py-2 text-sm touch-manipulation"
-          >
-            Register
-          </a>
-          <Link to="/" className="rounded-xl border border-white/20 px-3 py-2 text-sm touch-manipulation">
-            Home
-          </Link>
+          <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="rounded-xl border border-white/15 px-3 py-2 text-sm touch-manipulation">Register</a>
+          <Link to="/" className="rounded-xl border border-white/15 px-3 py-2 text-sm touch-manipulation">Home</Link>
         </div>
       )}
 
       {/* Flagship banner */}
       <div className="mx-auto max-w-7xl px-4 pt-3">
-        <div className="rounded-xl border border-white/15 bg-gradient-to-r from-white/10 to-white/5 p-3 flex items-center justify-between">
+        <div className="rounded-xl border border-white/10 bg-white/[0.05] p-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
             <ShieldCheck size={16} className="opacity-90" />
             <span className="text-white/85">WILT+ is live — web‑smart answers with citations.</span>
@@ -569,11 +535,11 @@ export default function Assistance() {
 
       <main className={`max-w-7xl mx-auto p-4 grid gap-4 ${focus ? "grid-cols-1" : "md:grid-cols-[360px_1fr]"}`}>
         {!focus && (
-          <aside className="rounded-xl bg-white/5 p-4 border border-white/10">
+          <aside className="rounded-2xl bg-white/[0.06] p-4 border border-white/10">
             <div className="flex items-center gap-2 text-white/85">
-              <Sparkles size={16} /> UNA-USA ROPs — Lightning Guide
+              <Sparkles size={16} /> UNA‑USA ROPs — Lightning Guide
             </div>
-            <pre className="mt-2 whitespace-pre-wrap text-white/80 text-sm leading-relaxed break-words">
+            <pre className="mt-2 whitespace-pre-wrap text-white/80 text-sm leading-relaxed">
 {ASSIST_TEXT}
 
 • Event: {DATES_TEXT}
@@ -584,16 +550,10 @@ export default function Assistance() {
           </aside>
         )}
 
-        <section className="rounded-xl bg-white/5 p-4 border border-white/10">
+        <section className="rounded-2xl bg-white/[0.06] p-4 border border-white/10">
           <div className="flex flex-wrap gap-2 mb-4">
             {TABS.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`rounded-xl border border-white/20 px-3 py-2 inline-flex items-center gap-2 touch-manipulation ${
-                  tab === t.key ? "bg-white/10" : ""
-                }`}
-              >
+              <button key={t.key} onClick={() => setTab(t.key as any)} className={`rounded-xl border border-white/15 px-3 py-2 inline-flex items-center gap-2 touch-manipulation ${tab === t.key ? "bg-white/10" : ""}`}>
                 {t.icon} {t.label}
               </button>
             ))}
@@ -608,8 +568,8 @@ export default function Assistance() {
 
       <style>{`
         ::-webkit-scrollbar { width: 10px; height: 10px; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 999px; }
-        ::selection{ background: rgba(255,255,255,.25); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 999px; }
+        ::selection{ background: rgba(255,255,255,.22); }
         .ios-safe-bottom { padding-bottom: max(0px, env(safe-area-inset-bottom)); }
         .touch-manipulation { touch-action: manipulation; }
       `}</style>
