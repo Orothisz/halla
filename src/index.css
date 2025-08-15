@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --theme: #000026;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 999px; }
+::selection { background: rgba(255,255,255,.25); }
