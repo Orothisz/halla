@@ -25,16 +25,23 @@ function kbLookup(q) {
   return facts;
 }
 
-async function callOpenRouter(model, messages, temperature = 0.2) {
+/* ---------------- OpenRouter ---------------- */
+async function callOpenRouter({ model, messages, temperature = 0.2, referer, title }) {
   const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      // REQUIRED for free-tier friendliness/rate limits:
       "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "HTTP-Referer": referer || "https://noir-mun.com",
+      "X-Title": title || "Noir MUN — WILT+",
     },
     body: JSON.stringify({ model, messages, temperature }),
   });
-  if (!r.ok) throw new Error(await r.text());
+  if (!r.ok) {
+    // Bubble up a readable error; caller will catch and fallback.
+    throw new Error(`OpenRouter ${r.status}: ${await r.text()}`);
+  }
   const j = await r.json();
   return j.choices?.[0]?.message?.content || "";
 }
@@ -82,7 +89,6 @@ async function readUrl(url) {
 /* ---------------- Prompts ---------------- */
 const PLANNER_PROMPT = `
 You are the planner for WILT+. Decide what tools to use.
-
 Rules:
 - If it's a simple Noir fact (dates, fee, venue, register, contacts): "use_kb": true.
 - If it needs outside info or is current/non-trivial: "use_search": true with 1–3 focused queries.
@@ -93,7 +99,6 @@ Return STRICT JSON only:
 
 const WRITER_PROMPT = `
 You are WILT+, Noir MUN's flagship assistant.
-
 Inputs:
 - kb: Noir facts
 - search: [{title,url,snippet}]
@@ -104,7 +109,6 @@ Write a concise grounded answer. Use bullets where helpful. End with "Sources:" 
 /* ---------------- JSON repair ---------------- */
 function safeParsePlan(text, userText) {
   try { const plan = JSON.parse(text); if (plan && typeof plan === "object") return plan; } catch {}
-  // fallback: if KB doesn't cover, force search
   const kb = kbLookup(userText);
   return {
     use_kb: kb.length > 0,
@@ -117,16 +121,38 @@ function safeParsePlan(text, userText) {
 
 /* ---------------- Main handler ---------------- */
 export default async function handler(req) {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+  }
   if (req.method !== "POST") return new Response("Use POST", { status: 405 });
-  const { messages } = await req.json().catch(() => ({ messages: [] }));
-  const userText = messages?.slice(-1)?.[0]?.content || "";
 
-  // 0) Plan
-  const plannerOut = await callOpenRouter(OPENROUTER_MODEL_PLANNER, [
-    { role: "system", content: PLANNER_PROMPT },
-    { role: "user", content: userText },
-  ]);
-  const plan = safeParsePlan(plannerOut, userText);
+  let body;
+  try { body = await req.json(); } catch { body = {}; }
+  const messages = body?.messages || [];
+  const userText = messages?.slice(-1)?.[0]?.content || "";
+  const referer = (req.headers.get("origin") || req.headers.get("referer") || "https://noir-mun.com");
+
+  // 0) Plan (LLM — with fallback to heuristic)
+  let plan;
+  try {
+    const plannerOut = await callOpenRouter({
+      model: OPENROUTER_MODEL_PLANNER,
+      messages: [{ role: "system", content: PLANNER_PROMPT }, { role: "user", content: userText }],
+      temperature: 0.2,
+      referer,
+      title: "Noir MUN — WILT+ (planner)",
+    });
+    plan = safeParsePlan(plannerOut, userText);
+  } catch {
+    plan = safeParsePlan("", userText);
+  }
 
   // 1) KB
   const kbFacts = plan.use_kb ? kbLookup(userText) : [];
@@ -141,7 +167,7 @@ export default async function handler(req) {
         for (const item of res) {
           if (item.url && !searchResults.find(x => x.url === item.url)) searchResults.push(item);
         }
-      } catch {}
+      } catch { /* ignore one-off errors */ }
       if (searchResults.length >= 12) break;
     }
   }
@@ -157,18 +183,38 @@ export default async function handler(req) {
     if (txt && txt.length > 400) pageExcerpts.push({ url: u, text: txt.slice(0, 5000) });
   }
 
-  // 4) Compose
-  const context = JSON.stringify({ kb: kbFacts, search: searchResults.slice(0, 8), pages: pageExcerpts });
-  const answerText = await callOpenRouter(OPENROUTER_MODEL_WRITER, [
-    { role: "system", content: WRITER_PROMPT },
-    { role: "user", content: `User question: ${userText}\n\nContext JSON:\n${context}` },
-  ]);
+  // 4) Compose (LLM — with robust fallback)
+  let answerText = "";
+  try {
+    const context = JSON.stringify({ kb: kbFacts, search: searchResults.slice(0, 8), pages: pageExcerpts });
+    answerText = await callOpenRouter({
+      model: OPENROUTER_MODEL_WRITER,
+      messages: [
+        { role: "system", content: WRITER_PROMPT },
+        { role: "user", content: `User question: ${userText}\n\nContext JSON:\n${context}` },
+      ],
+      temperature: 0.4,
+      referer,
+      title: "Noir MUN — WILT+ (writer)",
+    });
+  } catch {
+    // Minimal non-LLM fallback
+    if (kbFacts.length) {
+      answerText = kbFacts.join(" • ");
+    } else if (searchResults.length) {
+      const s = searchResults.slice(0, 3).map(r => `${r.title} — ${r.url}`).join("\n");
+      answerText = `I couldn't reach the model just now, but here are relevant sources:\n${s}`;
+    } else {
+      answerText = "Sorry — I couldn’t confidently find a good answer to that.";
+    }
+  }
 
-  // 5) Sources (fallback list for the UI badge)
   const sources = searchResults.slice(0, 5).map(r => ({ title: r.title, url: r.url }));
 
-  return new Response(JSON.stringify({
-    answer: answerText || "Sorry — I couldn’t confidently find a good answer to that.",
-    sources
-  }), { headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ answer: answerText, sources }), {
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
 }
