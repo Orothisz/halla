@@ -1,13 +1,13 @@
 // src/pages/Register.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
 import {
   Crown, ChevronRight, Loader2, Info, CheckCircle2,
-  CloudUpload, X, ExternalLink, Check, Copy, AlertTriangle, Menu
+  CloudUpload, X, ExternalLink, Check, Copy, AlertTriangle
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
-import { LOGO_URL, THEME_HEX, COMMITTEES, WHATSAPP_ESCALATE } from "../shared/constants";
+import { LOGO_URL, THEME_HEX, COMMITTEES, DATES_TEXT, REGISTER_URL } from "../shared/constants";
 
 /* ----------- ENV ----------- */
 const API_URL  = import.meta.env.VITE_REGISTER_API_URL;   // must be .../exec
@@ -25,41 +25,6 @@ const UPI_ALT     = "9811588040@ptyes";
 const BANK_LINE   = "A/C 4049010060672314 • IFSC JSFB0004049 • BANK JANA SMALL FINANCE BANK";
 const QR_URL      = "https://i.postimg.cc/FK1VQQC7/Untitled-design-8.png";
 const MATRIX_HREF = "https://docs.google.com/spreadsheets/d/1TpOtx8yuidK4N1baPSh1t7efjQeY0_B1wz24yVl3UI8/edit?usp=sharing";
-
-/* ----------- Atmosphere (match Home.jsx) ----------- */
-function Atmosphere() {
-  const star = useRef(null);
-  useEffect(() => {
-    const c = star.current;
-    if (!c) return;
-    const ctx = c.getContext("2d");
-    let w = (c.width = innerWidth),
-      h = (c.height = innerHeight);
-    const pts = Array.from({ length: 120 }, () => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      v: Math.random() * 0.35 + 0.1,
-    }));
-    function tick() {
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = "rgba(255,255,255,.8)";
-      pts.forEach((p) => {
-        p.y += p.v;
-        if (p.y > h) p.y = 0;
-        ctx.fillRect(p.x, p.y, 1.2, 1.2);
-      });
-      requestAnimationFrame(tick);
-    }
-    tick();
-    const onResize = () => {
-      w = c.width = innerWidth;
-      h = c.height = innerHeight;
-    };
-    addEventListener("resize", onResize);
-    return () => removeEventListener("resize", onResize);
-  }, []);
-  return <canvas ref={star} className="fixed inset-0 -z-10" />;
-}
 
 /* ----------- Turnstile widget ----------- */
 function Turnstile({ siteKey, onToken, theme = "dark" }) {
@@ -112,6 +77,7 @@ function Turnstile({ siteKey, onToken, theme = "dark" }) {
   return <div ref={rootRef} className="mt-3" />;
 }
 
+/* ----------- Shared UI ----------- */
 function Gilded({ children }) {
   return (
     <span
@@ -275,6 +241,166 @@ async function saveCloudDraft(uid, data) {
     .upsert({ user_id: uid, data, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
 }
 
+/* ---------- Atmosphere (same as Home) ---------- */
+function Atmosphere() {
+  const star = useRef(null);
+  useEffect(() => {
+    const c = star.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    let w = (c.width = innerWidth),
+      h = (c.height = innerHeight);
+    const pts = Array.from({ length: 120 }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      v: Math.random() * 0.35 + 0.1,
+    }));
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(255,255,255,.4)";
+      pts.forEach((p) => {
+        p.y += p.v;
+        if (p.y > h) p.y = 0;
+        ctx.fillRect(p.x, p.y, 1, 1);
+      });
+      requestAnimationFrame(draw);
+    };
+    const onResize = () => {
+      w = (c.width = innerWidth);
+      h = (c.height = innerHeight);
+    };
+    addEventListener("resize", onResize);
+    draw();
+    return () => removeEventListener("resize", onResize);
+  }, []);
+  return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
+}
+
+/* ----------- Roman Layer (match Home.jsx) ----------- */
+function RomanLayer() {
+  const { scrollYProgress } = useScroll();
+  const yBust = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const yColumn = useTransform(scrollYProgress, [0, 1], [0, -160]);
+  const yLaurel = useTransform(scrollYProgress, [0, 1], [0, -60]);
+
+  const IMG_LEFT  = "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png";
+  const IMG_RIGHT = "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png";
+  const IMG_CENTER= "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png";
+
+  return (
+    <>
+      {/* Marble gradients */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]"
+        style={{
+          backgroundImage:
+            "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))",
+        }}
+      />
+
+      {/* Gold glints */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <motion.div
+          style={{ y: yBust }}
+          className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+        />
+        <motion.div
+          style={{ y: yColumn }}
+          className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl"
+        />
+      </div>
+
+      {/* Parallax statues */}
+      <motion.img
+        src={IMG_LEFT}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[240px] md:w-[320px] opacity-[.55] md:opacity-[.75] mix-blend-screen select-none -z-10"
+        style={{ y: yBust, filter: "grayscale(60%) contrast(110%) blur(0.2px)" }}
+      />
+      <motion.img
+        src={IMG_RIGHT}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[230px] md:w-[310px] opacity-[.50] md:opacity-[.72] mix-blend-screen select-none -z-10"
+        style={{ y: yColumn, filter: "grayscale(60%) contrast(112%) blur(0.2px)" }}
+      />
+      <motion.img
+        src={IMG_CENTER}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
+        style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
+      />
+
+      {/* Film grain */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")",
+        }}
+      />
+    </>
+  );
+}
+
+/* ---------- Footer (identical structure to Home.jsx, with Home & socials) ---------- */
+function InlineFooter() {
+  return (
+    <footer className="mt-16 border-t border-white/10">
+      <div className="mx-auto max-w-7xl px-4 py-10 grid gap-8 md:grid-cols-4 text-white/80">
+        <Link to="/" className="flex items-center gap-3 hover:opacity-90">
+          <img src={LOGO_URL} alt="Noir" className="h-10 w-10 object-contain" />
+          <div>
+            <div className="font-semibold">Noir MUN</div>
+            <div className="text-xs text-white/60">Faridabad, India</div>
+          </div>
+        </Link>
+
+        <div>
+          <div className="font-semibold">Explore</div>
+          <Link to="/" className="block text-sm hover:underline">Home</Link>
+          <Link to="/assistance" className="block text-sm hover:underline">Assistance</Link>
+          <a
+            href="https://www.noirmun.com/best-mun-delhi-faridabad"
+            className="block text-sm hover:underline"
+            target="_blank"
+            rel="noreferrer"
+            title="Best Model UN (MUN) in Delhi & Faridabad – 2025 Guide"
+          >
+            Best MUN in Delhi &amp; Faridabad (2025 Guide)
+          </a>
+          <Link to="/login" className="block text-sm hover:underline">Login</Link>
+          <Link to="/signup" className="block text-sm hover:underline">Sign Up</Link>
+          <a href="https://noirmun.com/register" target="_blank" rel="noreferrer" className="block text-sm hover:underline">Register</a>
+        </div>
+
+        <div>
+          <div className="font-semibold">Socials</div>
+          <a href="https://instagram.com/noirmodelun" target="_blank" rel="noreferrer" className="block text-sm hover:underline">
+            Instagram
+          </a>
+          <a href="https://linktr.ee/noirmun" target="_blank" rel="noreferrer" className="block text-sm hover:underline">
+            Linktr.ee
+          </a>
+        </div>
+
+        <div>
+          <div className="font-semibold">Legal</div>
+          <Link to="/legal" className="block text-sm hover:underline">Terms & Privacy</Link>
+          <div className="text-xs text-white/60">© {new Date().getFullYear()} Noir MUN — “Whispers Today, Echo Tomorrow.”</div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 /* ------------------------------ Page ------------------------------ */
 export default function Register() {
   const nav = useNavigate();
@@ -289,7 +415,6 @@ export default function Register() {
   const [savedAt, setSavedAt] = useState(null);
   const [copied, setCopied] = useState(false);
   const [captchaToken, setCaptchaToken] = useState(null);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const [f, setF] = useState(() => {
     const saved = localStorage.getItem(DRAFT_KEY);
@@ -321,9 +446,10 @@ export default function Register() {
   });
   const [err, setErr] = useState({});
 
+  // Match Home.jsx theme exactly
   useEffect(() => {
     document.documentElement.style.setProperty("--theme", THEME_HEX);
-    document.body.style.background = "#090918"; // match Home.jsx tone
+    document.body.style.background = THEME_HEX;
   }, []);
 
   // hydrate cloud draft
@@ -468,7 +594,6 @@ export default function Register() {
         paymentProofLink: "",
       };
 
-      // No custom headers → avoid preflight for Apps Script
       const url = API_URL + (API_KEY ? `?api_key=${encodeURIComponent(API_KEY)}` : "");
       const res = await fetch(url, {
         method: "POST",
@@ -500,8 +625,10 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen text-white relative bg-[#090918]">
+    <div className="min-h-screen text-white relative">
+      {/* EXACTLY like Home: set body color via effect; starfield + roman layers */}
       <Atmosphere />
+      <RomanLayer />
 
       {/* progress bar */}
       <div className="fixed top-0 left-0 right-0 h-[3px] z-[60] bg-white/10">
@@ -513,67 +640,36 @@ export default function Register() {
         />
       </div>
 
-      {/* header (match Home.jsx look) */}
-      <header className="px-4 py-3 flex items-center justify-between border-b border-white/10 bg-black/20 backdrop-blur-md sticky top-0 z-30">
-        <div className="flex items-center gap-2 min-w-0">
-          <Link to="/" className="flex items-center gap-2 group">
-            <img src={LOGO_URL} alt="Noir" className="h-8 w-8 object-contain" />
-            <div className="font-semibold truncate">Noir MUN</div>
-          </Link>
-        </div>
-
-        <nav className="hidden sm:flex items-center gap-3 text-sm">
-          <a
-            href="https://noirmun.com/register"
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"
-          >
-            Register
-          </a>
-          <Link
-            to="/assistance"
-            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"
-          >
-            Assistance
-          </Link>
-          <div className="text-xs text-white/70">
-            {saving ? "Saving…" : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : "Autosave ready"}
+      {/* header */}
+      <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
+        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
+          <button onClick={() => nav("/")} className="flex items-center gap-3 hover:opacity-90">
+            <img src={LOGO_URL} className="h-9 w-9" alt="Noir" />
+            <span className="font-semibold tracking-wide">Noir MUN</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="https://noirmun.com/register"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-3 py-1.5 text-white border border-white/20 text-sm"
+            >
+              Register
+            </a>
+            <Link
+              to="/assistance"
+              className="hidden sm:inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-3 py-1.5 text-white border border-white/20 text-sm"
+            >
+              Assistance
+            </Link>
+            <div className="text-xs text-white/70">
+              {saving ? "Saving…" : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : "Autosave ready"}
+            </div>
           </div>
-        </nav>
-
-        <button
-          onClick={() => setMenuOpen((v) => !v)}
-          className="sm:hidden p-2 rounded-md bg-white/10 hover:bg-white/20"
-          aria-label="Menu"
-        >
-          {menuOpen ? <X size={18} /> : <Menu size={18} />}
-        </button>
+        </div>
       </header>
 
-      {menuOpen && (
-        <div className="sm:hidden px-4 py-2 border-b border-white/10 bg-black/40 backdrop-blur-md flex flex-col gap-2">
-          <a
-            href="https://noirmun.com/register"
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"
-          >
-            Register
-          </a>
-          <Link
-            to="/assistance"
-            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"
-          >
-            Assistance
-          </Link>
-          <div className="text-xs text-white/70 mt-1">
-            {saving ? "Saving…" : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : "Autosave ready"}
-          </div>
-        </div>
-      )}
-
-      {/* body */}
+      {/* hero */}
       <main className="mx-auto max-w-7xl px-4 py-8">
         <NoirCard className="p-6 md:p-8">
           <div className="flex items-start gap-4">
@@ -871,7 +967,7 @@ export default function Register() {
         </NoirCard>
 
         {/* Final Step */}
-        <NoirCard className="p-6 md:p-8 mt-8 mb-24">
+        <NoirCard className="p-6 md:p-8 mt-8">
           <div className="text-sm uppercase tracking-[0.25em] text-white/60">Chapter IV</div>
           <h2 className="mt-1 text-2xl md:text-3xl font-extrabold">
             <Gilded>Final Step</Gilded>
@@ -920,6 +1016,9 @@ export default function Register() {
             </Link>
           </div>
         </NoirCard>
+
+        {/* Inline footer (same as Home) */}
+        <InlineFooter />
       </main>
 
       {/* disclaimer (fixed) */}
@@ -983,85 +1082,7 @@ export default function Register() {
         )}
       </AnimatePresence>
 
-      {/* Footer (identical to Home.jsx) */}
-      <footer className="w-full bg-black/30 backdrop-blur-md border-t border-white/10 mt-10">
-        <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm">
-          {/* Column 1: Brand */}
-          <div className="space-y-2">
-            <Link to="/" className="inline-flex items-center gap-2">
-              <img src={LOGO_URL} alt="Noir" className="h-7 w-7 object-contain" />
-              <span className="font-semibold">Noir MUN</span>
-            </Link>
-            <p className="text-white/70 text-xs">Faridabad, India</p>
-          </div>
-
-          {/* Column 2: Navigation */}
-          <div className="space-y-2">
-            <div className="font-semibold text-white/90">Navigation</div>
-            <Link to="/" className="block text-white/70 hover:text-white">
-              Home
-            </Link>
-            <a
-              href="https://noirmun.com/register"
-              target="_blank"
-              rel="noreferrer"
-              className="block text-white/70 hover:text-white"
-            >
-              Register
-            </a>
-            <Link to="/assistance" className="block text-white/70 hover:text-white">
-              Assistance
-            </Link>
-            <a
-              href={WHATSAPP_ESCALATE}
-              target="_blank"
-              rel="noreferrer"
-              className="block text-white/70 hover:text-white"
-            >
-              WhatsApp Exec
-            </a>
-          </div>
-
-          {/* Column 3: Committees (sample of 4) */}
-          <div className="space-y-2">
-            <div className="font-semibold text-white/90">Committees</div>
-            {COMMITTEES.slice(0, 4).map((c) => (
-              <div key={c.name} className="text-white/70">
-                {c.name}
-              </div>
-            ))}
-            <Link to="/assistance" className="text-white/70 hover:text-white">
-              View all
-            </Link>
-          </div>
-
-          {/* Column 4: Socials */}
-          <div className="space-y-2">
-            <div className="font-semibold text-white/90">Socials</div>
-            <a
-              href="https://instagram.com/noirmodelun"
-              target="_blank"
-              rel="noreferrer"
-              className="block text-white/70 hover:text-white"
-            >
-              Instagram
-            </a>
-            <a
-              href="https://linktr.ee/noirmun"
-              target="_blank"
-              rel="noreferrer"
-              className="block text-white/70 hover:text-white"
-            >
-              Linktree
-            </a>
-          </div>
-        </div>
-
-        <div className="text-center text-[11px] text-white/60 py-3 border-t border-white/10">
-          © {new Date().getFullYear()} Noir MUN. All rights reserved.
-        </div>
-      </footer>
-
+      {/* Theme var (same as Home) */}
       <style>{`:root { --theme: ${THEME_HEX}; }`}</style>
     </div>
   );
