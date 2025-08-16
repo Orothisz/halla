@@ -1,6 +1,7 @@
+// /api/ask.js
 export const config = { runtime: "edge" };
 
-/* ========== Personality & KB ========== */
+/* ===================== Personality & Noir KB ===================== */
 const PERSONA = `
 You are WILT+, Noir MUN’s assistant.
 Style: concise, confident, lightly Roman; answer first.
@@ -41,32 +42,128 @@ function kbLookup(q) {
 }
 const cap = (x)=>x.replace(/\b\w/g,m=>m.toUpperCase());
 
-/* ========== Gemini primary, fallbacks kept ========== */
-async function callGemini({ prompt, system, temperature = 0.4 }) {
+/* ===================== Local RAG (static shards) ===================== */
+let MANIFEST_CACHE = null;
+const SHARD_CACHE = new Map();
+
+async function getManifest(base) {
+  if (MANIFEST_CACHE) return MANIFEST_CACHE;
+  const url = `${base}/wilt_index/manifest.json`;
+  const r = await fetch(url, { cache: "no-store" }).catch(()=>null);
+  if (!r || !r.ok) return null;
+  MANIFEST_CACHE = await r.json();
+  return MANIFEST_CACHE;
+}
+async function getShard(base, shardUrl) {
+  const full = `${base}${shardUrl}`;
+  if (SHARD_CACHE.has(full)) return SHARD_CACHE.get(full);
+  const r = await fetch(full, { cache: "no-store" });
+  const j = await r.json();
+  SHARD_CACHE.set(full, j);
+  return j;
+}
+function cosine(a, b) {
+  let dot=0, na=0, nb=0;
+  for (let i=0;i<a.length;i++){ const x=a[i]||0, y=b[i]||0; dot+=x*y; na+=x*x; nb+=y*y; }
+  return dot / (Math.sqrt(na)*Math.sqrt(nb) + 1e-9);
+}
+async function localSearch({ base, qvec, topK=8 }) {
+  if (!qvec || !Array.isArray(qvec)) return [];
+  const man = await getManifest(base);
+  if (!man) return [];
+  const scores = [];
+  for (const s of man.shards || []) {
+    const shard = await getShard(base, s.url);
+    for (let i=0;i<shard.embeddings.length;i++) {
+      const sc = cosine(qvec, shard.embeddings[i]);
+      scores.push({ score: sc, text: shard.texts[i], meta: shard.meta[i] });
+    }
+  }
+  scores.sort((a,b)=>b.score-a.score);
+  return scores.slice(0, topK);
+}
+
+/* ===================== Web Search (Tavily → Serper) ===================== */
+async function tavilySearch(query, maxResults=8) {
+  const key = process.env.TAVILY_API_KEY;
+  if (!key) return null;
+  const r = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: key,
+      query,
+      include_answer: true,
+      max_results: Math.min(maxResults, 10),
+      search_depth: "basic",
+    }),
+  });
+  if (!r.ok) return null;
+  const j = await r.json().catch(()=>null);
+  if (!j) return null;
+  return {
+    answer: j.answer || "",
+    results: (j.results || []).map(x => ({ title: x.title || x.url, url: x.url, snippet: x.content || "" })),
+  };
+}
+async function serperSearch(query, limit=8) {
+  const key = process.env.SERPER_API_KEY;
+  if (!key) return [];
+  const r = await fetch("https://google.serper.dev/search", {
+    method: "POST",
+    headers: { "X-API-KEY": key, "Content-Type": "application/json" },
+    body: JSON.stringify({ q: query, num: Math.min(limit, 10) }),
+  });
+  if (!r.ok) return [];
+  const j = await r.json().catch(()=> ({}));
+  const out = [];
+  for (const it of j.organic || []) {
+    if (!it?.link) continue;
+    out.push({ title: it.title || it.link, url: it.link, snippet: it.snippet || "" });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+async function readUrl(url) {
+  try {
+    const clean = url.replace(/^https?:\/\//, "");
+    const r = await fetch("https://r.jina.ai/http://" + clean, { headers: { "User-Agent": "noir-wilt/1.0" } });
+    const txt = await r.text();
+    return txt ? txt.slice(0, 15000) : "";
+  } catch { return ""; }
+}
+
+/* ===================== LLMs: Gemini primary, OR → Groq fallback ===================== */
+async function callGemini({ prompt, system, temperature=0.4 }) {
   const key = process.env.GOOGLE_API_KEY;
   if (!key) throw new Error("Missing GOOGLE_API_KEY");
   const model = "gemini-2.0-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-  const full = system ? `${system}\n\nUser:\n${prompt}` : prompt;
-  const body = { contents: [{ role: "user", parts: [{ text: full }] }], generationConfig: { temperature, maxOutputTokens: 700, topP: 0.9 } };
+  const body = {
+    contents: [{ role: "user", parts: [{ text: system ? `${system}\n\nUser:\n${prompt}` : prompt }] }],
+    generationConfig: { temperature, maxOutputTokens: 700, topP: 0.9 },
+  };
   const r = await fetch(url, { method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error(`Gemini ${r.status}: ${await r.text()}`);
   const j = await r.json();
   const parts = j?.candidates?.[0]?.content?.parts || [];
-  return parts.map(p=>p.text||"").join("").trim();
+  return parts.map(p => p.text || "").join("").trim();
 }
 
+// OpenRouter → Groq fallbacks
 const OR_PLANNER   = "google/gemma-2-9b-it:free";
 const OR_WRITER    = "google/gemma-2-9b-it:free";
 const GROQ_PLANNER = "llama-3.1-8b-instant";
 const GROQ_WRITER  = "llama-3.1-8b-instant";
 
-async function callOpenRouter({ model, messages, temperature = 0.2, referer, title }) {
+async function callOpenRouter({ model, messages, temperature=0.2, referer, title }) {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) throw new Error("Missing OPENROUTER_API_KEY");
   const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "Authorization": `Bearer ${key}`,
       "HTTP-Referer": referer || "https://noir-mun.com",
       "X-Title": title || "Noir MUN — WILT+",
     },
@@ -76,10 +173,12 @@ async function callOpenRouter({ model, messages, temperature = 0.2, referer, tit
   const j = await r.json();
   return j.choices?.[0]?.message?.content || "";
 }
-async function callGroq({ model, messages, temperature = 0.2 }) {
+async function callGroq({ model, messages, temperature=0.2 }) {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) throw new Error("Missing GROQ_API_KEY");
   const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type":"application/json", "Authorization": `Bearer ${process.env.GROQ_API_KEY}` },
+    headers: { "Content-Type":"application/json", "Authorization": `Bearer ${key}` },
     body: JSON.stringify({ model, messages, temperature }),
   });
   if (!r.ok) throw new Error(`Groq ${r.status}: ${await r.text()}`);
@@ -90,8 +189,11 @@ async function callLLMFallback({ prefer, messages, temperature, referer, title }
   const plan = prefer === "planner";
   const orModel = plan ? OR_PLANNER : OR_WRITER;
   const gqModel = plan ? GROQ_PLANNER : GROQ_WRITER;
+
   if (process.env.OPENROUTER_API_KEY) {
-    try { return await callOpenRouter({ model: orModel, messages, temperature, referer, title }); } catch {}
+    try {
+      return await callOpenRouter({ model: orModel, messages, temperature, referer, title });
+    } catch {}
   }
   if (process.env.GROQ_API_KEY) {
     return await callGroq({ model: gqModel, messages, temperature });
@@ -99,78 +201,7 @@ async function callLLMFallback({ prefer, messages, temperature, referer, title }
   throw new Error("No LLM fallback provider configured");
 }
 
-/* ========== Tavily search (fallback) ========== */
-async function tavilySearch(query, maxResults = 8) {
-  const key = process.env.TAVILY_API_KEY;
-  if (!key) throw new Error("Missing TAVILY_API_KEY");
-  const r = await fetch("https://api.tavily.com/search", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ api_key: key, query, include_answer: true, max_results: Math.min(maxResults, 10), search_depth: "basic" }),
-  });
-  if (!r.ok) throw new Error("Tavily error: " + r.status);
-  const j = await r.json();
-  const results = (j?.results || []).map(x => ({ title: x.title || x.url, url: x.url, snippet: x.content || "" }));
-  return { answer: j?.answer || "", results };
-}
-
-/* ========== Reader (Jina) ========== */
-async function readUrl(url) {
-  try {
-    const clean = url.replace(/^https?:\/\//, "");
-    const r = await fetch("https://r.jina.ai/http://" + clean, { headers: { "User-Agent": "noir-wilt/1.0" } });
-    const txt = await r.text();
-    return txt ? txt.slice(0, 15000) : "";
-  } catch { return ""; }
-}
-
-/* ========== Local RAG index loader (static from /public) ========== */
-let MANIFEST_CACHE = null;
-let SHARD_CACHE = new Map();
-
-async function getManifest(originBase) {
-  if (MANIFEST_CACHE) return MANIFEST_CACHE;
-  const url = `${originBase}/wilt_index/manifest.json`;
-  const r = await fetch(url, { cache: 'no-store' }).catch(()=>null);
-  if (!r || !r.ok) return null;
-  MANIFEST_CACHE = await r.json();
-  return MANIFEST_CACHE;
-}
-
-async function getShard(originBase, shardUrl) {
-  const full = `${originBase}${shardUrl}`;
-  if (SHARD_CACHE.has(full)) return SHARD_CACHE.get(full);
-  const r = await fetch(full, { cache: 'no-store' });
-  const j = await r.json();
-  SHARD_CACHE.set(full, j);
-  return j;
-}
-
-function cosine(a, b) {
-  let dot=0, na=0, nb=0;
-  for (let i=0;i<a.length;i++){ dot+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i]; }
-  return dot / (Math.sqrt(na)*Math.sqrt(nb) + 1e-9);
-}
-
-async function localSearch({ originBase, qvec, topK = 8 }) {
-  if (!qvec || !Array.isArray(qvec)) return [];
-  const man = await getManifest(originBase);
-  if (!man) return [];
-  const scores = [];
-
-  // simple pass over shards (small/medium index). If it grows huge, add shard headers w/ centroids.
-  for (const s of man.shards) {
-    const shard = await getShard(originBase, s.url);
-    for (let i=0;i<shard.embeddings.length;i++) {
-      const sc = cosine(qvec, shard.embeddings[i]);
-      scores.push({ score: sc, text: shard.texts[i], meta: shard.meta[i] });
-    }
-  }
-  scores.sort((a,b)=>b.score-a.score);
-  return scores.slice(0, topK);
-}
-
-/* ========== Prompts ========== */
+/* ===================== Writer prompt ===================== */
 const WRITER_SYSTEM = `
 ${PERSONA}
 When using local context, prefer it over the open web.
@@ -180,7 +211,7 @@ Sources:
 (2–5 items)
 `;
 
-/* ========== Main handler ========== */
+/* ===================== Main Handler ===================== */
 export default async function handler(req) {
   // CORS
   if (req.method === "OPTIONS") {
@@ -200,47 +231,49 @@ export default async function handler(req) {
   const userText = messages?.slice(-1)?.[0]?.content || "";
   const qvec = body?.qvec || null;
 
-  // 0) Instant KB
+  // 0) Noir facts (instant)
   const kbFacts = kbLookup(userText);
   if (kbFacts.length && !qvec) {
     return jsonOK({ answer: kbFacts.join(" • "), sources: [] });
   }
 
-  // Base URL for static manifest (supports local dev + prod)
-  const originBase = derivePublicBase(req);
-
-  // 1) Local RAG
+  // 1) Local RAG (from static shards)
+  const base = derivePublicBase(req);
   let rag = [];
-  try { rag = await localSearch({ originBase, qvec, topK: 8 }); } catch {}
+  try { rag = await localSearch({ base, qvec, topK: 8 }); } catch {}
 
-  // 2) If nothing local & not KB-heavy, try Tavily
+  // 2) If weak local & KB empty, do web search (Tavily → Serper)
   let searchResults = [];
   let tavilyAnswer = "";
   if ((!rag || rag.length < 2) && kbFacts.length === 0) {
-    try {
-      const { answer, results } = await tavilySearch(userText, 8);
-      tavilyAnswer = answer || "";
-      searchResults = results;
-    } catch {}
+    const tv = await tavilySearch(userText, 8);
+    if (tv) { tavilyAnswer = tv.answer || ""; searchResults = tv.results || []; }
+    if (!searchResults.length && process.env.SERPER_API_KEY) {
+      try { searchResults = await serperSearch(userText, 8); } catch {}
+    }
   }
 
-  // Prepare context
-  const topLocals = (rag || []).map(r => ({ text: r.text, title: r.meta?.title, url: r.meta?.url, score: r.score }));
+  // 3) Prepare context for the writer
+  const locals = (rag || []).map(r => ({ text: r.text, title: r.meta?.title, url: r.meta?.url, score: r.score }));
   const context = JSON.stringify({
     kb: kbFacts,
-    local: topLocals,
+    local: locals,
     tavily_answer: tavilyAnswer,
     web: searchResults.slice(0, 6),
   });
 
-  // 3) Compose with Gemini → fallbacks
+  // 4) Compose: Gemini primary → OR/Groq fallback
   let answerText = "";
   try {
-    answerText = await callGemini({
-      system: WRITER_SYSTEM,
-      prompt: `User: ${userText}\n\nContext JSON:\n${context}`,
-      temperature: 0.4,
-    });
+    if (process.env.GOOGLE_API_KEY) {
+      answerText = await callGemini({
+        system: WRITER_SYSTEM,
+        prompt: `User: ${userText}\n\nContext JSON:\n${context}`,
+        temperature: 0.4,
+      });
+    } else {
+      throw new Error("No Gemini key");
+    }
   } catch {
     try {
       answerText = await callLLMFallback({
@@ -250,12 +283,14 @@ export default async function handler(req) {
           { role: "user", content: `User: ${userText}\n\nContext JSON:\n${context}` },
         ],
         temperature: 0.4,
+        referer: req.headers.get("origin") || req.headers.get("referer") || "https://noir-mun.com",
+        title: "Noir MUN — WILT+ (writer)",
       });
     } catch {
       if (kbFacts.length) {
         answerText = kbFacts.join(" • ");
-      } else if (topLocals.length || searchResults.length) {
-        const srcs = (topLocals.slice(0,2).map(x=>`${x.title||'Local'} — ${x.url||''}`))
+      } else if (locals.length || searchResults.length) {
+        const srcs = (locals.slice(0,2).map(x=>`${x.title||'Local'} — ${x.url||''}`))
           .concat(searchResults.slice(0,3).map(r=>`${r.title} — ${r.url}`))
           .filter(Boolean).join("\n");
         answerText = `${tavilyAnswer ? tavilyAnswer + "\n\n" : ""}Here are relevant sources:\n${srcs}`;
@@ -266,17 +301,19 @@ export default async function handler(req) {
   }
 
   const sources = (searchResults || []).slice(0, 5).map(r => ({ title: r.title, url: r.url }))
-    .concat((topLocals || []).slice(0, 3).map(x => ({ title: x.title || 'Local', url: x.url || '' })));
+    .concat((locals || []).slice(0, 3).map(x => ({ title: x.title || 'Local', url: x.url || '' })));
 
   return jsonOK({ answer: answerText, sources });
 }
 
-/* ========== utils ========== */
+/* ===================== utils ===================== */
 function derivePublicBase(req) {
-  const origin = req.headers.get('x-forwarded-host') || req.headers.get('host');
-  const proto = (req.headers.get('x-forwarded-proto') || 'https');
-  return `${proto}://${origin}`;
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") || "https";
+  return `${proto}://${host}`;
 }
 function jsonOK(payload) {
-  return new Response(JSON.stringify(payload), { headers: { "Content-Type":"application/json", "Access-Control-Allow-Origin":"*" }});
+  return new Response(JSON.stringify(payload), {
+    headers: { "Content-Type":"application/json", "Access-Control-Allow-Origin":"*" },
+  });
 }
