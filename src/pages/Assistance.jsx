@@ -1,13 +1,13 @@
 // src/pages/Assistance.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import {
   LOGO_URL,
   WHATSAPP_ESCALATE,
   DATES_TEXT,
   COMMITTEES,
-  THEME_HEX, // <-- keep palette identical to Home
+  THEME_HEX, // palette identical to Home
 } from "../shared/constants";
 import {
   Sparkles, ExternalLink, Bot, Send, BookOpen, Compass, Award,
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 /* =========================================================
- * Shared palette (perfectly uniform with Home)
+ * Shared palette tokens (kept for panels/buttons)
  * =======================================================*/
 const GOLD = "#d6c089";
 const GOLD_SOFT = "rgba(214,192,137,.45)";
@@ -36,54 +36,109 @@ function setCSSVars() {
 }
 
 /* =========================================================
- * Roman backdrops (same tone as Home)
+ * Background: EXACTLY like Home.jsx (Atmosphere + RomanLayer)
  * =======================================================*/
-function RomanBackdrop() {
+function Atmosphere() {
+  const star = useRef(null);
+  useEffect(() => {
+    const c = star.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    let w = (c.width = innerWidth),
+      h = (c.height = innerHeight);
+    const pts = Array.from({ length: 120 }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      v: Math.random() * 0.35 + 0.1,
+    }));
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(255,255,255,.4)";
+      pts.forEach((p) => {
+        p.y += p.v;
+        if (p.y > h) p.y = 0;
+        ctx.fillRect(p.x, p.y, 1, 1);
+      });
+      requestAnimationFrame(draw);
+    };
+    const onResize = () => {
+      w = (c.width = innerWidth);
+      h = (c.height = innerHeight);
+    };
+    addEventListener("resize", onResize);
+    draw();
+    return () => removeEventListener("resize", onResize);
+  }, []);
+  return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
+}
+
+function RomanLayer() {
+  const { scrollYProgress } = useScroll();
+  const yBust = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const yColumn = useTransform(scrollYProgress, [0, 1], [0, -160]);
+  const yLaurel = useTransform(scrollYProgress, [0, 1], [0, -60]);
+
+  const IMG_LEFT  = "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png";
+  const IMG_RIGHT = "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png";
+  const IMG_CENTER= "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png";
+
   return (
     <>
+      {/* Marble gradients */}
       <div
-        className="fixed inset-0 -z-50"
-        style={{
-          background:
-            "radial-gradient(1400px 900px at 70% -10%, var(--noir-bg2) 0%, var(--noir-bg1) 45%, var(--noir-bg0) 100%)",
-        }}
-      />
-      {/* very faint statue film */}
-      <div
-        className="fixed inset-0 -z-40 opacity-[.055] mix-blend-screen pointer-events-none"
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]"
         style={{
           backgroundImage:
-            "url('https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
+            "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))",
         }}
       />
-      <div
-        className="fixed inset-y-0 left-[-8%] w-[40%] -z-40 opacity-[.05] pointer-events-none"
-        style={{
-          backgroundImage:
-            "url('https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center left",
-          maskImage: "linear-gradient(90deg, rgba(0,0,0,.85), transparent 80%)",
-        }}
+
+      {/* Gold glints */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <motion.div
+          style={{ y: yBust }}
+          className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+        />
+        <motion.div
+          style={{ y: yColumn }}
+          className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl"
+        />
+      </div>
+
+      {/* Parallax statues */}
+      <motion.img
+        src={IMG_LEFT}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[240px] md:w-[320px] opacity-[.55] md:opacity-[.75] mix-blend-screen select-none -z-10"
+        style={{ y: yBust, filter: "grayscale(60%) contrast(110%) blur(0.2px)" }}
       />
-      <div
-        className="fixed inset-y-0 right-[-8%] w-[38%] -z-40 opacity-[.05] pointer-events-none"
-        style={{
-          backgroundImage:
-            "url('https://i.postimg.cc/66DGSKwH/Untitled-design-7.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center right",
-          maskImage: "linear-gradient(-90deg, rgba(0,0,0,.85), transparent 80%)",
-        }}
+      <motion.img
+        src={IMG_RIGHT}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[230px] md:w-[310px] opacity-[.50] md:opacity-[.72] mix-blend-screen select-none -z-10"
+        style={{ y: yColumn, filter: "grayscale(60%) contrast(112%) blur(0.2px)" }}
       />
-      {/* soft grain */}
+      <motion.img
+        src={IMG_CENTER}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
+        style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
+      />
+
+      {/* Film grain */}
       <div
-        className="fixed inset-0 -z-30 opacity-[.07] pointer-events-none"
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay"
         style={{
           backgroundImage:
-            "url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22 viewBox=%220 0 160 160%22><filter id=%22n%22><feTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%222%22 stitchTiles=%22stitch%22/></filter><rect width=%22160%22 height=%22160%22 filter=%22url(%23n)%22 opacity=%220.35%22/></svg>')",
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")",
         }}
       />
     </>
@@ -91,7 +146,7 @@ function RomanBackdrop() {
 }
 
 /* =========================================================
- * Gilded panel + Uniform Pill
+ * Gilded panel + Pill
  * =======================================================*/
 function Gilded({ children, className = "" }) {
   return (
@@ -114,7 +169,6 @@ function Gilded({ children, className = "" }) {
   );
 }
 
-/** Exactly the same pill used across the page (Register included) */
 function Pill({ children, className = "", as = "button", ...rest }) {
   const Comp = as;
   return (
@@ -533,7 +587,6 @@ function Quiz() {
     if (ans.creative === "mid")  { s.UNGA+=1; s.UNCSW+=1; }
     if (ans.creative === "low")  { s.UNCSW+=1; }
 
-    // small synergies
     if (ans.domain === "global" && ans.tempo === "formal") s.UNGA += 1.5;
     if (ans.domain === "domestic" && ans.tempo === "formal") s.AIPPM += 1.5;
     if (ans.tempo === "crisis" && ans.creative === "high") s.YT += 1;
@@ -775,7 +828,7 @@ function Rubric() {
 }
 
 /* =========================================================
- * Event Keycard (subtle info in place of heavy guide)
+ * Event Keycard
  * =======================================================*/
 function EventKeycard() {
   return (
@@ -816,15 +869,20 @@ export default function Assistance() {
   const [openMenu, setOpenMenu] = useState(false);
 
   useEffect(() => {
-    setCSSVars(); // unify with Home
+    setCSSVars(); // panels/buttons palette
+    // match Home: theme var + body background
+    document.documentElement.style.setProperty("--theme", THEME_HEX);
+    document.body.style.background = THEME_HEX;
   }, []);
 
   return (
-    <div className="min-h+[100dvh] text-white relative pb-[calc(env(safe-area-inset-bottom,0)+8px)]">
-      <RomanBackdrop />
+    <div className="min-h-[100dvh] text-white relative pb-[calc(env(safe-area-inset-bottom,0)+8px)]">
+      {/* Home background */}
+      <Atmosphere />
+      <RomanLayer />
 
-      {/* Header (logo links home) */}
-      <header className="px-4 py-3 flex items-center justify-between border-b bg-black/25 backdrop-blur-md shadow-lg shadow-black/20"
+      {/* Header (logo → home) */}
+      <header className="px-4 py-3 flex items-center justify-between border-b bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur"
               style={{ borderColor: "var(--noir-stroke)" }}>
         <div className="flex items-center gap-2 min-w-0">
           <Link to="/" className="flex items-center gap-2 group">
@@ -833,7 +891,7 @@ export default function Assistance() {
           </Link>
         </div>
 
-        {/* Desktop nav (Register uses same Pill) */}
+        {/* Desktop nav */}
         <nav className="hidden sm:flex items-center gap-2">
           <Pill onClick={() => setFocus((v) => !v)}>{focus ? "Show Info" : "Focus Mode"}</Pill>
           <a href="https://noirmun.com/register" target="_blank" rel="noreferrer"><Pill>Register <ExternalLink size={12}/></Pill></a>
@@ -920,6 +978,7 @@ export default function Assistance() {
         ::selection{ background: ${GOLD_SOFT}; }
         .ios-safe-bottom { padding-bottom: max(0px, env(safe-area-inset-bottom)); }
         .touch-manipulation { touch-action: manipulation; }
+        :root { --theme: ${THEME_HEX}; }
       `}</style>
     </div>
   );
