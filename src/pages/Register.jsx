@@ -501,7 +501,6 @@ export default function Register() {
   const submit = async () => {
     if (!API_URL) return setToast({ type: "error", text: "Missing VITE_REGISTER_API_URL" });
     if (!validate()) return setToast({ type: "error", text: "Fix required fields." });
-    if (TS_SITE && !captchaToken) return setToast({ type: "error", text: "Please verify you’re human." });
 
     setBusy(true);
     try {
