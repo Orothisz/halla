@@ -1,35 +1,40 @@
+// src/App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
+
 import Home from "./pages/Home.jsx";
 import Assistance from "./pages/Assistance.jsx";
 import Legal from "./pages/Legal.jsx";
+
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
-import Admin from "./pages/Admin.jsx";
-import BestMunDelhi from "./pages/BestMunDelhi.jsx";
 
-// NEW: your register page
+import Admin from "./pages/Admin.jsx";
+import Adminv1 from "./pages/Adminv1.jsx";      // NEW
+
+import BestMunDelhi from "./pages/BestMunDelhi.jsx";
 import Register from "./pages/Register.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RedirectIfAuthed from "./components/RedirectIfAuthed.jsx";
 
+// (Optional) only if your guard redirects to /403
+import Forbidden from "./pages/Forbidden.jsx";  // safe to keep
+
 export default function App() {
   return (
     <Routes>
+      {/* Public */}
       <Route path="/" element={<Home />} />
       <Route path="/assistance" element={<Assistance />} />
       <Route path="/legal" element={<Legal />} />
 
-      {/* SEO magnet page */}
-      <Route
-        path="/best-mun-delhi-faridabad"
-        element={<BestMunDelhi />}
-      />
+      {/* SEO page */}
+      <Route path="/best-mun-delhi-faridabad" element={<BestMunDelhi />} />
 
-      {/* NEW registration page */}
+      {/* Registration */}
       <Route path="/register" element={<Register />} />
 
-      {/* If already signed in, don’t show login/signup */}
+      {/* Auth pages (hide if already logged in) */}
       <Route
         path="/login"
         element={
@@ -47,7 +52,7 @@ export default function App() {
         }
       />
 
-      {/* /admin is protected */}
+      {/* Admin (existing) */}
       <Route
         path="/admin"
         element={
@@ -56,6 +61,19 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+
+      {/* Admin v1 (NEW, same guard) */}
+      <Route
+        path="/adminv1"
+        element={
+          <ProtectedRoute>
+            <Adminv1 />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Optional: forbidden page if your guard uses it */}
+      <Route path="/403" element={<Forbidden />} />
 
       {/* keep this LAST */}
       <Route path="*" element={<Navigate to="/" replace />} />
