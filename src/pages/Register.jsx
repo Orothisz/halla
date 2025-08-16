@@ -27,55 +27,7 @@ const QR_URL      = "https://i.postimg.cc/FK1VQQC7/Untitled-design-8.png";
 const MATRIX_HREF = "https://docs.google.com/spreadsheets/d/1TpOtx8yuidK4N1baPSh1t7efjQeY0_B1wz24yVl3UI8/edit?usp=sharing";
 
 /* ----------- Turnstile widget ----------- */
-function Turnstile({ siteKey, onToken, theme = "dark" }) {
-  const rootRef = useRef(null);
-  const [loaded, setLoaded] = useState(!!window.turnstile);
-  const widgetIdRef = useRef(null);
 
-  useEffect(() => {
-    if (window.turnstile) {
-      setLoaded(true);
-      return;
-    }
-    if (!document.querySelector("script[data-turnstile]")) {
-      const s = document.createElement("script");
-      s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-      s.async = true;
-      s.defer = true;
-      s.setAttribute("data-turnstile", "1");
-      s.onload = () => setLoaded(true);
-      document.head.appendChild(s);
-    } else {
-      const iv = setInterval(() => {
-        if (window.turnstile) { setLoaded(true); clearInterval(iv); }
-      }, 50);
-      return () => clearInterval(iv);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!loaded || !rootRef.current || !siteKey || !window.turnstile) return;
-    try {
-      widgetIdRef.current = window.turnstile.render(rootRef.current, {
-        sitekey: siteKey,
-        theme,
-        size: "normal",
-        callback: (token) => onToken(token),
-        "expired-callback": () => onToken(null),
-        "error-callback": () => onToken(null),
-      });
-    } catch {}
-    return () => {
-      try {
-        if (widgetIdRef.current && window.turnstile?.remove) {
-          window.turnstile.remove(widgetIdRef.current);
-        }
-      } catch {}
-    };
-  }, [loaded, siteKey, theme, onToken]);
-
-  return <div ref={rootRef} className="mt-3" />;
-}
 
 /* ----------- Shared UI ----------- */
 function Gilded({ children }) {
@@ -554,15 +506,7 @@ export default function Register() {
     setBusy(true);
     try {
       // 1) Verify Turnstile with our Vercel function
-      if (TS_SITE && captchaToken) {
-        const v = await fetch("/api/turnstile-verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: captchaToken }),
-        });
-        const vj = await v.json();
-        if (!vj?.success) throw new Error("Verification failed. Please try again.");
-      }
+    
 
       // 2) Build payload and post to Apps Script
       const payload = {
@@ -974,12 +918,7 @@ export default function Register() {
           </h2>
 
           {/* Turnstile */}
-          {TS_SITE && (
-            <div className="mt-4">
-              <div className="text-xs text-white/60 mb-1">Quick verification</div>
-              <Turnstile siteKey={TS_SITE} onToken={setCaptchaToken} />
-            </div>
-          )}
+        
 
           <div className="mt-3 text-white/70 text-sm flex items-center gap-2">
             <AlertTriangle size={14} className="text-yellow-200" />
