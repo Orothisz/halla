@@ -1,17 +1,3 @@
-You got it—here’s a fully-polished **Roman/Greek–themed** `Register.jsx` that:
-
-* uses a custom **premium SelectMenu** (no blue native dropdown),
-* adds your three **silhouettes** with a soft drift animation,
-* fixes the **arrayBuffer** issue with a safe File→Base64 helper,
-* labels bank info clearly (**IFSC JSFB0004049 • A/C 4049010060672314**),
-* requires **Co-Delegate only when IPL** is selected,
-* is **preflight-safe** (form-encoded + `?api_key=`),
-* autosaves (local + Supabase), and
-* makes the **logo link back to Home**.
-
-Paste over **`src/pages/Register.jsx`**.
-
-```jsx
 // src/pages/Register.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -819,6 +805,3 @@ export default function Register() {
     </div>
   );
 }
-```
-
-If you want the select menu even tighter or with more glow/blur, tell me which part to push (e.g., “more highlight on active option”, “denser spacing on mobile”), and I’ll tweak the tokens.
