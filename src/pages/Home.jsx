@@ -18,7 +18,7 @@ import {
 
 import {
   LOGO_URL,
-  REGISTER_URL,
+  // REGISTER_URL, // removed: we hardwire noirmun.com/register everywhere on this page
   DATES_TEXT,
   TARGET_DATE_IST,
   THEME_HEX,
@@ -48,6 +48,10 @@ const STAFF = {
   "madhav sadana": "Conference Director",
   "shreyas kalra": "Chef D Cabinet",
 };
+
+const REGISTER_HREF = "https://noirmun.com/register";
+const IG_HREF = "https://instagram.com/noirmodelun";
+const LINKTREE_HREF = "https://linktr.ee/noirmun";
 
 // helpers
 function norm(s = "") {
@@ -85,7 +89,6 @@ const ROLE_SYNONYMS = {
   "chef d cabinet": "chef d cabinet",
   "conference director": "conference director",
   founder: "founder",
-  
 };
 
 // Special override: “Who is the ED?”
@@ -347,7 +350,7 @@ function Prologue() {
 
         <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
-            href={REGISTER_URL}
+            href={REGISTER_HREF}
             target="_blank"
             rel="noreferrer"
             className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
@@ -459,7 +462,7 @@ function ImpactCTA() {
         Two days. One stage. Bring your discipline, your design, your diplomacy.
       </div>
       <a
-        href={REGISTER_URL}
+        href={REGISTER_HREF}
         target="_blank"
         rel="noreferrer"
         className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20"
@@ -523,9 +526,18 @@ function TalkToUs() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [thread, setThread] = useState([
-    { from: "bot", text: "Ave! I’m WILT Mini — ask dates, fee, venue, founders, committees, or any staff role like ‘Who is the ED?’" },
+    {
+      from: "bot",
+      text:
+        "Ave! I’m WILT Mini — ask dates, fee, venue, founders, committees, or any staff role like ‘Who is the ED?’",
+    },
   ]);
   const add = (m) => setThread((t) => [...t, m]);
+
+  const listCommittees = () => {
+    const names = COMMITTEES.map((c) => c.name).join(", ");
+    return `Councils: ${names}.\nOpen Assistance for full briefs → /assistance`;
+    };
 
   const send = () => {
     if (!input.trim()) return;
@@ -534,10 +546,44 @@ function TalkToUs() {
     add({ from: "user", text: msg });
 
     const q = norm(msg);
-    if (/\b(date|when)\b/.test(q)) return add({ from: "bot", text: "Dates: 11–12 October, 2025." });
-    if (/\b(fee|price|cost)\b/.test(q)) return add({ from: "bot", text: "Delegate fee: ₹2300." });
-    if (/\b(venue|where|location)\b/.test(q)) return add({ from: "bot", text: "Venue: TBA — want WhatsApp updates when we announce?" });
 
+    // Dates / When
+    if (/\b(date|when|schedule|day|dates|what\s+day|which\s+date)\b/.test(q)) {
+      return add({ from: "bot", text: `Dates: ${DATES_TEXT}.` });
+    }
+
+    // Fee
+    if (/\b(fee|price|cost|charges?)\b/.test(q)) {
+      return add({ from: "bot", text: "Delegate fee: ₹2300." });
+    }
+
+    // Venue
+    if (/\b(venue|where|location|address)\b/.test(q)) {
+      return add({ from: "bot", text: "Venue: TBA — want WhatsApp updates when we announce?" });
+    }
+
+    // Register
+    if (/\b(register|sign\s*up|enrol|enroll|apply|secure\s*(my|your)?\s*seat)\b/.test(q)) {
+      try { window.open(REGISTER_HREF, "_blank"); } catch {}
+      return add({ from: "bot", text: `Opening registration → ${REGISTER_HREF}` });
+    }
+
+    // Socials
+    if (/\b(insta|instagram)\b/.test(q)) {
+      try { window.open(IG_HREF, "_blank"); } catch {}
+      return add({ from: "bot", text: `Instagram → ${IG_HREF}` });
+    }
+    if (/\blinktr|linktree|links?\b/.test(q)) {
+      try { window.open(LINKTREE_HREF, "_blank"); } catch {}
+      return add({ from: "bot", text: `Links hub → ${LINKTREE_HREF}` });
+    }
+
+    // Committees / agendas
+    if (/\b(committee|committees|councils?|agenda|topics?)\b/.test(q)) {
+      return add({ from: "bot", text: listCommittees() });
+    }
+
+    // Staff / Org
     const staffAnswer = answerStaffQuery(q);
     if (staffAnswer) return add({ from: "bot", text: staffAnswer });
 
@@ -549,19 +595,17 @@ function TalkToUs() {
       });
     }
 
-    if (/\b(committee|agenda|topic)\b/.test(q)) return add({ from: "bot", text: "Open Assistance for full briefs → /assistance" });
-    if (/\b(register|sign)\b/.test(q)) return add({ from: "bot", text: "Open Linktree → " + REGISTER_URL });
-
-    if (/\b(exec|human|someone|whatsapp|help)\b/.test(q)) {
-      try {
-        window.open(WHATSAPP_ESCALATE, "_blank");
-      } catch {}
+    // WhatsApp escalation
+    if (/\b(exec|human|someone|whatsapp|help|contact|support)\b/.test(q)) {
+      try { window.open(WHATSAPP_ESCALATE, "_blank"); } catch {}
       return add({ from: "bot", text: "Opening WhatsApp…" });
     }
 
+    // Fallback
     return add({
       from: "bot",
-      text: "Try: dates • fee • venue • founders • committees • register • staff lookups",
+      text:
+        "Try: dates • fee • venue • committees • register • founders • staff lookups • Instagram • Linktree",
     });
   };
 
@@ -599,6 +643,10 @@ function TalkToUs() {
               <button onClick={() => { setInput("Dates?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Dates</button>
               <button onClick={() => { setInput("Fee?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Fee</button>
               <button onClick={() => { setInput("Venue?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Venue</button>
+              <button onClick={() => { setInput("Committees"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Committees</button>
+              <button onClick={() => { setInput("Register"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Register</button>
+              <button onClick={() => { setInput("Instagram"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Instagram</button>
+              <button onClick={() => { setInput("Linktree"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Linktree</button>
               <Link to="/assistance" className="text-xs rounded-full px-3 py-1 bg-white/15">Open Assistance</Link>
             </div>
 
@@ -607,7 +655,7 @@ function TalkToUs() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
-                placeholder="Ask anything… e.g., leadership, fee, venue"
+                placeholder="Ask anything… e.g., dates, fee, venue, committees"
                 className="flex-1 bg-white/15 px-3 py-2 rounded-xl outline-none placeholder-white/60"
               />
               <button onClick={send} className="px-3 py-2 rounded-xl bg-white/20 hover:bg-white/30">
@@ -638,7 +686,7 @@ function TalkToUs() {
 function InlineFooter() {
   return (
     <footer className="mt-16 border-t border-white/10">
-      <div className="mx-auto max-w-7xl px-4 py-10 grid gap-8 md:grid-cols-3 text-white/80">
+      <div className="mx-auto max-w-7xl px-4 py-10 grid gap-8 md:grid-cols-4 text-white/80">
         <div className="flex items-center gap-3">
           <img src={LOGO_URL} alt="Noir" className="h-10 w-10 object-contain" />
           <div>
@@ -660,7 +708,12 @@ function InlineFooter() {
           </a>
           <Link to="/login" className="block text-sm hover:underline">Login</Link>
           <Link to="/signup" className="block text-sm hover:underline">Sign Up</Link>
-          <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Register</a>
+          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Register</a>
+        </div>
+        <div>
+          <div className="font-semibold">Socials</div>
+          <a href={IG_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Instagram</a>
+          <a href={LINKTREE_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Linktree</a>
         </div>
         <div>
           <div className="font-semibold">Legal</div>
@@ -714,7 +767,7 @@ export default function Home() {
             <Link to="/legal" className="nav-pill">Legal</Link>
             <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
             <Link to="/signup" className="nav-pill">Sign Up</Link>
-            <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
+            <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
               Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
             </a>
           </nav>
@@ -765,7 +818,7 @@ export default function Home() {
                 <Link onClick={() => setMenuOpen(false)} to="/legal" className="menu-item">Legal</Link>
                 <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">Login</Link>
                 <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">Sign Up</Link>
-                <a onClick={() => setMenuOpen(false)} href={REGISTER_URL} target="_blank" rel="noreferrer" className="menu-item menu-item--primary">
+                <a onClick={() => setMenuOpen(false)} href={REGISTER_HREF} target="_blank" rel="noreferrer" className="menu-item menu-item--primary">
                   Register <ChevronRight size={16} className="inline-block ml-1" />
                 </a>
               </div>
