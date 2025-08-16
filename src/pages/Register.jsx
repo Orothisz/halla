@@ -887,7 +887,7 @@ export default function Register() {
               Save Draft
             </button>
             <Link
-              to="/assistance"
+              to="https://wa.me/918595511056"
               className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 border border-white/20 bg-white/10 hover:bg-white/20 text-white"
             >
               Need help? <ChevronRight size={16} />
