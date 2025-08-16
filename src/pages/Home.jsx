@@ -762,14 +762,15 @@ export default function Home() {
             <span className="font-semibold tracking-wide">Noir MUN</span>
           </div>
 
+          {/* Desktop nav — Register first, Assistance & Legal last */}
           <nav className="nav-bar hidden sm:flex">
-            <Link to="/assistance" className="nav-pill">Assistance</Link>
-            <Link to="/legal" className="nav-pill">Legal</Link>
-            <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
-            <Link to="/signup" className="nav-pill">Sign Up</Link>
             <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
               Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
             </a>
+            <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
+            <Link to="/signup" className="nav-pill">Sign Up</Link>
+            <Link to="/assistance" className="nav-pill">Assistance</Link>
+            <Link to="/legal" className="nav-pill">Legal</Link>
           </nav>
 
           <button
@@ -784,7 +785,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Mobile Menu Sheet */}
+      {/* Mobile Menu Sheet — Register first, Assistance & Legal last */}
       <AnimatePresence>
         {menuOpen && (
           <>
@@ -814,13 +815,13 @@ export default function Home() {
               </div>
 
               <div className="px-4 pb-4 grid gap-2">
-                <Link onClick={() => setMenuOpen(false)} to="/assistance" className="menu-item">Assistance</Link>
-                <Link onClick={() => setMenuOpen(false)} to="/legal" className="menu-item">Legal</Link>
-                <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">Login</Link>
-                <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">Sign Up</Link>
                 <a onClick={() => setMenuOpen(false)} href={REGISTER_HREF} target="_blank" rel="noreferrer" className="menu-item menu-item--primary">
                   Register <ChevronRight size={16} className="inline-block ml-1" />
                 </a>
+                <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">Login</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">Sign Up</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/assistance" className="menu-item">Assistance</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/legal" className="menu-item">Legal</Link>
               </div>
             </motion.div>
           </>
