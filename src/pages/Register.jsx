@@ -1,13 +1,13 @@
 // src/pages/Register.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Crown, ChevronRight, Loader2, Info, CheckCircle2,
-  CloudUpload, X, ExternalLink, Check, Copy, AlertTriangle
+  CloudUpload, X, ExternalLink, Check, Copy, AlertTriangle, Menu
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
-import { LOGO_URL, THEME_HEX, COMMITTEES } from "../shared/constants";
+import { LOGO_URL, THEME_HEX, COMMITTEES, WHATSAPP_ESCALATE } from "../shared/constants";
 
 /* ----------- ENV ----------- */
 const API_URL  = import.meta.env.VITE_REGISTER_API_URL;   // must be .../exec
@@ -25,6 +25,41 @@ const UPI_ALT     = "9811588040@ptyes";
 const BANK_LINE   = "A/C 4049010060672314 • IFSC JSFB0004049 • BANK JANA SMALL FINANCE BANK";
 const QR_URL      = "https://i.postimg.cc/FK1VQQC7/Untitled-design-8.png";
 const MATRIX_HREF = "https://docs.google.com/spreadsheets/d/1TpOtx8yuidK4N1baPSh1t7efjQeY0_B1wz24yVl3UI8/edit?usp=sharing";
+
+/* ----------- Atmosphere (match Home.jsx) ----------- */
+function Atmosphere() {
+  const star = useRef(null);
+  useEffect(() => {
+    const c = star.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    let w = (c.width = innerWidth),
+      h = (c.height = innerHeight);
+    const pts = Array.from({ length: 120 }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      v: Math.random() * 0.35 + 0.1,
+    }));
+    function tick() {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(255,255,255,.8)";
+      pts.forEach((p) => {
+        p.y += p.v;
+        if (p.y > h) p.y = 0;
+        ctx.fillRect(p.x, p.y, 1.2, 1.2);
+      });
+      requestAnimationFrame(tick);
+    }
+    tick();
+    const onResize = () => {
+      w = c.width = innerWidth;
+      h = c.height = innerHeight;
+    };
+    addEventListener("resize", onResize);
+    return () => removeEventListener("resize", onResize);
+  }, []);
+  return <canvas ref={star} className="fixed inset-0 -z-10" />;
+}
 
 /* ----------- Turnstile widget ----------- */
 function Turnstile({ siteKey, onToken, theme = "dark" }) {
@@ -240,57 +275,6 @@ async function saveCloudDraft(uid, data) {
     .upsert({ user_id: uid, data, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
 }
 
-/* ----------- Roman Layer ----------- */
-function RomanLayer() {
-  const { scrollYProgress } = useScroll();
-  const yLeft = useTransform(scrollYProgress, [0, 1], [0, -120]);
-  const yRight = useTransform(scrollYProgress, [0, 1], [0, -160]);
-  const yCenter = useTransform(scrollYProgress, [0, 1], [0, -80]);
-
-  const IMG_LEFT = "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png";
-  const IMG_RIGHT = "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png";
-  const IMG_CENTER = "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png";
-
-  return (
-    <>
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]"
-        style={{
-          backgroundImage:
-            "radial-gradient(1000px 650px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))",
-        }}
-      />
-      <motion.img
-        src={IMG_LEFT}
-        alt=""
-        className="pointer-events-none fixed left-2 top-[18vh] w-[240px] md:w-[300px] opacity-[.72] mix-blend-screen select-none -z-10"
-        style={{ y: yLeft, filter: "grayscale(60%) contrast(110%)" }}
-      />
-      <motion.img
-        src={IMG_RIGHT}
-        alt=""
-        className="pointer-events-none fixed right-2 top-[32vh] w-[230px] md:w-[300px] opacity-[.68] mix-blend-screen select-none -z-10"
-        style={{ y: yRight, filter: "grayscale(60%) contrast(112%)" }}
-      />
-      <motion.img
-        src={IMG_CENTER}
-        alt=""
-        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[3vh] w-[520px] max-w-[88vw] opacity-[.50] mix-blend-screen select-none -z-10"
-        style={{ y: yCenter, filter: "grayscale(55%) contrast(108%)" }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")",
-        }}
-      />
-    </>
-  );
-}
-
 /* ------------------------------ Page ------------------------------ */
 export default function Register() {
   const nav = useNavigate();
@@ -305,6 +289,7 @@ export default function Register() {
   const [savedAt, setSavedAt] = useState(null);
   const [copied, setCopied] = useState(false);
   const [captchaToken, setCaptchaToken] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const [f, setF] = useState(() => {
     const saved = localStorage.getItem(DRAFT_KEY);
@@ -338,7 +323,7 @@ export default function Register() {
 
   useEffect(() => {
     document.documentElement.style.setProperty("--theme", THEME_HEX);
-    document.body.style.background = "#000018";
+    document.body.style.background = "#090918"; // match Home.jsx tone
   }, []);
 
   // hydrate cloud draft
@@ -515,14 +500,8 @@ export default function Register() {
   };
 
   return (
-    <div
-      className="min-h-screen text-white relative"
-      style={{
-        background:
-          "radial-gradient(1200px 800px at 80% -10%, rgba(255,255,255,.12), rgba(0,0,0,0)), radial-gradient(900px 700px at 12% 20%, rgba(255,255,255,.10), rgba(0,0,0,0)), #000018",
-      }}
-    >
-      <RomanLayer />
+    <div className="min-h-screen text-white relative bg-[#090918]">
+      <Atmosphere />
 
       {/* progress bar */}
       <div className="fixed top-0 left-0 right-0 h-[3px] z-[60] bg-white/10">
@@ -534,20 +513,67 @@ export default function Register() {
         />
       </div>
 
-      {/* header */}
-      <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
-          <button onClick={() => nav("/")} className="flex items-center gap-3 hover:opacity-90">
-            <img src={LOGO_URL} className="h-9 w-9" alt="Noir" />
-            <span className="font-semibold tracking-wide">Noir MUN</span>
-          </button>
+      {/* header (match Home.jsx look) */}
+      <header className="px-4 py-3 flex items-center justify-between border-b border-white/10 bg-black/20 backdrop-blur-md sticky top-0 z-30">
+        <div className="flex items-center gap-2 min-w-0">
+          <Link to="/" className="flex items-center gap-2 group">
+            <img src={LOGO_URL} alt="Noir" className="h-8 w-8 object-contain" />
+            <div className="font-semibold truncate">Noir MUN</div>
+          </Link>
+        </div>
+
+        <nav className="hidden sm:flex items-center gap-3 text-sm">
+          <a
+            href="https://noirmun.com/register"
+            target="_blank"
+            rel="noreferrer"
+            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"
+          >
+            Register
+          </a>
+          <Link
+            to="/assistance"
+            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"
+          >
+            Assistance
+          </Link>
           <div className="text-xs text-white/70">
             {saving ? "Saving…" : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : "Autosave ready"}
           </div>
-        </div>
+        </nav>
+
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          className="sm:hidden p-2 rounded-md bg-white/10 hover:bg-white/20"
+          aria-label="Menu"
+        >
+          {menuOpen ? <X size={18} /> : <Menu size={18} />}
+        </button>
       </header>
 
-      {/* hero */}
+      {menuOpen && (
+        <div className="sm:hidden px-4 py-2 border-b border-white/10 bg-black/40 backdrop-blur-md flex flex-col gap-2">
+          <a
+            href="https://noirmun.com/register"
+            target="_blank"
+            rel="noreferrer"
+            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"
+          >
+            Register
+          </a>
+          <Link
+            to="/assistance"
+            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"
+          >
+            Assistance
+          </Link>
+          <div className="text-xs text-white/70 mt-1">
+            {saving ? "Saving…" : savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : "Autosave ready"}
+          </div>
+        </div>
+      )}
+
+      {/* body */}
       <main className="mx-auto max-w-7xl px-4 py-8">
         <NoirCard className="p-6 md:p-8">
           <div className="flex items-start gap-4">
@@ -956,6 +982,85 @@ export default function Register() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Footer (identical to Home.jsx) */}
+      <footer className="w-full bg-black/30 backdrop-blur-md border-t border-white/10 mt-10">
+        <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm">
+          {/* Column 1: Brand */}
+          <div className="space-y-2">
+            <Link to="/" className="inline-flex items-center gap-2">
+              <img src={LOGO_URL} alt="Noir" className="h-7 w-7 object-contain" />
+              <span className="font-semibold">Noir MUN</span>
+            </Link>
+            <p className="text-white/70 text-xs">Faridabad, India</p>
+          </div>
+
+          {/* Column 2: Navigation */}
+          <div className="space-y-2">
+            <div className="font-semibold text-white/90">Navigation</div>
+            <Link to="/" className="block text-white/70 hover:text-white">
+              Home
+            </Link>
+            <a
+              href="https://noirmun.com/register"
+              target="_blank"
+              rel="noreferrer"
+              className="block text-white/70 hover:text-white"
+            >
+              Register
+            </a>
+            <Link to="/assistance" className="block text-white/70 hover:text-white">
+              Assistance
+            </Link>
+            <a
+              href={WHATSAPP_ESCALATE}
+              target="_blank"
+              rel="noreferrer"
+              className="block text-white/70 hover:text-white"
+            >
+              WhatsApp Exec
+            </a>
+          </div>
+
+          {/* Column 3: Committees (sample of 4) */}
+          <div className="space-y-2">
+            <div className="font-semibold text-white/90">Committees</div>
+            {COMMITTEES.slice(0, 4).map((c) => (
+              <div key={c.name} className="text-white/70">
+                {c.name}
+              </div>
+            ))}
+            <Link to="/assistance" className="text-white/70 hover:text-white">
+              View all
+            </Link>
+          </div>
+
+          {/* Column 4: Socials */}
+          <div className="space-y-2">
+            <div className="font-semibold text-white/90">Socials</div>
+            <a
+              href="https://instagram.com/noirmodelun"
+              target="_blank"
+              rel="noreferrer"
+              className="block text-white/70 hover:text-white"
+            >
+              Instagram
+            </a>
+            <a
+              href="https://linktr.ee/noirmun"
+              target="_blank"
+              rel="noreferrer"
+              className="block text-white/70 hover:text-white"
+            >
+              Linktree
+            </a>
+          </div>
+        </div>
+
+        <div className="text-center text-[11px] text-white/60 py-3 border-t border-white/10">
+          © {new Date().getFullYear()} Noir MUN. All rights reserved.
+        </div>
+      </footer>
 
       <style>{`:root { --theme: ${THEME_HEX}; }`}</style>
     </div>
