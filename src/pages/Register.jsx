@@ -20,8 +20,8 @@ const PHONE_RE = /^[0-9+\-\s()]{8,}$/;
 const DRAFT_KEY = "noir_registration_draft_v4";
 
 const UPI_PRIMARY = "kheragautam16@okaxis";     // default (Gautam Khera)
-const UPI_ALT     = "9811588050@ptyes";
-const BANK_LINE   = "A/C 4049010060672314 • IFSC JSFB0004049";
+const UPI_ALT     = "9811588040@ptyes";
+const BANK_LINE   = "A/C 4049010060672314 • IFSC JSFB0004049 • BANK JANA SMALL FINANCE BANK";
 const QR_URL      = "https://i.postimg.cc/FK1VQQC7/Untitled-design-8.png";
 const MATRIX_HREF = "https://docs.google.com/spreadsheets/d/1TpOtx8yuidK4N1baPSh1t7efjQeY0_B1wz24yVl3UI8/edit?usp=sharing";
 
@@ -583,7 +583,7 @@ export default function Register() {
                    className="mt-2 w-full h-[260px] object-contain rounded-xl bg-white"
                    loading="lazy" decoding="async"/>
               <div className="mt-3 text-[12px] text-[#0a0a1a]/70 text-center">
-                After paying, upload your screenshot above. We store it in Drive; the Sheet gets the link.
+                After paying, upload your screenshot above. We store it in Drive.
               </div>
             </div>
           </div>
