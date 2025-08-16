@@ -2,7 +2,19 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Calendar, ChevronRight, X, Send, MessageCircle, Menu, Quote, Shield } from "lucide-react";
+import {
+  Calendar,
+  ChevronRight,
+  X,
+  Send,
+  MessageCircle,
+  Menu,
+  Quote,
+  Shield,
+  Landmark,
+  Crown,
+  Columns
+} from "lucide-react";
 
 import {
   LOGO_URL,
@@ -119,6 +131,96 @@ function Atmosphere() {
   return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
 }
 
+/* ---------- Roman Layer (marble + silhouettes + laurels) ---------- */
+function RomanLayer() {
+  const { scrollYProgress } = useScroll();
+  const y1 = useTransform(scrollYProgress, [0, 1], [0, -80]);
+  const y2 = useTransform(scrollYProgress, [0, 1], [0, -140]);
+
+  // inline SVG data-uris (bust + column + laurel). Tiny, tinted via opacity.
+  const bust =
+    "data:image/svg+xml;utf8," +
+    encodeURIComponent(
+      `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'>
+         <defs>
+           <linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>
+             <stop offset='0' stop-color='white' stop-opacity='.18'/>
+             <stop offset='1' stop-color='white' stop-opacity='.06'/>
+           </linearGradient>
+         </defs>
+         <path fill='url(#g)' d='M128 20c-33 0-60 27-60 60s27 60 60 60 60-27 60-60-27-60-60-60ZM58 188c0-22 34-36 70-36s70 14 70 36v24c0 8-6 12-14 12H72c-8 0-14-4-14-12Z'/>
+       </svg>`
+    );
+
+  const column =
+    "data:image/svg+xml;utf8," +
+    encodeURIComponent(
+      `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'>
+        <rect x='48' y='36' width='160' height='20' rx='10' fill='white' opacity='.14'/>
+        <rect x='64' y='64' width='128' height='148' fill='white' opacity='.09'/>
+        <rect x='64' y='210' width='128' height='10' fill='white' opacity='.18'/>
+        <rect x='64' y='90' width='128' height='10' fill='white' opacity='.14'/>
+        <rect x='64' y='120' width='128' height='10' fill='white' opacity='.12'/>
+        <rect x='64' y='150' width='128' height='10' fill='white' opacity='.12'/>
+        <rect x='64' y='180' width='128' height='10' fill='white' opacity='.12'/>
+      </svg>`
+    );
+
+  const laurel =
+    "data:image/svg+xml;utf8," +
+    encodeURIComponent(
+      `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'>
+        <g fill='white' opacity='.10'>
+          <path d='M128 230c-44-14-78-56-86-108 22 32 51 54 86 58 35-4 64-26 86-58-8 52-42 94-86 108z'/>
+        </g>
+      </svg>`
+    );
+
+  return (
+    <>
+      {/* Marble grain */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.15]"
+        style={{
+          backgroundImage:
+            "radial-gradient(1000px 600px at 80% -10%, rgba(255,255,255,.14), rgba(0,0,0,0)), radial-gradient(900px 600px at 10% 20%, rgba(255,255,255,.10), rgba(0,0,0,0))",
+        }}
+      />
+      {/* Gold glints */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <motion.div
+          style={{ y: y1 }}
+          className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+        />
+        <motion.div
+          style={{ y: y2 }}
+          className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl"
+        />
+      </div>
+
+      {/* Roman silhouettes */}
+      <motion.img
+        src={bust}
+        alt=""
+        className="pointer-events-none fixed left-[-40px] top-[18vh] w-[220px] md:w-[280px] -z-10"
+        style={{ y: y1 }}
+      />
+      <motion.img
+        src={column}
+        alt=""
+        className="pointer-events-none fixed right-[-30px] top-[34vh] w-[220px] md:w-[280px] -z-10"
+        style={{ y: y2 }}
+      />
+      <img
+        src={laurel}
+        alt=""
+        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[2vh] w-[520px] opacity-60 -z-10"
+      />
+    </>
+  );
+}
+
 /* ---------- Countdown ---------- */
 function useCountdown(targetISO) {
   const [diff, setDiff] = useState(() => new Date(targetISO).getTime() - Date.now());
@@ -217,6 +319,21 @@ const QuoteCard = ({ children }) => (
   </div>
 );
 
+/* ---------- Gilded Heading ---------- */
+function Gilded({ children }) {
+  return (
+    <span
+      className="bg-clip-text text-transparent"
+      style={{
+        backgroundImage:
+          "linear-gradient(90deg, #FFF7C4 0%, #F8E08E 15%, #E6C769 35%, #F2DA97 50%, #CDAE57 65%, #F5E6B9 85%, #E9D27F 100%)",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 /* ---------- Prologue (Hero) ---------- */
 function Prologue() {
   return (
@@ -232,11 +349,13 @@ function Prologue() {
         <div className="mt-3 inline-flex items-center gap-2 text-white/80">
           <Calendar size={16} /> {DATES_TEXT} • Faridabad
         </div>
-        <div className="mt-5 text-xl md:text-2xl font-semibold">Whispers Today, Echo Tomorrow</div>
+        <div className="mt-5 text-xl md:text-2xl font-semibold">
+          <Gilded>Whispers Today, Echo Tomorrow</Gilded>
+        </div>
 
         <QuoteCard>
-          In ancient stones and marble echoes, every voice sought order. Noir brings that discipline to
-          diplomacy — where words are the arena and you are the champion.
+          In marble and laurel, discipline met rhetoric. Noir brings that precision to diplomacy —
+          a modern pantheon where words shape order.
         </QuoteCard>
 
         <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -287,14 +406,14 @@ function Chapter({ kicker, title, children, icon }) {
   );
 }
 
-/* ---------- Councils grid ---------- */
+/* ---------- Councils grid (uniform logos) ---------- */
 function LogoBadge({ src, alt }) {
   return (
-    <div className="mx-auto mt-2 shrink-0 rounded-full border border-white/20 bg-white/[0.06] w-14 h-14 md:w-16 md:h-16 grid place-items-center">
+    <div className="mx-auto mt-2 shrink-0 rounded-full border border-white/20 bg-white/[0.06] w-16 h-16 md:w-20 md:h-20 grid place-items-center">
       <img
         src={src}
         alt={alt}
-        className="max-w-[72%] max-h-[72%] object-contain"
+        className="w-[72%] h-[72%] object-contain"
         onError={(e) => {
           e.currentTarget.style.opacity = 0.35;
         }}
@@ -306,7 +425,9 @@ function PosterWall({ onOpen }) {
   return (
     <section className="mt-8">
       <div className="text-center">
-        <h3 className="text-3xl md:text-4xl font-extrabold">The Councils</h3>
+        <h3 className="text-3xl md:text-4xl font-extrabold">
+          <Gilded>The Councils</Gilded>
+        </h3>
         <p className="mt-2 text-white/70">Step into chambers where rhetoric rivals legend.</p>
       </div>
 
@@ -324,10 +445,13 @@ function PosterWall({ onOpen }) {
                 <div className="text-xs text-white/70 line-clamp-3 mt-2">{c.agenda}</div>
               </div>
             </div>
-            <div
-              className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              style={{ boxShadow: "inset 0 0 140px rgba(255,255,255,.09)" }}
-            />
+
+            {/* gilded frame on hover */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                   style={{ boxShadow: "inset 0 0 140px rgba(255,255,255,.09)" }} />
+              <div className="absolute inset-0 rounded-[26px] border border-yellow-200/0 group-hover:border-yellow-100/20 transition-colors" />
+            </div>
           </button>
         ))}
       </div>
@@ -340,7 +464,7 @@ function ImpactCTA() {
   return (
     <section className="mt-16 rounded-[28px] border border-white/12 p-8 md:p-10 bg-white/[0.04] text-center">
       <div className="text-[28px] md:text-[36px] font-extrabold leading-tight">
-        The council that will echo tomorrow.
+        <Gilded>The council that will echo tomorrow.</Gilded>
       </div>
       <div className="mt-2 text-white/70">
         Two days. One stage. Bring your discipline, your design, your diplomacy.
@@ -410,7 +534,7 @@ function TalkToUs() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [thread, setThread] = useState([
-    { from: "bot", text: "Hey! I’m WILT Mini — ask dates, fee, venue, founders, committees, or any staff role like ‘Who is the ED?’" },
+    { from: "bot", text: "Ave! I’m WILT Mini — ask dates, fee, venue, founders, committees, or any staff role like ‘Who is the ED?’" },
   ]);
   const add = (m) => setThread((t) => [...t, m]);
 
@@ -432,7 +556,7 @@ function TalkToUs() {
       return add({
         from: "bot",
         text:
-          "Leadership — Founder: Sameer Jhamb, Co-Founder: Maahir Gulati, President: Gautam Khera. Ask me any role by name too, e.g., ‘Who is the ED?’",
+          "Leadership — Founder: Sameer Jhamb, Co-Founder: Maahir Gulati, President: Gautam Khera. Ask me any role by name too.",
       });
     }
 
@@ -448,7 +572,7 @@ function TalkToUs() {
 
     return add({
       from: "bot",
-      text: "Try: dates • fee • venue • founders • committees • register • ‘Who is the ED?’ • ‘Who is Nimay Gupta?’",
+      text: "Try: dates • fee • venue • founders • committees • register • staff lookups",
     });
   };
 
@@ -463,7 +587,10 @@ function TalkToUs() {
             className="w-96 max-w-[92vw] rounded-2xl shadow-2xl overflow-hidden border border-white/15 backdrop-blur bg-white/10 text-white"
           >
             <div className="flex items-center justify-between px-4 py-3 bg-white/10">
-              <div className="font-semibold">Talk to us (WILT Mini)</div>
+              <div className="font-semibold flex items-center gap-2">
+                <Crown size={16} className="opacity-80" />
+                Talk to us (WILT Mini)
+              </div>
               <button onClick={() => setOpen(false)} className="p-1 hover:opacity-80">
                 <X size={18} />
               </button>
@@ -483,7 +610,6 @@ function TalkToUs() {
               <button onClick={() => { setInput("Dates?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Dates</button>
               <button onClick={() => { setInput("Fee?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Fee</button>
               <button onClick={() => { setInput("Venue?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Venue</button>
-              <button onClick={() => { setInput("Who is the ED?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Who is the ED?</button>
               <Link to="/assistance" className="text-xs rounded-full px-3 py-1 bg-white/15">Open Assistance</Link>
             </div>
 
@@ -492,7 +618,7 @@ function TalkToUs() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
-                placeholder="Ask anything… e.g., Who is Nimay Gupta?"
+                placeholder="Ask anything… e.g., leadership, fee, venue"
                 className="flex-1 bg-white/15 px-3 py-2 rounded-xl outline-none placeholder-white/60"
               />
               <button onClick={send} className="px-3 py-2 rounded-xl bg-white/20 hover:bg-white/30">
@@ -581,6 +707,7 @@ export default function Home() {
   return (
     <div className="min-h-screen text-white relative">
       <Atmosphere />
+      <RomanLayer />
 
       <motion.div className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
       <motion.div className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
@@ -667,12 +794,13 @@ export default function Home() {
           title="The Origin"
           icon={<Shield size={20} className="text-white/70" />}
         >
-          Born from a love of design and debate, Noir is led by a council of builders and
-          diplomats. Founder <strong>Sameer Jhamb</strong> with Co-Founder <strong>Maahir Gulati</strong> and
-          President <strong>Gautam Khera</strong> set the stage. Ask WILT Mini about any role —
-          “Who is the ED?” or “Who is Nimay Gupta?” — and the names emerge like statues from marble.
+          Born from a love of design and debate, Noir is led by a council of builders and diplomats.
+          Founder <strong>Sameer Jhamb</strong> with Co-Founder <strong>Maahir Gulati</strong> and
+          President <strong>Gautam Khera</strong> set the stage.
           <LaurelDivider />
-          In this forum, precision is art; courtesy, a discipline.
+          <div className="flex items-center gap-2 text-white/70 text-sm">
+            <Landmark size={16} /> <em>Ordo • Disciplina • Dignitas</em>
+          </div>
         </Chapter>
 
         <Chapter
@@ -696,7 +824,7 @@ export default function Home() {
         <Chapter
           kicker="Chapter III"
           title="The Pantheon of Councils"
-          icon={<MessageCircle size={20} className="text-white/70" />}
+          icon={<Columns size={20} className="text-white/70" />}
         >
           Each chamber upholds a different creed — strategy, justice, history, negotiation.
           Choose your arena, study the agenda, and step into the role. Tap a poster to open its dossier.
