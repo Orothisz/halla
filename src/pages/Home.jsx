@@ -85,7 +85,7 @@ const ROLE_SYNONYMS = {
   "chef d cabinet": "chef d cabinet",
   "conference director": "conference director",
   founder: "founder",
-  "co-founder": "co-founder",
+  
 };
 
 // Special override: “Who is the ED?”
