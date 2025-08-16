@@ -5,9 +5,10 @@ import Legal from "./pages/Legal.jsx";
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
 import Admin from "./pages/Admin.jsx";
-
-// NEW: SEO landing page (best-mun-delhi-faridabad)
 import BestMunDelhi from "./pages/BestMunDelhi.jsx";
+
+// NEW: your register page
+import Register from "./pages/Register.jsx";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RedirectIfAuthed from "./components/RedirectIfAuthed.jsx";
@@ -24,6 +25,9 @@ export default function App() {
         path="/best-mun-delhi-faridabad"
         element={<BestMunDelhi />}
       />
+
+      {/* NEW registration page */}
+      <Route path="/register" element={<Register />} />
 
       {/* If already signed in, don’t show login/signup */}
       <Route
@@ -53,6 +57,7 @@ export default function App() {
         }
       />
 
+      {/* keep this LAST */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
