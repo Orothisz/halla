@@ -1,20 +1,26 @@
-// api/ask.js
 export const config = { runtime: "edge" };
 
-/* ================= Models ================= */
-const OR_PLANNER = "google/gemma-2-9b-it:free";   // OpenRouter model (less throttled)
-const OR_WRITER  = "google/gemma-2-9b-it:free";
-const GROQ_PLANNER = "llama-3.1-8b-instant";      // Groq fallback
-const GROQ_WRITER  = "llama-3.1-8b-instant";
+/* ========== Personality & KB ========== */
+const PERSONA = `
+You are WILT+, Noir MUN’s assistant.
+Style: concise, confident, lightly Roman; answer first.
+If venue is unknown, say “Venue is TBA—drop soon.”
+Offer “Want the deep cut?” only if useful.
+`;
 
-/* ================= Noir KB ================= */
 const NOIR_KB = {
-  dates: (typeof process !== "undefined" && process.env.DATES_TEXT) || "11–12 October, 2025",
+  dates: process.env.DATES_TEXT || "11–12 October, 2025",
   fee: "₹2300",
   venue: "TBA",
-  register: (typeof process !== "undefined" && process.env.REGISTER_URL) || "https://linktr.ee/noirmun",
-  whatsapp: (typeof process !== "undefined" && process.env.WHATSAPP_ESCALATE) || "",
+  register: process.env.REGISTER_URL || "https://linktr.ee/noirmun",
+  whatsapp: process.env.WHATSAPP_ESCALATE || "",
   email: "allotments.noirmun@gmail.com",
+  staff: {
+    "sameer jhamb": "Founder",
+    "maahir gulati": "Co-Founder",
+    "gautam khera": "President",
+    "daanesh narang": "Chief Advisor",
+  },
 };
 
 function kbLookup(q) {
@@ -25,17 +31,42 @@ function kbLookup(q) {
   if (/(venue|where|location|address)/.test(s)) facts.push(`Venue: ${NOIR_KB.venue}`);
   if (/(register|registration|linktree|apply)/.test(s)) facts.push(`Register: ${NOIR_KB.register}`);
   if (/(whatsapp|exec|contact|email)/.test(s)) facts.push(`WhatsApp Exec: ${NOIR_KB.whatsapp} • Email: ${NOIR_KB.email}`);
+  const hit = Object.keys(NOIR_KB.staff).find(k => s.includes(k));
+  if (hit) facts.push(`${cap(hit)}: ${NOIR_KB.staff[hit]}`);
+  if (/who.*(founder|founders)/.test(s)) {
+    const fs = Object.entries(NOIR_KB.staff).filter(([,r])=>/founder/i.test(r)).map(([n])=>cap(n)).join(', ');
+    facts.push(`Founders: ${fs}`);
+  }
   return facts;
 }
+const cap = (x)=>x.replace(/\b\w/g,m=>m.toUpperCase());
 
-/* ================= LLM Calls ================= */
+/* ========== Gemini primary, fallbacks kept ========== */
+async function callGemini({ prompt, system, temperature = 0.4 }) {
+  const key = process.env.GOOGLE_API_KEY;
+  if (!key) throw new Error("Missing GOOGLE_API_KEY");
+  const model = "gemini-2.0-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+  const full = system ? `${system}\n\nUser:\n${prompt}` : prompt;
+  const body = { contents: [{ role: "user", parts: [{ text: full }] }], generationConfig: { temperature, maxOutputTokens: 700, topP: 0.9 } };
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(`Gemini ${r.status}: ${await r.text()}`);
+  const j = await r.json();
+  const parts = j?.candidates?.[0]?.content?.parts || [];
+  return parts.map(p=>p.text||"").join("").trim();
+}
+
+const OR_PLANNER   = "google/gemma-2-9b-it:free";
+const OR_WRITER    = "google/gemma-2-9b-it:free";
+const GROQ_PLANNER = "llama-3.1-8b-instant";
+const GROQ_WRITER  = "llama-3.1-8b-instant";
+
 async function callOpenRouter({ model, messages, temperature = 0.2, referer, title }) {
   const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      // Required for free-tier stability:
       "HTTP-Referer": referer || "https://noir-mun.com",
       "X-Title": title || "Noir MUN — WILT+",
     },
@@ -45,116 +76,113 @@ async function callOpenRouter({ model, messages, temperature = 0.2, referer, tit
   const j = await r.json();
   return j.choices?.[0]?.message?.content || "";
 }
-
 async function callGroq({ model, messages, temperature = 0.2 }) {
   const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-    },
+    headers: { "Content-Type":"application/json", "Authorization": `Bearer ${process.env.GROQ_API_KEY}` },
     body: JSON.stringify({ model, messages, temperature }),
   });
   if (!r.ok) throw new Error(`Groq ${r.status}: ${await r.text()}`);
   const j = await r.json();
   return j.choices?.[0]?.message?.content || "";
 }
-
-// Unified wrapper: try OpenRouter if key exists; otherwise or on error, try Groq.
-async function callLLM({ prefer, messages, temperature, referer, title }) {
-  const orKey = process.env.OPENROUTER_API_KEY;
-  const groqKey = process.env.GROQ_API_KEY;
+async function callLLMFallback({ prefer, messages, temperature, referer, title }) {
   const plan = prefer === "planner";
-
-  // choose model names
   const orModel = plan ? OR_PLANNER : OR_WRITER;
   const gqModel = plan ? GROQ_PLANNER : GROQ_WRITER;
-
-  // Try OpenRouter if available
-  if (orKey) {
-    try {
-      return await callOpenRouter({ model: orModel, messages, temperature, referer, title });
-    } catch (_err) {
-      // fall through to Groq
-    }
+  if (process.env.OPENROUTER_API_KEY) {
+    try { return await callOpenRouter({ model: orModel, messages, temperature, referer, title }); } catch {}
   }
-  // Try Groq if available
-  if (groqKey) {
+  if (process.env.GROQ_API_KEY) {
     return await callGroq({ model: gqModel, messages, temperature });
   }
-  throw new Error("No LLM provider configured (missing OPENROUTER_API_KEY and GROQ_API_KEY).");
+  throw new Error("No LLM fallback provider configured");
 }
 
-/* ================= Search & Reader ================= */
-async function serperSearch(query, limit = 8) {
-  const r = await fetch("https://google.serper.dev/search", {
+/* ========== Tavily search (fallback) ========== */
+async function tavilySearch(query, maxResults = 8) {
+  const key = process.env.TAVILY_API_KEY;
+  if (!key) throw new Error("Missing TAVILY_API_KEY");
+  const r = await fetch("https://api.tavily.com/search", {
     method: "POST",
-    headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ q: query, num: Math.min(limit, 10) }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key: key, query, include_answer: true, max_results: Math.min(maxResults, 10), search_depth: "basic" }),
   });
-  if (!r.ok) throw new Error("Serper error: " + r.status);
-  const j = await r.json().catch(() => ({}));
-  const out = [];
-  for (const it of j.organic || []) {
-    if (!it?.link) continue;
-    out.push({ title: it.title || it.link, url: it.link, snippet: it.snippet || "" });
-    if (out.length >= limit) break;
-  }
-  return out;
+  if (!r.ok) throw new Error("Tavily error: " + r.status);
+  const j = await r.json();
+  const results = (j?.results || []).map(x => ({ title: x.title || x.url, url: x.url, snippet: x.content || "" }));
+  return { answer: j?.answer || "", results };
 }
 
+/* ========== Reader (Jina) ========== */
 async function readUrl(url) {
   try {
     const clean = url.replace(/^https?:\/\//, "");
-    const r = await fetch("https://r.jina.ai/http://" + clean, {
-      headers: { "User-Agent": "noir-wilt/1.0" },
-    });
+    const r = await fetch("https://r.jina.ai/http://" + clean, { headers: { "User-Agent": "noir-wilt/1.0" } });
     const txt = await r.text();
     return txt ? txt.slice(0, 15000) : "";
-  } catch {
-    return "";
+  } catch { return ""; }
+}
+
+/* ========== Local RAG index loader (static from /public) ========== */
+let MANIFEST_CACHE = null;
+let SHARD_CACHE = new Map();
+
+async function getManifest(originBase) {
+  if (MANIFEST_CACHE) return MANIFEST_CACHE;
+  const url = `${originBase}/wilt_index/manifest.json`;
+  const r = await fetch(url, { cache: 'no-store' }).catch(()=>null);
+  if (!r || !r.ok) return null;
+  MANIFEST_CACHE = await r.json();
+  return MANIFEST_CACHE;
+}
+
+async function getShard(originBase, shardUrl) {
+  const full = `${originBase}${shardUrl}`;
+  if (SHARD_CACHE.has(full)) return SHARD_CACHE.get(full);
+  const r = await fetch(full, { cache: 'no-store' });
+  const j = await r.json();
+  SHARD_CACHE.set(full, j);
+  return j;
+}
+
+function cosine(a, b) {
+  let dot=0, na=0, nb=0;
+  for (let i=0;i<a.length;i++){ dot+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i]; }
+  return dot / (Math.sqrt(na)*Math.sqrt(nb) + 1e-9);
+}
+
+async function localSearch({ originBase, qvec, topK = 8 }) {
+  if (!qvec || !Array.isArray(qvec)) return [];
+  const man = await getManifest(originBase);
+  if (!man) return [];
+  const scores = [];
+
+  // simple pass over shards (small/medium index). If it grows huge, add shard headers w/ centroids.
+  for (const s of man.shards) {
+    const shard = await getShard(originBase, s.url);
+    for (let i=0;i<shard.embeddings.length;i++) {
+      const sc = cosine(qvec, shard.embeddings[i]);
+      scores.push({ score: sc, text: shard.texts[i], meta: shard.meta[i] });
+    }
   }
+  scores.sort((a,b)=>b.score-a.score);
+  return scores.slice(0, topK);
 }
 
-/* ================= Prompts ================= */
-const PLANNER_PROMPT = `
-You are the planner for WILT+. Decide what tools to use.
-Rules:
-- If it's a simple Noir fact (dates, fee, venue, register, contacts): "use_kb": true.
-- If it needs outside info or is current/non-trivial: "use_search": true with 1–3 focused queries.
-- If URLs are present or search is needed: "use_read": true.
-Return STRICT JSON only:
-{"use_kb":bool,"use_search":bool,"queries":string[],"use_read":bool,"urls":string[]}
+/* ========== Prompts ========== */
+const WRITER_SYSTEM = `
+${PERSONA}
+When using local context, prefer it over the open web.
+If you used web results, end with:
+Sources:
+- Title — URL
+(2–5 items)
 `;
 
-const WRITER_PROMPT = `
-You are WILT+, Noir MUN's flagship assistant.
-Inputs:
-- kb: Noir facts
-- search: [{title,url,snippet}]
-- pages: [{url,text}]
-Write a concise grounded answer. Use bullets where helpful. End with "Sources:" listing 2–5 items as "Title — URL". Do not invent links. If evidence is thin, say so and suggest a better query.
-`;
-
-/* ================= Helpers ================= */
-function safeParsePlan(text, userText) {
-  try {
-    const plan = JSON.parse(text);
-    if (plan && typeof plan === "object") return plan;
-  } catch {}
-  const kb = kbLookup(userText);
-  return {
-    use_kb: kb.length > 0,
-    use_search: kb.length === 0,
-    queries: [userText],
-    use_read: true,
-    urls: [],
-  };
-}
-
-/* ================= Main Handler ================= */
+/* ========== Main handler ========== */
 export default async function handler(req) {
-  // CORS preflight
+  // CORS
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -170,81 +198,85 @@ export default async function handler(req) {
   let body; try { body = await req.json(); } catch { body = {}; }
   const messages = body?.messages || [];
   const userText = messages?.slice(-1)?.[0]?.content || "";
-  const referer = req.headers.get("origin") || req.headers.get("referer") || "https://noir-mun.com";
+  const qvec = body?.qvec || null;
 
-  /* 0) Plan */
-  let plan;
-  try {
-    const plannerOut = await callLLM({
-      prefer: "planner",
-      messages: [{ role: "system", content: PLANNER_PROMPT }, { role: "user", content: userText }],
-      temperature: 0.2,
-      referer,
-      title: "Noir MUN — WILT+ (planner)",
-    });
-    plan = safeParsePlan(plannerOut, userText);
-  } catch {
-    plan = safeParsePlan("", userText);
+  // 0) Instant KB
+  const kbFacts = kbLookup(userText);
+  if (kbFacts.length && !qvec) {
+    return jsonOK({ answer: kbFacts.join(" • "), sources: [] });
   }
 
-  /* 1) KB */
-  const kbFacts = plan.use_kb ? kbLookup(userText) : [];
+  // Base URL for static manifest (supports local dev + prod)
+  const originBase = derivePublicBase(req);
 
-  /* 2) Search */
+  // 1) Local RAG
+  let rag = [];
+  try { rag = await localSearch({ originBase, qvec, topK: 8 }); } catch {}
+
+  // 2) If nothing local & not KB-heavy, try Tavily
   let searchResults = [];
-  if (plan.use_search) {
-    const queries = (plan.queries || []).slice(0, 3);
-    for (const q of queries) {
-      try {
-        const res = await serperSearch(q, 8);
-        for (const item of res) {
-          if (item.url && !searchResults.find(x => x.url === item.url)) searchResults.push(item);
-        }
-      } catch {}
-      if (searchResults.length >= 12) break;
-    }
-  }
-  if (!searchResults.length && kbFacts.length === 0) {
-    try { searchResults = await serperSearch(userText, 8); } catch {}
+  let tavilyAnswer = "";
+  if ((!rag || rag.length < 2) && kbFacts.length === 0) {
+    try {
+      const { answer, results } = await tavilySearch(userText, 8);
+      tavilyAnswer = answer || "";
+      searchResults = results;
+    } catch {}
   }
 
-  /* 3) Read pages (top 3) */
-  const urlsToRead = Array.from(new Set([...(plan.urls || []), ...searchResults.slice(0, 5).map(r => r.url)])).slice(0, 3);
-  const pageExcerpts = [];
-  for (const u of urlsToRead) {
-    const txt = await readUrl(u);
-    if (txt && txt.length > 400) pageExcerpts.push({ url: u, text: txt.slice(0, 5000) });
-  }
+  // Prepare context
+  const topLocals = (rag || []).map(r => ({ text: r.text, title: r.meta?.title, url: r.meta?.url, score: r.score }));
+  const context = JSON.stringify({
+    kb: kbFacts,
+    local: topLocals,
+    tavily_answer: tavilyAnswer,
+    web: searchResults.slice(0, 6),
+  });
 
-  /* 4) Compose */
+  // 3) Compose with Gemini → fallbacks
   let answerText = "";
   try {
-    const context = JSON.stringify({ kb: kbFacts, search: searchResults.slice(0, 8), pages: pageExcerpts });
-    answerText = await callLLM({
-      prefer: "writer",
-      messages: [
-        { role: "system", content: WRITER_PROMPT },
-        { role: "user", content: `User question: ${userText}\n\nContext JSON:\n${context}` },
-      ],
+    answerText = await callGemini({
+      system: WRITER_SYSTEM,
+      prompt: `User: ${userText}\n\nContext JSON:\n${context}`,
       temperature: 0.4,
-      referer,
-      title: "Noir MUN — WILT+ (writer)",
     });
   } catch {
-    if (kbFacts.length) {
-      answerText = kbFacts.join(" • ");
-    } else if (searchResults.length) {
-      const s = searchResults.slice(0, 3).map(r => `${r.title} — ${r.url}`).join("\n");
-      answerText = `I couldn't reach the model just now, but here are relevant sources:\n${s}`;
-    } else {
-      answerText = "Sorry — I couldn’t confidently find a good answer to that.";
+    try {
+      answerText = await callLLMFallback({
+        prefer: "writer",
+        messages: [
+          { role: "system", content: WRITER_SYSTEM },
+          { role: "user", content: `User: ${userText}\n\nContext JSON:\n${context}` },
+        ],
+        temperature: 0.4,
+      });
+    } catch {
+      if (kbFacts.length) {
+        answerText = kbFacts.join(" • ");
+      } else if (topLocals.length || searchResults.length) {
+        const srcs = (topLocals.slice(0,2).map(x=>`${x.title||'Local'} — ${x.url||''}`))
+          .concat(searchResults.slice(0,3).map(r=>`${r.title} — ${r.url}`))
+          .filter(Boolean).join("\n");
+        answerText = `${tavilyAnswer ? tavilyAnswer + "\n\n" : ""}Here are relevant sources:\n${srcs}`;
+      } else {
+        answerText = "Sorry — I couldn’t confidently find a good answer to that.";
+      }
     }
   }
 
-  /* 5) Sources for UI badge */
-  const sources = searchResults.slice(0, 5).map(r => ({ title: r.title, url: r.url }));
+  const sources = (searchResults || []).slice(0, 5).map(r => ({ title: r.title, url: r.url }))
+    .concat((topLocals || []).slice(0, 3).map(x => ({ title: x.title || 'Local', url: x.url || '' })));
 
-  return new Response(JSON.stringify({ answer: answerText, sources }), {
-    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-  });
+  return jsonOK({ answer: answerText, sources });
+}
+
+/* ========== utils ========== */
+function derivePublicBase(req) {
+  const origin = req.headers.get('x-forwarded-host') || req.headers.get('host');
+  const proto = (req.headers.get('x-forwarded-proto') || 'https');
+  return `${proto}://${origin}`;
+}
+function jsonOK(payload) {
+  return new Response(JSON.stringify(payload), { headers: { "Content-Type":"application/json", "Access-Control-Allow-Origin":"*" }});
 }
