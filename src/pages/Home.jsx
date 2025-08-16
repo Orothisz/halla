@@ -837,8 +837,6 @@ export default function Home() {
           icon={<Shield size={20} className="text-white/70" />}
         >
           Born from a love of design and debate, Noir is led by a council of builders and diplomats.
-          Founder <strong>Sameer Jhamb</strong> with Co-Founder <strong>Maahir Gulati</strong> and
-          President <strong>Gautam Khera</strong> set the stage.
           <LaurelDivider />
           <div className="flex items-center gap-2 text-white/70 text-sm">
             <Landmark size={16} /> <em>Ordo • Disciplina • Dignitas</em>
