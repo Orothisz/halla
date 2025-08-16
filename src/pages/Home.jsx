@@ -121,8 +121,8 @@ function Atmosphere() {
       requestAnimationFrame(draw);
     };
     const onResize = () => {
-      w = c.width = innerWidth;
-      h = c.height = innerHeight;
+      w = (c.width = innerWidth);
+      h = (c.height = innerHeight);
     };
     addEventListener("resize", onResize);
     draw();
@@ -131,91 +131,78 @@ function Atmosphere() {
   return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
 }
 
-/* ---------- Roman Layer (marble + silhouettes + laurels) ---------- */
+/* ---------- Roman Layer (real statues, marble, noise, parallax) ---------- */
 function RomanLayer() {
   const { scrollYProgress } = useScroll();
-  const y1 = useTransform(scrollYProgress, [0, 1], [0, -80]);
-  const y2 = useTransform(scrollYProgress, [0, 1], [0, -140]);
+  const yBust = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const yColumn = useTransform(scrollYProgress, [0, 1], [0, -160]);
+  const yLaurel = useTransform(scrollYProgress, [0, 1], [0, -60]);
 
-  // inline SVG data-uris (bust + column + laurel). Tiny, tinted via opacity.
-  const bust =
-    "data:image/svg+xml;utf8," +
-    encodeURIComponent(
-      `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'>
-         <defs>
-           <linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>
-             <stop offset='0' stop-color='white' stop-opacity='.18'/>
-             <stop offset='1' stop-color='white' stop-opacity='.06'/>
-           </linearGradient>
-         </defs>
-         <path fill='url(#g)' d='M128 20c-33 0-60 27-60 60s27 60 60 60 60-27 60-60-27-60-60-60ZM58 188c0-22 34-36 70-36s70 14 70 36v24c0 8-6 12-14 12H72c-8 0-14-4-14-12Z'/>
-       </svg>`
-    );
-
-  const column =
-    "data:image/svg+xml;utf8," +
-    encodeURIComponent(
-      `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'>
-        <rect x='48' y='36' width='160' height='20' rx='10' fill='white' opacity='.14'/>
-        <rect x='64' y='64' width='128' height='148' fill='white' opacity='.09'/>
-        <rect x='64' y='210' width='128' height='10' fill='white' opacity='.18'/>
-        <rect x='64' y='90' width='128' height='10' fill='white' opacity='.14'/>
-        <rect x='64' y='120' width='128' height='10' fill='white' opacity='.12'/>
-        <rect x='64' y='150' width='128' height='10' fill='white' opacity='.12'/>
-        <rect x='64' y='180' width='128' height='10' fill='white' opacity='.12'/>
-      </svg>`
-    );
-
-  const laurel =
-    "data:image/svg+xml;utf8," +
-    encodeURIComponent(
-      `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'>
-        <g fill='white' opacity='.10'>
-          <path d='M128 230c-44-14-78-56-86-108 22 32 51 54 86 58 35-4 64-26 86-58-8 52-42 94-86 108z'/>
-        </g>
-      </svg>`
-    );
+  const IMG_LEFT =
+    "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png";
+  const IMG_RIGHT =
+    "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png";
+  const IMG_CENTER =
+    "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png";
 
   return (
     <>
-      {/* Marble grain */}
+      {/* Marble gradients */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[.15]"
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]"
         style={{
           backgroundImage:
-            "radial-gradient(1000px 600px at 80% -10%, rgba(255,255,255,.14), rgba(0,0,0,0)), radial-gradient(900px 600px at 10% 20%, rgba(255,255,255,.10), rgba(0,0,0,0))",
+            "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))",
         }}
       />
+
       {/* Gold glints */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <motion.div
-          style={{ y: y1 }}
+          style={{ y: yBust }}
           className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
         />
         <motion.div
-          style={{ y: y2 }}
+          style={{ y: yColumn }}
           className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl"
         />
       </div>
 
-      {/* Roman silhouettes */}
+      {/* Statues — parallax + blend for premium depth */}
       <motion.img
-        src={bust}
+        src={IMG_LEFT}
         alt=""
-        className="pointer-events-none fixed left-[-40px] top-[18vh] w-[220px] md:w-[280px] -z-10"
-        style={{ y: y1 }}
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[240px] md:w-[320px] opacity-[.55] md:opacity-[.75] mix-blend-screen select-none -z-10"
+        style={{ y: yBust, filter: "grayscale(60%) contrast(110%) blur(0.2px)" }}
       />
       <motion.img
-        src={column}
+        src={IMG_RIGHT}
         alt=""
-        className="pointer-events-none fixed right-[-30px] top-[34vh] w-[220px] md:w-[280px] -z-10"
-        style={{ y: y2 }}
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[230px] md:w-[310px] opacity-[.50] md:opacity-[.72] mix-blend-screen select-none -z-10"
+        style={{ y: yColumn, filter: "grayscale(60%) contrast(112%) blur(0.2px)" }}
       />
-      <img
-        src={laurel}
+      <motion.img
+        src={IMG_CENTER}
         alt=""
-        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[2vh] w-[520px] opacity-60 -z-10"
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
+        style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
+      />
+
+      {/* Fine film grain for luxe finish */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")",
+        }}
       />
     </>
   );
@@ -311,7 +298,7 @@ const LaurelDivider = () => (
 );
 
 const QuoteCard = ({ children }) => (
-  <div className="mt-6 rounded-2xl border border-white/15 bg-white/[0.05] p-4 text-white/80">
+  <div className="mt-6 rounded-2xl border border-white/15 bg-white/[0.05] p-4 text-white/80 backdrop-blur-sm">
     <div className="flex items-start gap-3">
       <Quote className="mt-1" size={18} />
       <p className="leading-relaxed">{children}</p>
@@ -395,7 +382,7 @@ function Prologue() {
 /* ---------- Chapter ---------- */
 function Chapter({ kicker, title, children, icon }) {
   return (
-    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04]">
+    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
       <div className="text-white/60 text-xs tracking-[0.35em] uppercase">{kicker}</div>
       <div className="mt-2 flex items-center gap-3">
         {icon}
@@ -409,7 +396,7 @@ function Chapter({ kicker, title, children, icon }) {
 /* ---------- Councils grid (uniform logos) ---------- */
 function LogoBadge({ src, alt }) {
   return (
-    <div className="mx-auto mt-2 shrink-0 rounded-full border border-white/20 bg-white/[0.06] w-16 h-16 md:w-20 md:h-20 grid place-items-center">
+    <div className="mx-auto mt-2 shrink-0 rounded-full border border-yellow-100/20 bg-white/[0.06] w-16 h-16 md:w-20 md:h-20 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.04)_inset]">
       <img
         src={src}
         alt={alt}
@@ -436,7 +423,7 @@ function PosterWall({ onOpen }) {
           <button
             key={c.name}
             onClick={() => onOpen(idx)}
-            className="group relative rounded-[26px] overflow-hidden border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.025] text-left focus:outline-none focus:ring-2 focus:ring-white/40"
+            className="group relative rounded-[26px] overflow-hidden border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.025] text-left focus:outline-none focus:ring-2 focus:ring-yellow-100/20"
           >
             <div className="aspect-[16/10] md:aspect-[16/9] w-full grid place-items-center px-6 text-center">
               <LogoBadge src={c.logo} alt={`${c.name} logo`} />
@@ -446,11 +433,13 @@ function PosterWall({ onOpen }) {
               </div>
             </div>
 
-            {/* gilded frame on hover */}
+            {/* premium hover frame */}
             <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                   style={{ boxShadow: "inset 0 0 140px rgba(255,255,255,.09)" }} />
-              <div className="absolute inset-0 rounded-[26px] border border-yellow-200/0 group-hover:border-yellow-100/20 transition-colors" />
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{ boxShadow: "inset 0 0 140px rgba(255,255,255,.09)" }}
+              />
+              <div className="absolute inset-0 rounded-[26px] border border-yellow-200/0 group-hover:border-yellow-100/25 transition-colors" />
             </div>
           </button>
         ))}
@@ -462,7 +451,7 @@ function PosterWall({ onOpen }) {
 /* ---------- CTA ---------- */
 function ImpactCTA() {
   return (
-    <section className="mt-16 rounded-[28px] border border-white/12 p-8 md:p-10 bg-white/[0.04] text-center">
+    <section className="mt-16 rounded-[28px] border border-white/12 p-8 md:p-10 bg-white/[0.04] text-center backdrop-blur-sm">
       <div className="text-[28px] md:text-[36px] font-extrabold leading-tight">
         <Gilded>The council that will echo tomorrow.</Gilded>
       </div>
