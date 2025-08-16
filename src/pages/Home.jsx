@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Calendar, ChevronRight, X, Send, MessageCircle, Menu } from "lucide-react";
+import { Calendar, ChevronRight, X, Send, MessageCircle, Menu, Quote, Shield } from "lucide-react";
 
 import {
   LOGO_URL,
@@ -21,7 +21,7 @@ const STAFF = {
   "sameer jhamb": "Founder",
   "maahir gulati": "Co-Founder",
   "gautam khera": "President",
-  "daanesh narang": "Chief Advisor", // tolerant spellings
+  "daanesh narang": "Chief Advisor",
   "daanish narang": "Chief Advisor",
   "vishesh kumar": "Junior Advisor",
   "jhalak batra": "Secretary General",
@@ -37,23 +37,19 @@ const STAFF = {
   "shreyas kalra": "Chef D Cabinet",
 };
 
-// Normalize helpers
+// helpers
 function norm(s = "") {
   return s.toLowerCase().replace(/\s+/g, " ").trim();
 }
 function titleCase(s = "") {
   return s.replace(/\b\w/g, (c) => c.toUpperCase());
 }
-
-// Build reverse map Role → [names]
 const ROLE_TO_NAMES = Object.entries(STAFF).reduce((acc, [name, role]) => {
   const k = norm(role);
   acc[k] = acc[k] || [];
   acc[k].push(name);
   return acc;
 }, {});
-
-// Role synonyms to improve recall
 const ROLE_SYNONYMS = {
   ed: "executive director",
   "executive director": "executive director",
@@ -80,13 +76,11 @@ const ROLE_SYNONYMS = {
   "co-founder": "co-founder",
 };
 
-// Special override: per user request → "Who is the ED?" should reply with Nimay Gupta
+// Special override: “Who is the ED?”
 function specialEDIntercept(q) {
   const isWho = /\bwho(\s+is|'?s)?\b/.test(q);
   const mentionsED = /(\bthe\s+)?\bed\b|executive\s+director/.test(q);
-  if (isWho && mentionsED) {
-    return "Nimay Gupta — Deputy Executive Director (ED)";
-  }
+  if (isWho && mentionsED) return "Nimay Gupta — Deputy Executive Director (ED)";
   return null;
 }
 
@@ -125,22 +119,21 @@ function Atmosphere() {
   return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
 }
 
-/* ---------- Countdown hook ---------- */
+/* ---------- Countdown ---------- */
 function useCountdown(targetISO) {
   const [diff, setDiff] = useState(() => new Date(targetISO).getTime() - Date.now());
   useEffect(() => {
     const t = setInterval(() => setDiff(new Date(targetISO).getTime() - Date.now()), 1000);
     return () => clearInterval(t);
   }, [targetISO]);
-  const past = diff <= 0,
-    abs = Math.abs(diff);
+  const past = diff <= 0;
+  const abs = Math.abs(diff);
   const d = Math.floor(abs / (1000 * 60 * 60 * 24));
   const h = Math.floor((abs / (1000 * 60 * 60)) % 24);
   const m = Math.floor((abs / (1000 * 60)) % 60);
   const s = Math.floor((abs / 1000) % 60);
   return { past, d, h, m, s };
 }
-
 const BigBlock = ({ label, value }) => (
   <div className="flex flex-col items-center">
     <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-white/8 border border-white/15 grid place-items-center text-4xl md:text-5xl font-black">
@@ -206,8 +199,26 @@ function BriefModal({ idx, onClose }) {
   );
 }
 
-/* ---------- Hero ---------- */
-function Hero() {
+/* ---------- Visual Bits ---------- */
+const LaurelDivider = () => (
+  <div className="my-8 flex items-center justify-center gap-3 text-white/40">
+    <div className="h-px w-12 bg-white/20" />
+    <span className="tracking-[0.35em] text-xs uppercase">Laurels</span>
+    <div className="h-px w-12 bg-white/20" />
+  </div>
+);
+
+const QuoteCard = ({ children }) => (
+  <div className="mt-6 rounded-2xl border border-white/15 bg-white/[0.05] p-4 text-white/80">
+    <div className="flex items-start gap-3">
+      <Quote className="mt-1" size={18} />
+      <p className="leading-relaxed">{children}</p>
+    </div>
+  </div>
+);
+
+/* ---------- Prologue (Hero) ---------- */
+function Prologue() {
   return (
     <section className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
       <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
@@ -222,6 +233,11 @@ function Hero() {
           <Calendar size={16} /> {DATES_TEXT} • Faridabad
         </div>
         <div className="mt-5 text-xl md:text-2xl font-semibold">Whispers Today, Echo Tomorrow</div>
+
+        <QuoteCard>
+          In ancient stones and marble echoes, every voice sought order. Noir brings that discipline to
+          diplomacy — where words are the arena and you are the champion.
+        </QuoteCard>
 
         <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
@@ -257,29 +273,21 @@ function Hero() {
   );
 }
 
-/* ---------- Countdown ---------- */
-function MonumentalCountdown() {
-  const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
+/* ---------- Chapter ---------- */
+function Chapter({ kicker, title, children, icon }) {
   return (
-    <section className="mt-12 border border-white/12 rounded-[28px] p-6 md:p-8 bg-white/[0.04]">
-      {!past ? (
-        <div className="flex flex-col items-center">
-          <div className="text-white/65 text-xs tracking-[0.35em] uppercase">Countdown</div>
-          <div className="mt-4 flex gap-5 flex-wrap justify-center">
-            <BigBlock label="Days" value={d} />
-            <BigBlock label="Hours" value={h} />
-            <BigBlock label="Mins" value={m} />
-            <BigBlock label="Secs" value={s} />
-          </div>
-        </div>
-      ) : (
-        <div className="text-center text-white/80">See you at Noir MUN — thank you!</div>
-      )}
+    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04]">
+      <div className="text-white/60 text-xs tracking-[0.35em] uppercase">{kicker}</div>
+      <div className="mt-2 flex items-center gap-3">
+        {icon}
+        <h2 className="text-2xl md:text-3xl font-extrabold">{title}</h2>
+      </div>
+      <div className="mt-4 text-white/80 leading-relaxed">{children}</div>
     </section>
   );
 }
 
-/* ---------- Committee cards ---------- */
+/* ---------- Councils grid ---------- */
 function LogoBadge({ src, alt }) {
   return (
     <div className="mx-auto mt-2 shrink-0 rounded-full border border-white/20 bg-white/[0.06] w-14 h-14 md:w-16 md:h-16 grid place-items-center">
@@ -294,13 +302,12 @@ function LogoBadge({ src, alt }) {
     </div>
   );
 }
-
 function PosterWall({ onOpen }) {
   return (
-    <section className="mt-16">
+    <section className="mt-8">
       <div className="text-center">
-        <h2 className="text-3xl md:text-4xl font-extrabold">The Councils</h2>
-        <p className="mt-2 text-white/70">Tap a poster to open the dossier.</p>
+        <h3 className="text-3xl md:text-4xl font-extrabold">The Councils</h3>
+        <p className="mt-2 text-white/70">Step into chambers where rhetoric rivals legend.</p>
       </div>
 
       <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -350,28 +357,20 @@ function ImpactCTA() {
   );
 }
 
-/* --------------------------------------------------
- * WILT Mini (Talk to us) — with Staff Q&A
- * -------------------------------------------------- */
+/* ---------- WILT Mini (chat) ---------- */
 function answerStaffQuery(qRaw) {
   const q = norm(qRaw);
-
-  // 0) Hard override: "Who is the ED?" → Nimay Gupta
   const special = specialEDIntercept(q);
   if (special) return special;
 
-  // 1) If message includes any staff NAME → return their role
   for (const [name, role] of Object.entries(STAFF)) {
     const n = norm(name);
-    if (q.includes(n)) {
-      return `${titleCase(name)} — ${role}`;
-    }
+    if (q.includes(n)) return `${titleCase(name)} — ${role}`;
   }
 
-  // 2) If message includes a ROLE or its synonym → return name(s)
   const possible = Object.keys(ROLE_TO_NAMES)
     .concat(Object.keys(ROLE_SYNONYMS))
-    .sort((a, b) => b.length - a.length); // longest first
+    .sort((a, b) => b.length - a.length);
 
   for (const token of possible) {
     const key = ROLE_SYNONYMS[token] ? ROLE_SYNONYMS[token] : token;
@@ -384,7 +383,6 @@ function answerStaffQuery(qRaw) {
     }
   }
 
-  // 3) Natural language: "who is <role>?"
   const whoRole = q.match(/who(?:\s+is|'?s)?\s+(the\s+)?([a-z\s']{2,40})\??$/);
   if (whoRole) {
     const roleText = norm((whoRole[2] || "").replace(/\bof\b.*$/, "").trim());
@@ -396,7 +394,6 @@ function answerStaffQuery(qRaw) {
     }
   }
 
-  // 4) Natural language: "who is <name>?"
   const whoName = q.match(/who(?:\s+is|'?s)?\s+([a-z\s']{2,40})\??$/);
   if (whoName) {
     const nameGuess = norm(whoName[1]);
@@ -409,16 +406,11 @@ function answerStaffQuery(qRaw) {
 
   return null;
 }
-
 function TalkToUs() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [thread, setThread] = useState([
-    {
-      from: "bot",
-      text:
-        "Hey! I’m WILT Mini — ask dates, fee, venue, founders, committees, or any staff role like ‘Who is the ED?’",
-    },
+    { from: "bot", text: "Hey! I’m WILT Mini — ask dates, fee, venue, founders, committees, or any staff role like ‘Who is the ED?’" },
   ]);
   const add = (m) => setThread((t) => [...t, m]);
 
@@ -429,25 +421,22 @@ function TalkToUs() {
     add({ from: "user", text: msg });
 
     const q = norm(msg);
-
     if (/\b(date|when)\b/.test(q)) return add({ from: "bot", text: "Dates: 11–12 October, 2025." });
     if (/\b(fee|price|cost)\b/.test(q)) return add({ from: "bot", text: "Delegate fee: ₹2300." });
-    if (/\b(venue|where|location)\b/.test(q))
-      return add({ from: "bot", text: "Venue: TBA — want WhatsApp updates when we announce?" });
+    if (/\b(venue|where|location)\b/.test(q)) return add({ from: "bot", text: "Venue: TBA — want WhatsApp updates when we announce?" });
 
     const staffAnswer = answerStaffQuery(q);
     if (staffAnswer) return add({ from: "bot", text: staffAnswer });
 
-    if (/\b(founder|organiser|organizer|oc|eb|lead|leadership|team)\b/.test(q))
+    if (/\b(founder|organiser|organizer|oc|eb|lead|leadership|team)\b/.test(q)) {
       return add({
         from: "bot",
         text:
-          "Leadership — Founder: Sameer Jhamb, Co‑Founder: Maahir Gulati, President: Gautam Khera. Ask me any role by name too, e.g., ‘Who is the ED?’",
+          "Leadership — Founder: Sameer Jhamb, Co-Founder: Maahir Gulati, President: Gautam Khera. Ask me any role by name too, e.g., ‘Who is the ED?’",
       });
+    }
 
-    if (/\b(committee|agenda|topic)\b/.test(q))
-      return add({ from: "bot", text: "Open Assistance for full briefs → /assistance" });
-
+    if (/\b(committee|agenda|topic)\b/.test(q)) return add({ from: "bot", text: "Open Assistance for full briefs → /assistance" });
     if (/\b(register|sign)\b/.test(q)) return add({ from: "bot", text: "Open Linktree → " + REGISTER_URL });
 
     if (/\b(exec|human|someone|whatsapp|help)\b/.test(q)) {
@@ -459,8 +448,7 @@ function TalkToUs() {
 
     return add({
       from: "bot",
-      text:
-        "Try: dates • fee • venue • founders • committees • register • ‘Who is the ED?’ • ‘Who is Nimay Gupta?’",
+      text: "Try: dates • fee • venue • founders • committees • register • ‘Who is the ED?’ • ‘Who is Nimay Gupta?’",
     });
   };
 
@@ -484,9 +472,7 @@ function TalkToUs() {
             <div className="max-h-96 overflow-auto p-3 space-y-3">
               {thread.map((m, i) => (
                 <div key={i} className={`flex ${m.from === "bot" ? "justify-start" : "justify-end"}`}>
-                  <div
-                    className={`${m.from === "bot" ? "bg-white/20" : "bg-white/30"} text-sm px-3 py-2 rounded-2xl max-w-[85%] whitespace-pre-wrap leading-relaxed`}
-                  >
+                  <div className={`${m.from === "bot" ? "bg-white/20" : "bg-white/30"} text-sm px-3 py-2 rounded-2xl max-w-[85%] whitespace-pre-wrap leading-relaxed`}>
                     {m.text}
                   </div>
                 </div>
@@ -494,45 +480,11 @@ function TalkToUs() {
             </div>
 
             <div className="px-3 pb-2 flex flex-wrap gap-2">
-              <button
-                onClick={() => {
-                  setInput("Dates?");
-                  setTimeout(send, 0);
-                }}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
-                Dates
-              </button>
-              <button
-                onClick={() => {
-                  setInput("Fee?");
-                  setTimeout(send, 0);
-                }}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
-                Fee
-              </button>
-              <button
-                onClick={() => {
-                  setInput("Venue?");
-                  setTimeout(send, 0);
-                }}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
-                Venue
-              </button>
-              <button
-                onClick={() => {
-                  setInput("Who is the ED?");
-                  setTimeout(send, 0);
-                }}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
-                Who is the ED?
-              </button>
-              <Link to="/assistance" className="text-xs rounded-full px-3 py-1 bg-white/15">
-                Open Assistance
-              </Link>
+              <button onClick={() => { setInput("Dates?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Dates</button>
+              <button onClick={() => { setInput("Fee?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Fee</button>
+              <button onClick={() => { setInput("Venue?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Venue</button>
+              <button onClick={() => { setInput("Who is the ED?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Who is the ED?</button>
+              <Link to="/assistance" className="text-xs rounded-full px-3 py-1 bg-white/15">Open Assistance</Link>
             </div>
 
             <div className="p-3 flex items-center gap-2">
@@ -567,7 +519,7 @@ function TalkToUs() {
   );
 }
 
-/* ---------- Inline Footer (SEO link included) ---------- */
+/* ---------- Footer ---------- */
 function InlineFooter() {
   return (
     <footer className="mt-16 border-t border-white/10">
@@ -581,10 +533,7 @@ function InlineFooter() {
         </div>
         <div>
           <div className="font-semibold">Explore</div>
-          <Link to="/assistance" className="block text-sm hover:underline">
-            Assistance
-          </Link>
-          {/* SEO-rich external link as requested */}
+          <Link to="/assistance" className="block text-sm hover:underline">Assistance</Link>
           <a
             href="https://www.noirmun.com/best-mun-delhi-faridabad"
             className="block text-sm hover:underline"
@@ -594,37 +543,26 @@ function InlineFooter() {
           >
             Best MUN in Delhi &amp; Faridabad (2025 Guide)
           </a>
-          <Link to="/login" className="block text-sm hover:underline">
-            Login
-          </Link>
-          <Link to="/signup" className="block text-sm hover:underline">
-            Sign Up
-          </Link>
-          <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="block text-sm hover:underline">
-            Register
-          </a>
+          <Link to="/login" className="block text-sm hover:underline">Login</Link>
+          <Link to="/signup" className="block text-sm hover:underline">Sign Up</Link>
+          <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Register</a>
         </div>
         <div>
           <div className="font-semibold">Legal</div>
-          <Link to="/legal" className="block text-sm hover:underline">
-            Terms & Privacy
-          </Link>
-          <div className="text-xs text-white/60">
-            © {new Date().getFullYear()} Noir MUN — “Whispers Today, Echo Tomorrow.”
-          </div>
+          <Link to="/legal" className="block text-sm hover:underline">Terms & Privacy</Link>
+          <div className="text-xs text-white/60">© {new Date().getFullYear()} Noir MUN — “Whispers Today, Echo Tomorrow.”</div>
         </div>
       </div>
     </footer>
   );
 }
 
-/* ---------- Main Page ---------- */
+/* ---------- Page ---------- */
 export default function Home() {
   const { scrollYProgress } = useScroll();
   const yHalo = useTransform(scrollYProgress, [0, 1], [0, -120]);
   const [briefIdx, setBriefIdx] = useState(null);
 
-  // Mobile menu state (opens ONLY on hamburger click)
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
@@ -638,17 +576,14 @@ export default function Home() {
     document.body.style.background = THEME_HEX;
   }, []);
 
+  const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
+
   return (
     <div className="min-h-screen text-white relative">
       <Atmosphere />
-      <motion.div
-        className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl"
-        style={{ y: yHalo }}
-      />
-      <motion.div
-        className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl"
-        style={{ y: yHalo }}
-      />
+
+      <motion.div className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
+      <motion.div className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
 
       {/* Header */}
       <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
@@ -658,31 +593,16 @@ export default function Home() {
             <span className="font-semibold tracking-wide">Noir MUN</span>
           </div>
 
-          {/* Desktop pills only */}
           <nav className="nav-bar hidden sm:flex">
-            <Link to="/assistance" className="nav-pill">
-              Assistance
-            </Link>
-            <Link to="/legal" className="nav-pill">
-              Legal
-            </Link>
-            <Link to="/login" className="nav-pill nav-pill--ghost">
-              Login
-            </Link>
-            <Link to="/signup" className="nav-pill">
-              Sign Up
-            </Link>
-            <a
-              href={REGISTER_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="nav-pill nav-pill--primary"
-            >
+            <Link to="/assistance" className="nav-pill">Assistance</Link>
+            <Link to="/legal" className="nav-pill">Legal</Link>
+            <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
+            <Link to="/signup" className="nav-pill">Sign Up</Link>
+            <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
               Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
             </a>
           </nav>
 
-          {/* Mobile hamburger — menu opens ONLY when this is clicked */}
           <button
             className="sm:hidden rounded-xl border border-white/20 p-2"
             aria-label="Menu"
@@ -695,7 +615,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Mobile Menu Sheet (hidden until hamburger is tapped) */}
+      {/* Mobile Menu Sheet */}
       <AnimatePresence>
         {menuOpen && (
           <>
@@ -719,38 +639,17 @@ export default function Home() {
                   <img src={LOGO_URL} alt="Noir" className="h-8 w-8 object-contain" />
                   <span className="font-semibold">Noir MUN</span>
                 </div>
-                <button
-                  className="p-2 rounded-lg border border-white/15"
-                  onClick={() => setMenuOpen(false)}
-                >
+                <button className="p-2 rounded-lg border border-white/15" onClick={() => setMenuOpen(false)}>
                   <X size={18} />
                 </button>
               </div>
 
               <div className="px-4 pb-4 grid gap-2">
-                <Link
-                  onClick={() => setMenuOpen(false)}
-                  to="/assistance"
-                  className="menu-item"
-                >
-                  Assistance
-                </Link>
-                <Link onClick={() => setMenuOpen(false)} to="/legal" className="menu-item">
-                  Legal
-                </Link>
-                <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">
-                  Login
-                </Link>
-                <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">
-                  Sign Up
-                </Link>
-                <a
-                  onClick={() => setMenuOpen(false)}
-                  href={REGISTER_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="menu-item menu-item--primary"
-                >
+                <Link onClick={() => setMenuOpen(false)} to="/assistance" className="menu-item">Assistance</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/legal" className="menu-item">Legal</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">Login</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">Sign Up</Link>
+                <a onClick={() => setMenuOpen(false)} href={REGISTER_URL} target="_blank" rel="noreferrer" className="menu-item menu-item--primary">
                   Register <ChevronRight size={16} className="inline-block ml-1" />
                 </a>
               </div>
@@ -759,21 +658,68 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Main */}
+      {/* Main Narrative */}
       <main className="mx-auto max-w-7xl px-4 py-10">
-        <Hero />
-        <MonumentalCountdown />
-        <PosterWall onOpen={(i) => setBriefIdx(i)} />
-        <ImpactCTA />
+        <Prologue />
+
+        <Chapter
+          kicker="Chapter I"
+          title="The Origin"
+          icon={<Shield size={20} className="text-white/70" />}
+        >
+          Born from a love of design and debate, Noir is led by a council of builders and
+          diplomats. Founder <strong>Sameer Jhamb</strong> with Co-Founder <strong>Maahir Gulati</strong> and
+          President <strong>Gautam Khera</strong> set the stage. Ask WILT Mini about any role —
+          “Who is the ED?” or “Who is Nimay Gupta?” — and the names emerge like statues from marble.
+          <LaurelDivider />
+          In this forum, precision is art; courtesy, a discipline.
+        </Chapter>
+
+        <Chapter
+          kicker="Chapter II"
+          title="The Call"
+          icon={<Calendar size={20} className="text-white/70" />}
+        >
+          The dates are set: <strong>{DATES_TEXT}</strong>. Your presence turns whispers into echoes.
+          {!past ? (
+            <div className="mt-5 flex gap-5 flex-wrap justify-center">
+              <BigBlock label="Days" value={d} />
+              <BigBlock label="Hours" value={h} />
+              <BigBlock label="Mins" value={m} />
+              <BigBlock label="Secs" value={s} />
+            </div>
+          ) : (
+            <div className="mt-5 text-center text-white/80">See you at Noir MUN — thank you!</div>
+          )}
+        </Chapter>
+
+        <Chapter
+          kicker="Chapter III"
+          title="The Pantheon of Councils"
+          icon={<MessageCircle size={20} className="text-white/70" />}
+        >
+          Each chamber upholds a different creed — strategy, justice, history, negotiation.
+          Choose your arena, study the agenda, and step into the role. Tap a poster to open its dossier.
+          <PosterWall onOpen={(i) => setBriefIdx(i)} />
+        </Chapter>
+
+        <Chapter
+          kicker="Chapter IV"
+          title="The Oath"
+          icon={<ChevronRight size={20} className="text-white/70" />}
+        >
+          Two days. One stage. Bring your discipline, your design, your diplomacy.
+          <ImpactCTA />
+        </Chapter>
       </main>
 
-      {/* Footer + Chat */}
       <InlineFooter />
       <TalkToUs />
 
       {/* Committee Brief Modal */}
       <BriefModal idx={briefIdx} onClose={() => setBriefIdx(null)} />
 
+      {/* inline styles */}
       <style>{`
         :root { --theme: ${THEME_HEX}; }
         .line-clamp-3 {
@@ -782,60 +728,25 @@ export default function Home() {
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
-
-        /* Desktop nav pills */
-        .nav-bar {
-          display: flex;
-          gap: 8px;
-          flex-wrap: nowrap;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-          max-width: 70vw;
-        }
-        .nav-bar::-webkit-scrollbar { display: none; }
-
+        .nav-bar { display:flex; gap:8px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; max-width:70vw; }
+        .nav-bar::-webkit-scrollbar { display:none; }
         .nav-pill {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid rgba(255,255,255,.20);
-          padding: 8px 12px;
-          border-radius: 14px;
-          color: #fff;
-          text-decoration: none;
-          white-space: nowrap;
-          background: rgba(255,255,255,.06);
+          display:inline-flex; align-items:center; justify-content:center;
+          border:1px solid rgba(255,255,255,.20); padding:8px 12px; border-radius:14px;
+          color:#fff; text-decoration:none; white-space:nowrap; background:rgba(255,255,255,.06);
           transition: background .2s ease, border-color .2s ease, transform .15s ease;
         }
-        .nav-pill:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.28); transform: translateY(-1px); }
-        .nav-pill--ghost { background: rgba(255,255,255,.04); }
-        .nav-pill--primary { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.30); }
-
-        @media (min-width: 640px) {
-          .nav-bar { max-width: none; }
-          .nav-pill { padding: 10px 14px; border-radius: 16px; }
-        }
-
-        /* Mobile menu items */
+        .nav-pill:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.28); transform:translateY(-1px); }
+        .nav-pill--ghost { background:rgba(255,255,255,.04); }
+        .nav-pill--primary { background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.30); }
+        @media (min-width:640px) { .nav-bar { max-width:none; } .nav-pill { padding:10px 14px; border-radius:16px; } }
         .menu-item {
-          display: inline-flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 12px 14px;
-          border-radius: 12px;
-          border: 1px solid rgba(255,255,255,.14);
-          background: rgba(255,255,255,.06);
-          color: #fff;
-          text-decoration: none;
+          display:inline-flex; align-items:center; justify-content:space-between;
+          padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
+          background:rgba(255,255,255,.06); color:#fff; text-decoration:none;
         }
-        .menu-item--primary {
-          background: rgba(255,255,255,.12);
-          border-color: rgba(255,255,255,.24);
-        }
-
-        /* ensure CTAs always receive taps even if other layers exist */
-        .click-safe { position: relative; z-index: 30; pointer-events: auto; }
+        .menu-item--primary { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.24); }
+        .click-safe { position:relative; z-index:30; pointer-events:auto; }
       `}</style>
     </div>
   );
