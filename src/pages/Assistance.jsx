@@ -5,27 +5,35 @@ import {
   LOGO_URL,
   REGISTER_URL,
   WHATSAPP_ESCALATE,
-  ASSIST_TEXT,
   DATES_TEXT,
   COMMITTEES,
 } from "../shared/constants";
 import {
   Sparkles, ExternalLink, Bot, Send, BookOpen, Compass, Award,
-  Menu, X, ShieldCheck, Info, Brain, Gauge, Check
+  Menu, X, ShieldCheck, Info, Brain, Gauge, Check, MapPin, Calendar as CalIcon
 } from "lucide-react";
 
-/* ===================== Roman Theme Primitives ===================== */
-const GOLD = "#d6c089";      // warm gilded gold
+/* =========================================================
+ * Theme (uniform palette)
+ * =======================================================*/
+const GOLD = "#d6c089";
 const GOLD_SOFT = "rgba(214,192,137,.45)";
 
+/* =========================================================
+ * Roman Backdrop (consistent tones)
+ * =======================================================*/
 function RomanBackdrop() {
   return (
     <>
-      {/* deep nocturne gradient */}
-      <div className="fixed inset-0 -z-50 bg-[radial-gradient(1400px_800px_at_80%_-20%,#16162B_0%,#0B0B1A_35%,#050511_100%)]" />
-      {/* marble veining layer */}
       <div
-        className="fixed inset-0 -z-40 opacity-[.06] mix-blend-screen pointer-events-none"
+        className="fixed inset-0 -z-50"
+        style={{
+          background:
+            "radial-gradient(1400px 900px at 70% -10%, #141429 0%, #0D0D1F 45%, #090918 100%)",
+        }}
+      />
+      <div
+        className="fixed inset-0 -z-40 opacity-[.055] mix-blend-screen pointer-events-none"
         style={{
           backgroundImage:
             "url('https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png')",
@@ -33,30 +41,28 @@ function RomanBackdrop() {
           backgroundPosition: "center",
         }}
       />
-      {/* statues (very soft, vignette) */}
       <div
-        className="fixed inset-y-0 left-[-8%] w-[40%] -z-40 opacity-[.055] pointer-events-none"
+        className="fixed inset-y-0 left-[-8%] w-[40%] -z-40 opacity-[.05] pointer-events-none"
         style={{
           backgroundImage:
             "url('https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png')",
           backgroundSize: "cover",
           backgroundPosition: "center left",
-          maskImage: "linear-gradient(90deg, rgba(0,0,0,.9), transparent 80%)",
+          maskImage: "linear-gradient(90deg, rgba(0,0,0,.85), transparent 80%)",
         }}
       />
       <div
-        className="fixed inset-y-0 right-[-8%] w-[38%] -z-40 opacity-[.06] pointer-events-none"
+        className="fixed inset-y-0 right-[-8%] w-[38%] -z-40 opacity-[.05] pointer-events-none"
         style={{
           backgroundImage:
             "url('https://i.postimg.cc/66DGSKwH/Untitled-design-7.png')",
           backgroundSize: "cover",
           backgroundPosition: "center right",
-          maskImage: "linear-gradient(-90deg, rgba(0,0,0,.9), transparent 80%)",
+          maskImage: "linear-gradient(-90deg, rgba(0,0,0,.85), transparent 80%)",
         }}
       />
-      {/* film grain */}
       <div
-        className="fixed inset-0 -z-30 opacity-[.08] pointer-events-none"
+        className="fixed inset-0 -z-30 opacity-[.07] pointer-events-none"
         style={{
           backgroundImage:
             "url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22 viewBox=%220 0 160 160%22><filter id=%22n%22><feTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%222%22 stitchTiles=%22stitch%22/></filter><rect width=%22160%22 height=%22160%22 filter=%22url(%23n)%22 opacity=%220.35%22/></svg>')",
@@ -66,49 +72,48 @@ function RomanBackdrop() {
   );
 }
 
-/* gilded border wrapper (subtle bevel + inner glow) */
+/* =========================================================
+ * Gilded + Pill
+ * =======================================================*/
 function Gilded({ children, className = "" }) {
   return (
     <div
       className={`relative rounded-2xl ${className}`}
       style={{
         background:
-          "linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.035))",
-        border: `1px solid rgba(255,255,255,.14)`,
+          "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
+        border: "1px solid rgba(255,255,255,.12)",
         boxShadow:
-          "inset 0 0 0 1px rgba(255,255,255,.06), 0 10px 30px rgba(0,0,0,.35)",
+          "inset 0 0 0 1px rgba(255,255,255,.04), 0 10px 30px rgba(0,0,0,.35)",
       }}
     >
-      {/* hairline gold edge */}
       <div
         className="pointer-events-none absolute inset-0 rounded-2xl"
-        style={{
-          boxShadow: `inset 0 0 0 1px ${GOLD_SOFT}`,
-          maskImage:
-            "radial-gradient(180% 100% at 50% 0%, rgba(0,0,0,.85), rgba(0,0,0,.35) 55%, rgba(0,0,0,0) 100%)",
-        }}
+        style={{ boxShadow: `inset 0 0 0 1px ${GOLD_SOFT}` }}
       />
       {children}
     </div>
   );
 }
 
-/* pill button (gold hover) */
-function Pill({ children, className = "", ...rest }) {
+function Pill({ children, className = "", as = "button", ...rest }) {
+  const Comp = as;
   return (
-    <button
+    <Comp
       {...rest}
-      className={`px-3 py-1.5 text-sm rounded-full border border-white/15 bg-white/[.06] hover:bg-white/[.12] hover:scale-[1.02] transition ${className}`}
+      className={`px-3 py-1.5 text-sm rounded-full border border-white/12 bg-white/[.06] hover:bg-white/[.12] hover:scale-[1.02] transition ${className}`}
       style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,.05)" }}
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = GOLD_SOFT)}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.15)")}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.12)")}
     >
       {children}
-    </button>
+    </Comp>
   );
 }
 
-/* ===================== Tabs ===================== */
+/* =========================================================
+ * Tabs
+ * =======================================================*/
 const TABS = [
   { key: "chat", label: "Chat", icon: <Bot size={14} /> },
   { key: "rop", label: "ROP", icon: <BookOpen size={14} /> },
@@ -116,7 +121,9 @@ const TABS = [
   { key: "rubric", label: "Rubric", icon: <Award size={14} /> },
 ];
 
-/* ===================== Cloud ask ===================== */
+/* =========================================================
+ * Cloud ask
+ * =======================================================*/
 async function cloudAsk(history, userText) {
   const msgs = [
     ...history.slice(-4).map((m) => ({
@@ -143,7 +150,9 @@ async function cloudAsk(history, userText) {
   };
 }
 
-/* ===================== Welcome (always on open) ===================== */
+/* =========================================================
+ * Welcome
+ * =======================================================*/
 function WelcomeModal({ open, onClose, onUsePrompt }) {
   if (!open) return null;
   const prompts = [
@@ -161,9 +170,7 @@ function WelcomeModal({ open, onClose, onUsePrompt }) {
       >
         <div className="flex items-center gap-2 mb-1">
           <Bot size={18} />
-          <div className="font-semibold tracking-wide" style={{ letterSpacing: ".02em" }}>
-            Meet WILT+
-          </div>
+          <div className="font-semibold tracking-wide">Meet WILT+</div>
         </div>
         <div className="text-sm text-white/80">Your web-smart MUN copilot — searches, reads, cites.</div>
         <div className="mt-3 grid gap-2">
@@ -172,7 +179,6 @@ function WelcomeModal({ open, onClose, onUsePrompt }) {
               key={p}
               onClick={() => onUsePrompt(p)}
               className="text-left rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 transition"
-              style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}
             >
               {p}
             </button>
@@ -189,7 +195,36 @@ function WelcomeModal({ open, onClose, onUsePrompt }) {
   );
 }
 
-/* ===================== Chat ===================== */
+/* =========================================================
+ * Typing indicator (3 animated dots)
+ * =======================================================*/
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="relative w-8 h-5">
+        <span className="dot" />
+        <span className="dot dot-2" />
+        <span className="dot dot-3" />
+      </div>
+      <span className="text-[11px] uppercase tracking-wider text-white/45">thinking…</span>
+      <style>{`
+        .dot {
+          position: absolute;
+          left: 0; top: 8px; width: 6px; height: 6px; border-radius: 999px;
+          background: rgba(255,255,255,.7);
+          animation: ndot 1.2s infinite ease-in-out;
+        }
+        .dot-2 { left: 10px; animation-delay: .15s; }
+        .dot-3 { left: 20px; animation-delay: .30s; }
+        @keyframes ndot { 0%, 80%, 100% { transform: translateY(0); opacity:.6; } 40% { transform: translateY(-4px); opacity:1; } }
+      `}</style>
+    </div>
+  );
+}
+
+/* =========================================================
+ * Chat (premium well + typing dots)
+ * =======================================================*/
 function WILTChat() {
   const [thread, setThread] = useState([
     { from: "bot", text: "I’m WILT+. Ask Noir basics or world affairs — I can search and cite.\nTry: “Summarise today’s top UN story in 4 lines.”" },
@@ -242,23 +277,42 @@ function WILTChat() {
         </div>
       </div>
 
-      <Gilded className="p-3">
-        <div className="h-[50dvh] min-h-[240px] overflow-auto space-y-2 rounded-xl bg-white/[.035] p-3 border border-white/10">
+      {/* chat well */}
+      <Gilded className="p-0 overflow-hidden">
+        <div
+          className="h-[50dvh] min-h-[260px] overflow-auto p-3"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02))",
+          }}
+        >
           {thread.map((m, i) => (
             <div
               key={i}
-              className={`max-w-[85%] px-3 py-2 rounded-xl whitespace-pre-wrap leading-relaxed break-words ${
-                m.from === "bot" ? "bg-white/5 border border-white/10" : "bg-white/10 ml-auto"
+              className={`max-w-[85%] mb-2 px-3 py-2 rounded-xl whitespace-pre-wrap leading-relaxed break-words ${
+                m.from === "bot"
+                  ? "bg-white/[.06] border border-white/10"
+                  : "bg-white/[.10] ml-auto border border-white/10"
               }`}
               style={{
-                boxShadow: m.from === "bot" ? "inset 0 0 0 1px rgba(255,255,255,.04)" : "inset 0 0 0 1px rgba(255,255,255,.06)",
+                boxShadow:
+                  "inset 0 0 0 1px rgba(255,255,255,.04), 0 10px 20px rgba(0,0,0,.15)",
+                backdropFilter: "blur(6px)",
               }}
             >
               {m.text}
-              {m.source && <div className="mt-1 text-[10px] uppercase tracking-wider text-white/70">Source: {m.source}</div>}
+              {m.source && (
+                <div className="mt-1 text-[10px] uppercase tracking-wider text-white/65">
+                  Source: {m.source}
+                </div>
+              )}
             </div>
           ))}
-          {typing && <div className="px-3 py-2 rounded-xl bg-white/10 w-24">thinking…</div>}
+          {typing && (
+            <div className="max-w-[85%] mb-2 px-3 py-2 rounded-xl bg-white/[.06] border border-white/10">
+              <TypingDots />
+            </div>
+          )}
         </div>
       </Gilded>
 
@@ -287,7 +341,9 @@ function WILTChat() {
   );
 }
 
-/* ===================== ROP (cards) ===================== */
+/* =========================================================
+ * ROP (cards)
+ * =======================================================*/
 function ROPSim() {
   const [log, setLog] = useState([]);
   const [score, setScore] = useState(50);
@@ -369,7 +425,9 @@ function ROPSim() {
   );
 }
 
-/* ===================== Smart Quiz (Top-3, synergy, agendas, tips) ===================== */
+/* =========================================================
+ * Smart Quiz (top3 + persona + tips)
+ * =======================================================*/
 const NAMES = {
   UNGA: "United Nations General Assembly (UNGA)",
   UNCSW: "United Nations Commission on the Status of Women (UNCSW)",
@@ -400,7 +458,6 @@ function Quiz() {
     const s = { UNGA:0, UNCSW:0, AIPPM:0, IPL:0, IP:0, YT:0 };
     const reasons = [];
 
-    // Baselines
     if (ans.domain === "global") { s.UNGA+=5; s.UNCSW+=4; reasons.push("Global policy fit"); }
     if (ans.domain === "domestic") { s.AIPPM+=5; s.IPL+=2; reasons.push("Domestic politics fit"); }
 
@@ -434,7 +491,7 @@ function Quiz() {
     if (ans.creative === "mid")  { s.UNGA+=1; s.UNCSW+=1; }
     if (ans.creative === "low")  { s.UNCSW+=1; }
 
-    // Synergy bonuses
+    // synergies
     if (ans.domain === "global" && ans.tempo === "formal") s.UNGA += 1.5;
     if (ans.domain === "domestic" && ans.tempo === "formal") s.AIPPM += 1.5;
     if (ans.tempo === "crisis" && ans.creative === "high") s.YT += 1;
@@ -500,6 +557,14 @@ function Quiz() {
     </div>
   );
 
+  const Row = ({ title, agenda, pct }) => (
+    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+      <div className="text-sm font-semibold">{title}</div>
+      {!!agenda && <div className="text-xs text-white/75 mt-1">Agenda: {agenda}</div>}
+      <div className="mt-2"><Bar pct={pct} /></div>
+    </div>
+  );
+
   return (
     <div className="grid lg:grid-cols-2 gap-4">
       <Gilded className="p-4">
@@ -538,28 +603,27 @@ function Quiz() {
           <div className="text-white/70 text-sm">Results will appear here.</div>
         ) : (
           <div className="space-y-4">
-            <div className="text-xs uppercase tracking-wider text-white/60">Top matches</div>
-
             <div className="rounded-lg border border-white/10 bg-white/5 p-3">
               <div className="flex items-center justify-between">
                 <div className="text-lg font-semibold">{NAMES[out.top[0]]}</div>
-                <div className="text-xs text-white/70 inline-flex items-center gap-1"><Gauge size={14}/> {out.confidence}% confidence</div>
+                <div className="text-xs text-white/70 inline-flex items-center gap-1"><Gauge size={14}/> {out.confidence}%</div>
               </div>
               {!!out.agendas[out.top[0]] && <div className="text-sm text-white/80 mt-1">Agenda: {out.agendas[out.top[0]]}</div>}
-              <div className="mt-2"><Bar pct={out.top[1]} /></div>
+              <div className="mt-2">
+                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full"
+                    style={{ background: `linear-gradient(90deg, ${GOLD}, rgba(255,255,255,.35))` }}
+                    initial={{ width: 0 }}
+                    animate={{ width: out.top[1] + "%" }}
+                    transition={{ type: "spring", stiffness: 70, damping: 16 }}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-              <div className="text-sm font-semibold">{NAMES[out.alt[0]]}</div>
-              {!!out.agendas[out.alt[0]] && <div className="text-xs text-white/75 mt-1">Agenda: {out.agendas[out.alt[0]]}</div>}
-              <div className="mt-2"><Bar pct={out.alt[1]} /></div>
-            </div>
-
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-              <div className="text-sm font-semibold">{NAMES[out.third[0]]}</div>
-              {!!out.agendas[out.third[0]] && <div className="text-xs text-white/75 mt-1">Agenda: {out.agendas[out.third[0]]}</div>}
-              <div className="mt-2"><Bar pct={out.third[1]} /></div>
-            </div>
+            <Row title={NAMES[out.alt[0]]} agenda={out.agendas[out.alt[0]]} pct={out.alt[1]} />
+            <Row title={NAMES[out.third[0]]} agenda={out.agendas[out.third[0]]} pct={out.third[1]} />
 
             {out.persona && (
               <>
@@ -588,7 +652,9 @@ function Quiz() {
   );
 }
 
-/* ===================== Rubric (interactive) ===================== */
+/* =========================================================
+ * Rubric (interactive)
+ * =======================================================*/
 function Rubric() {
   const bands = [
     { label: "Substance (35%)", w: 70, tips: ["Bring 2 stats + 1 source", "Problem → mechanism → impact"] },
@@ -674,14 +740,54 @@ function Rubric() {
   );
 }
 
-/* ===================== Page ===================== */
+/* =========================================================
+ * Event Keycard (replaces heavy guide)
+ * =======================================================*/
+function EventKeycard() {
+  return (
+    <Gilded className="p-4 overflow-hidden">
+      <div className="flex items-center gap-2 text-white/90">
+        <span className="inline-block w-4 h-4 rounded-full"
+          style={{ background: GOLD }} />
+        <span className="font-semibold tracking-wide">Noir MUN — Brief</span>
+      </div>
+
+      <div className="mt-3 space-y-2 text-sm text-white/85">
+        <div className="flex items-center gap-2"><CalIcon size={14}/> {DATES_TEXT}</div>
+        <div className="flex items-center gap-2"><MapPin size={14}/> Faridabad, India</div>
+      </div>
+
+      <div className="mt-3 flex gap-2 flex-wrap">
+        <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="inline-flex">
+          <Pill>Register <ExternalLink size={12}/></Pill>
+        </a>
+        <a href={WHATSAPP_ESCALATE} target="_blank" rel="noreferrer" className="inline-flex">
+          <Pill>WhatsApp Exec</Pill>
+        </a>
+      </div>
+
+      {/* laurel watermark */}
+      <div className="pointer-events-none absolute -right-6 -bottom-6 w-32 h-32 opacity-[.09] rounded-full"
+        style={{
+          boxShadow: `inset 0 0 0 2px ${GOLD_SOFT}`,
+          background:
+            "radial-gradient(circle at 30% 30%, rgba(214,192,137,.25), rgba(214,192,137,0) 65%)",
+          filter: "blur(.3px)"
+        }}
+      />
+    </Gilded>
+  );
+}
+
+/* =========================================================
+ * Page
+ * =======================================================*/
 export default function Assistance() {
   const [tab, setTab] = useState("chat");
   const [focus, setFocus] = useState(false);
   const [openMenu, setOpenMenu] = useState(false);
 
   useEffect(() => {
-    // subtle page gold accent on selection
     document.documentElement.style.setProperty("--noir-gold", GOLD);
   }, []);
 
@@ -702,8 +808,8 @@ export default function Assistance() {
 
         {/* Desktop nav */}
         <nav className="hidden sm:flex items-center gap-2">
-          <Pill onClick={() => setFocus((v) => !v)}>{focus ? "Show Guide" : "Focus Mode"}</Pill>
-          <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1">
+          <Pill onClick={() => setFocus((v) => !v)}>{focus ? "Show Info" : "Focus Mode"}</Pill>
+          <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="inline-flex">
             <Pill>Register <ExternalLink size={12}/></Pill>
           </a>
           <Link to="/" className="inline-flex">
@@ -720,7 +826,7 @@ export default function Assistance() {
       {openMenu && (
         <div className="sm:hidden px-4 py-2 border-b border-white/10 bg-black/40 backdrop-blur-md flex items-center gap-2">
           <Pill onClick={() => { setFocus((v) => !v); setOpenMenu(false); }}>
-            {focus ? "Show Guide" : "Focus Mode"}
+            {focus ? "Show Info" : "Focus Mode"}
           </Pill>
           <a href={REGISTER_URL} target="_blank" rel="noreferrer"><Pill>Register</Pill></a>
           <Link to="/"><Pill>Home</Pill></Link>
@@ -742,22 +848,9 @@ export default function Assistance() {
         </Gilded>
       </div>
 
+      {/* Main */}
       <main className={`max-w-6xl mx-auto p-4 grid gap-4 ${focus ? "grid-cols-1" : "md:grid-cols-[320px_1fr]"}`}>
-        {!focus && (
-          <Gilded className="p-4">
-            <div className="flex items-center gap-2 text-white/90">
-              <Sparkles size={14} color={GOLD}/> UNA-USA ROPs — Lightning Guide
-            </div>
-            <pre className="mt-3 whitespace-pre-wrap text-white/80 text-[13px] leading-relaxed">
-{ASSIST_TEXT}
-
-• Event: {DATES_TEXT}
-• Linktree: {REGISTER_URL}
-• WhatsApp Exec: {WHATSAPP_ESCALATE}
-• Email: allotments.noirmun@gmail.com
-            </pre>
-          </Gilded>
-        )}
+        {!focus && <EventKeycard />}
 
         <Gilded className="p-4">
           {/* Segmented Tabs */}
@@ -788,10 +881,10 @@ export default function Assistance() {
         </Gilded>
       </main>
 
-      {/* Disclaimer */}
-      <footer className="w-full border-t border-white/10 bg-black/30 backdrop-blur-md">
+      {/* Footer */}
+      <footer className="w-full border-top border-white/10 bg-black/30 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 py-2 text-center text-[11px] text-white/70">
-          Wilt, and WILT+ can make mistakes. Always verify important info.
+          WILT and WILT+ can make mistakes. Verify important info.
         </div>
       </footer>
 
