@@ -1,3 +1,4 @@
+// src/pages/Assistance.jsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -7,6 +8,7 @@ import {
   WHATSAPP_ESCALATE,
   DATES_TEXT,
   COMMITTEES,
+  THEME_HEX, // <-- keep palette identical to Home
 } from "../shared/constants";
 import {
   Sparkles, ExternalLink, Bot, Send, BookOpen, Compass, Award,
@@ -14,13 +16,28 @@ import {
 } from "lucide-react";
 
 /* =========================================================
- * Theme (uniform palette)
+ * Shared palette (perfectly uniform with Home)
  * =======================================================*/
 const GOLD = "#d6c089";
 const GOLD_SOFT = "rgba(214,192,137,.45)";
 
+function setCSSVars() {
+  const root = document.documentElement;
+  root.style.setProperty("--noir-theme", THEME_HEX || "#0a0a1a");
+  root.style.setProperty("--noir-bg0", "#090918");
+  root.style.setProperty("--noir-bg1", "#0D0D1F");
+  root.style.setProperty("--noir-bg2", "#141429");
+  root.style.setProperty("--noir-ink", "rgba(255,255,255,.86)");
+  root.style.setProperty("--noir-ink-dim", "rgba(255,255,255,.72)");
+  root.style.setProperty("--noir-stroke", "rgba(255,255,255,.12)");
+  root.style.setProperty("--noir-stroke-soft", "rgba(255,255,255,.08)");
+  root.style.setProperty("--noir-glass", "rgba(255,255,255,.06)");
+  root.style.setProperty("--noir-glass-2", "rgba(255,255,255,.10)");
+  root.style.setProperty("--noir-gold", GOLD);
+}
+
 /* =========================================================
- * Roman Backdrop (consistent tones)
+ * Roman backdrops (same tone as Home)
  * =======================================================*/
 function RomanBackdrop() {
   return (
@@ -29,9 +46,10 @@ function RomanBackdrop() {
         className="fixed inset-0 -z-50"
         style={{
           background:
-            "radial-gradient(1400px 900px at 70% -10%, #141429 0%, #0D0D1F 45%, #090918 100%)",
+            "radial-gradient(1400px 900px at 70% -10%, var(--noir-bg2) 0%, var(--noir-bg1) 45%, var(--noir-bg0) 100%)",
         }}
       />
+      {/* very faint statue film */}
       <div
         className="fixed inset-0 -z-40 opacity-[.055] mix-blend-screen pointer-events-none"
         style={{
@@ -61,6 +79,7 @@ function RomanBackdrop() {
           maskImage: "linear-gradient(-90deg, rgba(0,0,0,.85), transparent 80%)",
         }}
       />
+      {/* soft grain */}
       <div
         className="fixed inset-0 -z-30 opacity-[.07] pointer-events-none"
         style={{
@@ -73,7 +92,7 @@ function RomanBackdrop() {
 }
 
 /* =========================================================
- * Gilded + Pill
+ * Gilded panel + Uniform Pill
  * =======================================================*/
 function Gilded({ children, className = "" }) {
   return (
@@ -82,7 +101,7 @@ function Gilded({ children, className = "" }) {
       style={{
         background:
           "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
-        border: "1px solid rgba(255,255,255,.12)",
+        border: "1px solid var(--noir-stroke)",
         boxShadow:
           "inset 0 0 0 1px rgba(255,255,255,.04), 0 10px 30px rgba(0,0,0,.35)",
       }}
@@ -96,15 +115,21 @@ function Gilded({ children, className = "" }) {
   );
 }
 
+/** Exactly the same pill used across the page (Register included) */
 function Pill({ children, className = "", as = "button", ...rest }) {
   const Comp = as;
   return (
     <Comp
       {...rest}
-      className={`px-3 py-1.5 text-sm rounded-full border border-white/12 bg-white/[.06] hover:bg-white/[.12] hover:scale-[1.02] transition ${className}`}
-      style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,.05)" }}
+      className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-full transition select-none ${className}`}
+      style={{
+        color: "var(--noir-ink)",
+        background: "var(--noir-glass)",
+        border: "1px solid var(--noir-stroke)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,.05)",
+      }}
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = GOLD_SOFT)}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.12)")}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--noir-stroke)")}
     >
       {children}
     </Comp>
@@ -165,8 +190,12 @@ function WelcomeModal({ open, onClose, onUsePrompt }) {
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        className="relative w-full sm:max-w-md rounded-2xl bg-[#101022]/95 border border-white/12 p-4"
-        style={{ boxShadow: `0 0 0 1px ${GOLD_SOFT} inset` }}
+        className="relative w-full sm:max-w-md rounded-2xl border p-4"
+        style={{
+          background: "rgba(16,16,34,.96)",
+          borderColor: "var(--noir-stroke)",
+          boxShadow: `0 0 0 1px ${GOLD_SOFT} inset`,
+        }}
       >
         <div className="flex items-center gap-2 mb-1">
           <Bot size={18} />
@@ -178,7 +207,11 @@ function WelcomeModal({ open, onClose, onUsePrompt }) {
             <button
               key={p}
               onClick={() => onUsePrompt(p)}
-              className="text-left rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 transition"
+              className="text-left rounded-lg px-3 py-2 transition"
+              style={{
+                background: "var(--noir-glass)",
+                border: "1px solid var(--noir-stroke)",
+              }}
             >
               {p}
             </button>
@@ -196,7 +229,7 @@ function WelcomeModal({ open, onClose, onUsePrompt }) {
 }
 
 /* =========================================================
- * Typing indicator (3 animated dots)
+ * Animated typing dots
  * =======================================================*/
 function TypingDots() {
   return (
@@ -211,19 +244,19 @@ function TypingDots() {
         .dot {
           position: absolute;
           left: 0; top: 8px; width: 6px; height: 6px; border-radius: 999px;
-          background: rgba(255,255,255,.7);
-          animation: ndot 1.2s infinite ease-in-out;
+          background: rgba(255,255,255,.75);
+          animation: noirDot 1.2s infinite ease-in-out;
         }
         .dot-2 { left: 10px; animation-delay: .15s; }
         .dot-3 { left: 20px; animation-delay: .30s; }
-        @keyframes ndot { 0%, 80%, 100% { transform: translateY(0); opacity:.6; } 40% { transform: translateY(-4px); opacity:1; } }
+        @keyframes noirDot { 0%, 80%, 100% { transform: translateY(0); opacity:.6; } 40% { transform: translateY(-4px); opacity:1; } }
       `}</style>
     </div>
   );
 }
 
 /* =========================================================
- * Chat (premium well + typing dots)
+ * Chat
  * =======================================================*/
 function WILTChat() {
   const [thread, setThread] = useState([
@@ -271,7 +304,7 @@ function WILTChat() {
         <div className="text-sm text-white/80 flex items-center gap-2">
           <Bot size={16} /> WILT+ Chat
         </div>
-        <div className={`flex items-center gap-1 text-xs ${verified ? "text-emerald-300" : "text-white/50"}`}>
+        <div className={`flex items-center gap-1 text-xs ${verified ? "text-emerald-300" : "text-white/55"}`}>
           <ShieldCheck size={14} />
           <span>{verified ? "Sources attached" : "Awaiting sources"}</span>
         </div>
@@ -291,10 +324,13 @@ function WILTChat() {
               key={i}
               className={`max-w-[85%] mb-2 px-3 py-2 rounded-xl whitespace-pre-wrap leading-relaxed break-words ${
                 m.from === "bot"
-                  ? "bg-white/[.06] border border-white/10"
-                  : "bg-white/[.10] ml-auto border border-white/10"
+                  ? "border"
+                  : "ml-auto border"
               }`}
               style={{
+                color: "var(--noir-ink)",
+                background: m.from === "bot" ? "var(--noir-glass)" : "var(--noir-glass-2)",
+                borderColor: "var(--noir-stroke)",
                 boxShadow:
                   "inset 0 0 0 1px rgba(255,255,255,.04), 0 10px 20px rgba(0,0,0,.15)",
                 backdropFilter: "blur(6px)",
@@ -309,13 +345,17 @@ function WILTChat() {
             </div>
           ))}
           {typing && (
-            <div className="max-w-[85%] mb-2 px-3 py-2 rounded-xl bg-white/[.06] border border-white/10">
+            <div
+              className="max-w-[85%] mb-2 px-3 py-2 rounded-xl border"
+              style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}
+            >
               <TypingDots />
             </div>
           )}
         </div>
       </Gilded>
 
+      {/* uniform quick options */}
       <div className="flex flex-wrap gap-1">
         {quicks.map((t) => (
           <Pill key={t} onClick={() => send(t)}>{t}</Pill>
@@ -329,9 +369,10 @@ function WILTChat() {
           onKeyDown={(e) => e.key === "Enter" && send()}
           placeholder="Ask WILT+ anything…"
           inputMode="text"
-          className="flex-1 bg-white/5 px-3 py-2 rounded-lg outline-none border border-white/10"
+          className="flex-1 px-3 py-2 rounded-lg outline-none border"
+          style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)", color: "var(--noir-ink)" }}
         />
-        <Pill onClick={() => send()} aria-label="Send" className="inline-flex items-center gap-1">
+        <Pill onClick={() => send()} aria-label="Send">
           <Send size={16} /> Send
         </Pill>
       </div>
@@ -342,7 +383,7 @@ function WILTChat() {
 }
 
 /* =========================================================
- * ROP (cards)
+ * ROP
  * =======================================================*/
 function ROPSim() {
   const [log, setLog] = useState([]);
@@ -375,7 +416,8 @@ function ROPSim() {
             <button
               key={m.k}
               onClick={() => add(`Raise: “${m.p}” • Voting: ${m.vote}`, m.val)}
-              className="rounded-lg border border-white/10 px-3 py-2 bg-white/5 text-left hover:bg-white/10 transition"
+              className="rounded-lg px-3 py-2 text-left transition border"
+              style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}
             >
               <div className="font-medium">{m.k}</div>
               <div className="text-xs text-white/70">Voting: {m.vote}</div>
@@ -391,7 +433,8 @@ function ROPSim() {
             <button
               key={p.k}
               onClick={() => add(`State: “${p.p}”`, p.val)}
-              className="rounded-lg border border-white/10 px-3 py-2 bg-white/5 text-left hover:bg-white/10 transition"
+              className="rounded-lg px-3 py-2 text-left transition border"
+              style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}
             >
               <div className="font-medium">{p.k}</div>
               <div className="text-xs text-white/70">{p.p}</div>
@@ -402,7 +445,7 @@ function ROPSim() {
 
       <Gilded className="p-3">
         <div className="font-semibold mb-2">Floor Confidence</div>
-        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+        <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--noir-stroke-soft)" }}>
           <motion.div
             className="h-full"
             style={{ background: `linear-gradient(90deg, ${GOLD}, rgba(255,255,255,.35))` }}
@@ -415,7 +458,9 @@ function ROPSim() {
         <div className="mt-3 text-xs font-semibold text-white/80">Recent actions</div>
         <div className="mt-1 space-y-1 max-h-32 overflow-auto">
           {log.map((l, i) => (
-            <div key={i} className="text-xs text-white/80 bg-white/5 border border-white/10 rounded-md px-2 py-1">
+            <div key={i} className="text-xs text-white/80 rounded-md px-2 py-1 border"
+              style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}
+            >
               {l}
             </div>
           ))}
@@ -426,7 +471,7 @@ function ROPSim() {
 }
 
 /* =========================================================
- * Smart Quiz (top3 + persona + tips)
+ * Smarter Quiz (top 3, persona, tips)
  * =======================================================*/
 const NAMES = {
   UNGA: "United Nations General Assembly (UNGA)",
@@ -461,37 +506,37 @@ function Quiz() {
     if (ans.domain === "global") { s.UNGA+=5; s.UNCSW+=4; reasons.push("Global policy fit"); }
     if (ans.domain === "domestic") { s.AIPPM+=5; s.IPL+=2; reasons.push("Domestic politics fit"); }
 
-    if (ans.tempo === "formal") { s.UNGA+=3; s.UNCSW+=3; s.AIPPM+=2; reasons.push("Comfort with formal tempo"); }
-    if (ans.tempo === "crisis") { s.YT+=3; s.IPL+=3; s.IP+=1; reasons.push("Thrives in fast situations"); }
+    if (ans.tempo === "formal") { s.UNGA+=3; s.UNCSW+=3; s.AIPPM+=2; reasons.push("Formal tempo"); }
+    if (ans.tempo === "crisis") { s.YT+=3; s.IPL+=3; s.IP+=1; reasons.push("Crisis-friendly"); }
     if (ans.crisis === "high") { s.YT+=2; s.IPL+=2; reasons.push("High crisis tolerance"); }
     if (ans.crisis === "low")  { s.UNGA+=1; s.UNCSW+=1; }
 
     if (ans.strength === "writing") { s.UNCSW+=5; s.IP+=3; reasons.push("Strong writer"); }
     if (ans.strength === "speaking") { s.UNGA+=4; s.AIPPM+=4; s.IPL+=1; reasons.push("Strong speaker"); }
-    if (ans.strength === "both") { s.UNGA+=3; s.AIPPM+=3; s.UNCSW+=3; reasons.push("Balanced writer-speaker"); }
+    if (ans.strength === "both") { s.UNGA+=3; s.AIPPM+=3; s.UNCSW+=3; reasons.push("Balanced"); }
 
     if (ans.negotiation === "bloc") { s.UNGA+=2; s.UNCSW+=2; reasons.push("Consensus builder"); }
-    if (ans.negotiation === "attack") { s.AIPPM+=3; s.YT+=2; reasons.push("Adversarial strategist"); }
-    if (ans.negotiation === "solo") { s.IP+=2; s.YT+=1; reasons.push("Independent operator"); }
+    if (ans.negotiation === "attack") { s.AIPPM+=3; s.YT+=2; reasons.push("Adversarial play"); }
+    if (ans.negotiation === "solo") { s.IP+=2; s.YT+=1; reasons.push("Independent"); }
 
     if (ans.evidence === "high") { s.UNCSW+=4; s.UNGA+=2; s.IP+=2; reasons.push("Evidence-driven"); }
     if (ans.evidence === "mid")  { s.UNGA+=1; s.AIPPM+=1; }
     if (ans.evidence === "low")  { s.YT+=1; s.AIPPM+=1; }
 
-    if (ans.topic === "rights") { s.UNCSW+=5; s.UNGA+=2; reasons.push("Rights lens"); }
-    if (ans.topic === "econ")   { s.UNGA+=4; s.AIPPM+=2; reasons.push("Economic policy interest"); }
-    if (ans.topic === "tech")   { s.UNGA+=3; s.YT+=2; reasons.push("Cyber/AI comfort"); }
-    if (ans.topic === "media")  { s.IP+=5; s.YT+=2; reasons.push("Media/PR leaning"); }
-    if (ans.topic === "sports") { s.IPL+=6; reasons.push("Sports-biz preference"); }
+    if (ans.topic === "rights") { s.UNCSW+=5; s.UNGA+=2; reasons.push("Rights focus"); }
+    if (ans.topic === "econ")   { s.UNGA+=4; s.AIPPM+=2; reasons.push("Economic policy"); }
+    if (ans.topic === "tech")   { s.UNGA+=3; s.YT+=2; reasons.push("Cyber/AI"); }
+    if (ans.topic === "media")  { s.IP+=5; s.YT+=2; reasons.push("Media/PR"); }
+    if (ans.topic === "sports") { s.IPL+=6; reasons.push("Sports-biz"); }
 
-    if (ans.press === "yes") { s.IP+=6; reasons.push("Enjoys journalism/photo"); }
-    if (ans.sportbiz === "yes") { s.IPL+=5; reasons.push("Likes auctions/trades"); }
+    if (ans.press === "yes") { s.IP+=6; reasons.push("Journalism/photo"); }
+    if (ans.sportbiz === "yes") { s.IPL+=5; reasons.push("Auctions/trades"); }
 
     if (ans.creative === "high") { s.YT+=3; s.AIPPM+=1; reasons.push("High creativity"); }
     if (ans.creative === "mid")  { s.UNGA+=1; s.UNCSW+=1; }
     if (ans.creative === "low")  { s.UNCSW+=1; }
 
-    // synergies
+    // small synergies
     if (ans.domain === "global" && ans.tempo === "formal") s.UNGA += 1.5;
     if (ans.domain === "domestic" && ans.tempo === "formal") s.AIPPM += 1.5;
     if (ans.tempo === "crisis" && ans.creative === "high") s.YT += 1;
@@ -546,7 +591,7 @@ function Quiz() {
   };
 
   const Bar = ({ pct }) => (
-    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+    <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--noir-stroke-soft)" }}>
       <motion.div
         className="h-full"
         style={{ background: `linear-gradient(90deg, ${GOLD}, rgba(255,255,255,.35))` }}
@@ -558,7 +603,7 @@ function Quiz() {
   );
 
   const Row = ({ title, agenda, pct }) => (
-    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+    <div className="rounded-lg p-3 border" style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}>
       <div className="text-sm font-semibold">{title}</div>
       {!!agenda && <div className="text-xs text-white/75 mt-1">Agenda: {agenda}</div>}
       <div className="mt-2"><Bar pct={pct} /></div>
@@ -577,7 +622,8 @@ function Quiz() {
               <div className="font-medium">{qq.q}</div>
               <div className="flex flex-wrap gap-2">
                 {qq.opts.map(([v,label]) => (
-                  <label key={v} className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3 py-1 cursor-pointer hover:bg-white/10 transition">
+                  <label key={v} className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer transition border"
+                    style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}>
                     <input
                       type="radio"
                       className="accent-white"
@@ -593,9 +639,7 @@ function Quiz() {
             </div>
           ))}
         </div>
-        <Pill onClick={compute} className="mt-4 inline-flex items-center gap-2">
-          Compute <Sparkles size={16}/>
-        </Pill>
+        <Pill onClick={compute} className="mt-4"><Sparkles size={16}/> Compute</Pill>
       </Gilded>
 
       <Gilded className="p-4">
@@ -603,23 +647,13 @@ function Quiz() {
           <div className="text-white/70 text-sm">Results will appear here.</div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+            <div className="rounded-lg p-3 border" style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}>
               <div className="flex items-center justify-between">
                 <div className="text-lg font-semibold">{NAMES[out.top[0]]}</div>
                 <div className="text-xs text-white/70 inline-flex items-center gap-1"><Gauge size={14}/> {out.confidence}%</div>
               </div>
               {!!out.agendas[out.top[0]] && <div className="text-sm text-white/80 mt-1">Agenda: {out.agendas[out.top[0]]}</div>}
-              <div className="mt-2">
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full"
-                    style={{ background: `linear-gradient(90deg, ${GOLD}, rgba(255,255,255,.35))` }}
-                    initial={{ width: 0 }}
-                    animate={{ width: out.top[1] + "%" }}
-                    transition={{ type: "spring", stiffness: 70, damping: 16 }}
-                  />
-                </div>
-              </div>
+              <div className="mt-2"><Bar pct={out.top[1]} /></div>
             </div>
 
             <Row title={NAMES[out.alt[0]]} agenda={out.agendas[out.alt[0]]} pct={out.alt[1]} />
@@ -628,7 +662,8 @@ function Quiz() {
             {out.persona && (
               <>
                 <div className="text-xs uppercase tracking-wider text-white/60">Persona</div>
-                <div className="rounded-md bg-white/5 border border-white/10 px-3 py-2 inline-flex items-center gap-2">
+                <div className="rounded-md px-3 py-2 inline-flex items-center gap-2 border"
+                  style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}>
                   <Check size={14}/> {out.persona}
                 </div>
               </>
@@ -637,7 +672,10 @@ function Quiz() {
             <div className="text-xs uppercase tracking-wider text-white/60">Why</div>
             <div className="flex flex-wrap gap-2">
               {out.reasons.map((r,i)=> (
-                <span key={i} className="text-[12px] rounded-full px-3 py-1 bg-white/5 border border-white/10">{r}</span>
+                <span key={i} className="text-[12px] rounded-full px-3 py-1 border"
+                  style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}>
+                  {r}
+                </span>
               ))}
             </div>
 
@@ -653,7 +691,7 @@ function Quiz() {
 }
 
 /* =========================================================
- * Rubric (interactive)
+ * Rubric
  * =======================================================*/
 function Rubric() {
   const bands = [
@@ -681,7 +719,7 @@ function Rubric() {
         <div className="grid gap-3">
           {bands.map((b) => (
             <div key={b.label}>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--noir-stroke-soft)" }}>
                 <motion.div
                   className="h-full"
                   style={{ background: `linear-gradient(90deg, ${GOLD}, rgba(255,255,255,.35))` }}
@@ -693,9 +731,7 @@ function Rubric() {
               </div>
               <div className="text-xs text-white/70 mt-1 flex items-center justify-between">
                 <span>{b.label}</span>
-                <span className="hidden sm:block text-white/60">
-                  {b.tips.join(" • ")}
-                </span>
+                <span className="hidden sm:block text-white/60">{b.tips.join(" • ")}</span>
               </div>
             </div>
           ))}
@@ -706,7 +742,8 @@ function Rubric() {
         <div className="font-semibold mb-2 flex items-center gap-2"><Gauge size={16}/> Self-check (live score)</div>
         <div className="flex flex-wrap gap-2">
           {checks.map((c) => (
-            <label key={c.k} className="inline-flex items-center gap-2 rounded-lg bg-white/5 border border-white/10 px-3 py-1 cursor-pointer hover:bg-white/10 transition">
+            <label key={c.k} className="inline-flex items-center gap-2 rounded-lg px-3 py-1 cursor-pointer transition border"
+              style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}>
               <input
                 type="checkbox"
                 className="accent-white"
@@ -719,7 +756,7 @@ function Rubric() {
         </div>
 
         <div className="mt-4">
-          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--noir-stroke-soft)" }}>
             <motion.div
               className="h-full"
               style={{ background: `linear-gradient(90deg, ${GOLD}, rgba(255,255,255,.35))` }}
@@ -741,14 +778,13 @@ function Rubric() {
 }
 
 /* =========================================================
- * Event Keycard (replaces heavy guide)
+ * Event Keycard (subtle info in place of heavy guide)
  * =======================================================*/
 function EventKeycard() {
   return (
     <Gilded className="p-4 overflow-hidden">
       <div className="flex items-center gap-2 text-white/90">
-        <span className="inline-block w-4 h-4 rounded-full"
-          style={{ background: GOLD }} />
+        <span className="inline-block w-4 h-4 rounded-full" style={{ background: GOLD }} />
         <span className="font-semibold tracking-wide">Noir MUN — Brief</span>
       </div>
 
@@ -758,15 +794,10 @@ function EventKeycard() {
       </div>
 
       <div className="mt-3 flex gap-2 flex-wrap">
-        <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="inline-flex">
-          <Pill>Register <ExternalLink size={12}/></Pill>
-        </a>
-        <a href={WHATSAPP_ESCALATE} target="_blank" rel="noreferrer" className="inline-flex">
-          <Pill>WhatsApp Exec</Pill>
-        </a>
+        <a href={REGISTER_URL} target="_blank" rel="noreferrer"><Pill>Register <ExternalLink size={12}/></Pill></a>
+        <a href={WHATSAPP_ESCALATE} target="_blank" rel="noreferrer"><Pill>WhatsApp Exec</Pill></a>
       </div>
 
-      {/* laurel watermark */}
       <div className="pointer-events-none absolute -right-6 -bottom-6 w-32 h-32 opacity-[.09] rounded-full"
         style={{
           boxShadow: `inset 0 0 0 2px ${GOLD_SOFT}`,
@@ -788,33 +819,28 @@ export default function Assistance() {
   const [openMenu, setOpenMenu] = useState(false);
 
   useEffect(() => {
-    document.documentElement.style.setProperty("--noir-gold", GOLD);
+    setCSSVars(); // unify with Home
   }, []);
 
   return (
     <div className="min-h-[100dvh] text-white relative pb-[calc(env(safe-area-inset-bottom,0)+8px)]">
       <RomanBackdrop />
 
-      {/* Header */}
-      <header className="px-4 py-3 flex items-center justify-between border-b border-white/10 bg-black/25 backdrop-blur-md shadow-lg shadow-black/20">
+      {/* Header (logo links home) */}
+      <header className="px-4 py-3 flex items-center justify-between border-b bg-black/25 backdrop-blur-md shadow-lg shadow-black/20"
+              style={{ borderColor: "var(--noir-stroke)" }}>
         <div className="flex items-center gap-2 min-w-0">
           <Link to="/" className="flex items-center gap-2 group">
             <img src={LOGO_URL} alt="Noir" className="h-8 w-8 object-contain transition-transform group-hover:scale-110" />
-            <div className="font-semibold truncate group-hover:text-white/90">
-              Noir MUN Assistant
-            </div>
+            <div className="font-semibold truncate group-hover:text-white/90">Noir MUN Assistant</div>
           </Link>
         </div>
 
-        {/* Desktop nav */}
+        {/* Desktop nav (Register uses same Pill) */}
         <nav className="hidden sm:flex items-center gap-2">
           <Pill onClick={() => setFocus((v) => !v)}>{focus ? "Show Info" : "Focus Mode"}</Pill>
-          <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="inline-flex">
-            <Pill>Register <ExternalLink size={12}/></Pill>
-          </a>
-          <Link to="/" className="inline-flex">
-            <Pill>Home</Pill>
-          </Link>
+          <a href={REGISTER_URL} target="_blank" rel="noreferrer"><Pill>Register <ExternalLink size={12}/></Pill></a>
+          <Link to="/"><Pill>Home</Pill></Link>
         </nav>
 
         {/* Mobile menu */}
@@ -824,7 +850,8 @@ export default function Assistance() {
       </header>
 
       {openMenu && (
-        <div className="sm:hidden px-4 py-2 border-b border-white/10 bg-black/40 backdrop-blur-md flex items-center gap-2">
+        <div className="sm:hidden px-4 py-2 border-b bg-black/40 backdrop-blur-md flex items-center gap-2"
+             style={{ borderColor: "var(--noir-stroke)" }}>
           <Pill onClick={() => { setFocus((v) => !v); setOpenMenu(false); }}>
             {focus ? "Show Info" : "Focus Mode"}
           </Pill>
@@ -854,7 +881,8 @@ export default function Assistance() {
 
         <Gilded className="p-4">
           {/* Segmented Tabs */}
-          <div className="inline-flex rounded-full bg-black/30 border border-white/10 p-1 mb-4 shadow-inner">
+          <div className="inline-flex rounded-full p-1 mb-4 shadow-inner border"
+               style={{ background: "rgba(0,0,0,.28)", borderColor: "var(--noir-stroke)" }}>
             {TABS.map((t) => {
               const active = tab === t.key;
               return (
@@ -862,11 +890,12 @@ export default function Assistance() {
                   key={t.key}
                   onClick={() => setTab(t.key)}
                   className={`px-3 py-1.5 text-sm rounded-full inline-flex items-center gap-1 transition ${
-                    active
-                      ? "bg-gradient-to-r from-white/20 to-white/10 shadow-sm text-white"
-                      : "hover:bg-white/10 text-white/80"
+                    active ? "text-white" : "text-white/80 hover:bg-white/10"
                   }`}
-                  style={active ? { boxShadow: `inset 0 0 0 1px ${GOLD_SOFT}` } : {}}
+                  style={active
+                    ? { background: "linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.08))",
+                        boxShadow: `inset 0 0 0 1px ${GOLD_SOFT}` }
+                    : {}}
                 >
                   {t.icon} {t.label}
                 </button>
@@ -882,7 +911,7 @@ export default function Assistance() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-top border-white/10 bg-black/30 backdrop-blur-md">
+      <footer className="w-full bg-black/30 backdrop-blur-md" style={{ borderTop: "1px solid var(--noir-stroke)" }}>
         <div className="max-w-6xl mx-auto px-4 py-2 text-center text-[11px] text-white/70">
           WILT and WILT+ can make mistakes. Verify important info.
         </div>
