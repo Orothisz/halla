@@ -1,3 +1,17 @@
+You got it—here’s a fully-polished **Roman/Greek–themed** `Register.jsx` that:
+
+* uses a custom **premium SelectMenu** (no blue native dropdown),
+* adds your three **silhouettes** with a soft drift animation,
+* fixes the **arrayBuffer** issue with a safe File→Base64 helper,
+* labels bank info clearly (**IFSC JSFB0004049 • A/C 4049010060672314**),
+* requires **Co-Delegate only when IPL** is selected,
+* is **preflight-safe** (form-encoded + `?api_key=`),
+* autosaves (local + Supabase), and
+* makes the **logo link back to Home**.
+
+Paste over **`src/pages/Register.jsx`**.
+
+```jsx
 // src/pages/Register.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -88,55 +102,156 @@ function Textarea(props) {
   );
 }
 
-/** Premium looking select (styled native for accessibility + mobile) */
-function FancySelect({ value, onChange, options, placeholder = "Select…", invalid }) {
+/** Premium custom select (no native dropdown UI) */
+function SelectMenu({ value, onChange, options, placeholder = "Select…", invalid }) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const btnRef = useRef(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (!menuRef.current || !btnRef.current) return;
+      if (!menuRef.current.contains(e.target) && !btnRef.current.contains(e.target)) {
+        setOpen(false);
+        setActive(-1);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const idxOfVal = value ? options.findIndex((o) => o === value) : -1;
+
+  const select = (v) => {
+    onChange({ target: { value: v } });
+    setOpen(false);
+    setActive(-1);
+  };
+
+  const onKeyDown = (e) => {
+    if (!open && (e.key === "Enter" || e.key === " " || e.key === "ArrowDown")) {
+      e.preventDefault();
+      setOpen(true);
+      setActive(idxOfVal >= 0 ? idxOfVal : 0);
+      return;
+    }
+    if (!open) return;
+
+    if (e.key === "Escape") {
+      setOpen(false);
+      setActive(-1);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((i) => (i + 1) % options.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => (i - 1 + options.length) % options.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const pick = options[active >= 0 ? active : 0];
+      select(pick);
+    }
+  };
+
   return (
-    <div
-      className={cls(
-        "relative rounded-xl border px-3 py-2 bg-white/10",
-        invalid ? "border-red-300/50" : "border-white/15",
-        "focus-within:border-white/35 focus-within:ring-2 focus-within:ring-white/15"
-      )}
-      style={{
-        boxShadow:
-          "inset 0 0 0 1px rgba(255,255,255,.04), 0 1px 12px rgba(255,255,255,.06)",
-      }}
-    >
-      <select
-        value={value}
-        onChange={onChange}
-        className="peer w-full appearance-none bg-transparent outline-none text-white pr-8"
-        style={{ WebkitTextFillColor: "white" }}
+    <div className="relative">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={onKeyDown}
+        className={cls(
+          "w-full rounded-xl bg-white/10 text-left px-3 py-2 border",
+          invalid ? "border-red-300/50" : "border-white/15",
+          "focus:border-white/35 focus:ring-2 focus:ring-white/15"
+        )}
       >
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o} value={o} style={{ color: "#000" }}>
-            {o}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        size={16}
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/70 peer-focus:text-white"
-      />
-      {/* subtle golden hairline */}
-      <div
-        aria-hidden
-        className="absolute inset-0 rounded-xl pointer-events-none"
-        style={{
-          boxShadow:
-            "inset 0 0 0 1px rgba(255,247,196,.10), inset 0 0 24px rgba(255,247,196,.06)",
-        }}
-      />
+        <div className="flex items-center justify-between">
+          <span className={cls("truncate", value ? "text-white" : "text-white/60")}>
+            {value || placeholder}
+          </span>
+          <ChevronDown className="text-white/70" size={16} />
+        </div>
+        <div
+          aria-hidden
+          className="absolute inset-0 rounded-xl pointer-events-none"
+          style={{
+            boxShadow:
+              "inset 0 0 0 1px rgba(255,247,196,.10), inset 0 0 24px rgba(255,247,196,.06)",
+          }}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={menuRef}
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 320, damping: 26 }}
+            className="absolute z-30 mt-2 w-full rounded-2xl border border-white/12 bg-[#0b0b1c]/95 backdrop-blur shadow-2xl overflow-hidden"
+          >
+            <div className="max-h-64 overflow-auto py-1">
+              {options.map((o, i) => {
+                const selected = o === value;
+                const highlighted = i === active;
+                return (
+                  <button
+                    key={o}
+                    type="button"
+                    onMouseEnter={() => setActive(i)}
+                    onClick={() => select(o)}
+                    className={cls(
+                      "w-full text-left px-3 py-2 text-sm",
+                      highlighted ? "bg-white/10" : "",
+                      selected ? "text-white font-semibold" : "text-white/90 hover:text-white"
+                    )}
+                  >
+                    {o}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-async function fileToBase64(file) {
-  const buf = await file.arrayBuffer();
-  let binary = "";
+/** Safe File -> base64 (works on older iOS/Android webviews) */
+async function fileToBase64Safe(file) {
+  if (!file) throw new Error("No file provided");
+  if (typeof file === "string") {
+    if (file.startsWith("data:")) return file.split(",")[1];
+    const res = await fetch(file);
+    const blob = await res.blob();
+    return fileToBase64Safe(blob);
+  }
+  if (typeof file.arrayBuffer === "function") {
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
+  }
+  const buf = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
   const bytes = new Uint8Array(buf);
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
   return btoa(binary);
 }
 
@@ -151,23 +266,17 @@ function useSupabaseAuth() {
   return { user: session?.user ?? null };
 }
 async function loadCloudDraft(uid) {
-  const { data } = await supabase
-    .from("registration_drafts")
-    .select("data")
-    .eq("user_id", uid)
-    .single();
+  const { data } = await supabase.from("registration_drafts").select("data").eq("user_id", uid).single();
   return data?.data || null;
 }
 async function saveCloudDraft(uid, data) {
-  await supabase
-    .from("registration_drafts")
-    .upsert(
-      { user_id: uid, data, updated_at: new Date().toISOString() },
-      { onConflict: "user_id" }
-    );
+  await supabase.from("registration_drafts").upsert(
+    { user_id: uid, data, updated_at: new Date().toISOString() },
+    { onConflict: "user_id" }
+  );
 }
 
-/* ----------- Roman silhouettes (soft parallax) ----------- */
+/* ----------- Roman silhouettes layer ----------- */
 function RomanLayer() {
   const IMG_LEFT = "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png";
   const IMG_RIGHT = "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png";
@@ -175,7 +284,6 @@ function RomanLayer() {
 
   return (
     <>
-      {/* Marble gradients */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]"
@@ -184,7 +292,6 @@ function RomanLayer() {
             "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))",
         }}
       />
-      {/* Statues */}
       <motion.img
         src={IMG_LEFT}
         alt=""
@@ -218,7 +325,6 @@ function RomanLayer() {
         transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
         style={{ filter: "grayscale(55%) contrast(108%)" }}
       />
-      {/* Film grain */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay"
@@ -331,7 +437,10 @@ export default function Register() {
   };
 
   const handleFile = (file) => {
-    if (!file) return update({ paymentFile: null, paymentPreview: "" });
+    if (!file || !(file instanceof Blob)) {
+      setToast({ type: "error", text: "Please choose an image file." });
+      return update({ paymentFile: null, paymentPreview: "" });
+    }
     if (!file.type.startsWith("image/"))
       return setToast({ type: "error", text: "Upload an image (JPG/PNG/WEBP)." });
     if (file.size > 7 * 1024 * 1024)
@@ -339,7 +448,7 @@ export default function Register() {
     update({ paymentFile: file, paymentPreview: URL.createObjectURL(file) });
   };
 
-  // strict validation: everything required except questions & reference
+  // validation
   const validate = () => {
     const e = {};
     if (!f.fullName.trim()) e.fullName = "Required";
@@ -397,28 +506,21 @@ export default function Register() {
         paymentScreenshot: {
           filename: f.paymentFile.name,
           mimeType: f.paymentFile.type || "image/jpeg",
-          base64: await fileToBase64(f.paymentFile),
+          base64: await fileToBase64Safe(f.paymentFile),
         },
         paymentProofLink: "",
       };
 
-      // Preflight-safe request to GAS (x-www-form-urlencoded + api_key in URL)
-      const url =
-        API_URL + (API_KEY ? `?api_key=${encodeURIComponent(API_KEY)}` : "");
+      const url = API_URL + (API_KEY ? `?api_key=${encodeURIComponent(API_KEY)}` : "");
       const res = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-        },
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
         body: new URLSearchParams({ data: JSON.stringify(payload) }).toString(),
       });
 
       let json = null;
-      try {
-        json = await res.json();
-      } catch {
-        throw new Error("Network/CORS error — confirm Web App /exec URL.");
-      }
+      try { json = await res.json(); }
+      catch { throw new Error("Network/CORS error — confirm Web App /exec URL."); }
 
       if (!json?.ok && !json?.duplicate)
         throw new Error(json?.error || "Server rejected submission.");
@@ -429,7 +531,6 @@ export default function Register() {
           ? "Duplicate detected (recent). We’ve recorded your entry."
           : "Registration submitted!",
       });
-      // keep draft but clear file preview
       setF((s) => ({ ...s, paymentFile: null, paymentPreview: "" }));
     } catch (e) {
       setToast({ type: "error", text: e.message || "Something went wrong." });
@@ -451,10 +552,10 @@ export default function Register() {
       {/* header */}
       <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3">
             <img src={LOGO_URL} className="h-9 w-9" alt="Noir" />
             <span className="font-semibold tracking-wide">Noir MUN</span>
-          </div>
+          </Link>
           <div className="text-xs text-white/70">
             {saving
               ? "Saving…"
@@ -474,11 +575,9 @@ export default function Register() {
             </div>
             <div className="flex-1">
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-                <Gilded>Register — In Laurel & Marble</Gilded>
+                <Gilded>Registration</Gilded> • Noir MUN 2025
               </h1>
-              <p className="mt-2 text-white/80">
-                Whispers today, echoes tomorrow. Fill once, save everywhere.
-              </p>
+              <p className="mt-2 text-white/80">Concise, exact, and elegant—like a Roman inscription.</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <a
                   href={matrixHref}
@@ -511,85 +610,40 @@ export default function Register() {
 
         {/* Identity */}
         <NoirCard className="p-6 md:p-8 mt-8">
-          <div className="text-sm uppercase tracking-[0.25em] text-white/60">
-            Chapter I
-          </div>
-          <h2 className="mt-1 text-2xl md:text-3xl font-extrabold">
-            <Gilded>Identity</Gilded>
-          </h2>
+          <div className="text-sm uppercase tracking-[0.25em] text-white/60">I • Identity</div>
+          <h2 className="mt-1 text-2xl md:text-3xl font-extrabold"><Gilded>Delegate</Gilded></h2>
           <div className="mt-6 grid md:grid-cols-2 gap-6">
             <div className="space-y-5">
               <Field label="Full Name" required error={err.fullName}>
-                <Input
-                  value={f.fullName}
-                  onChange={(e) => update({ fullName: e.target.value })}
-                  placeholder="Your full name"
-                />
+                <Input value={f.fullName} onChange={(e)=>update({fullName:e.target.value})} placeholder="Your full name" />
               </Field>
               <Field label="Email" required error={err.email}>
-                <Input
-                  type="email"
-                  value={f.email}
-                  onChange={(e) => update({ email: e.target.value })}
-                  placeholder="you@example.com"
-                />
+                <Input type="email" value={f.email} onChange={(e)=>update({email:e.target.value})} placeholder="you@example.com" />
               </Field>
               <Field label="Email Address (alt)" required error={err.emailAddress}>
-                <Input
-                  type="email"
-                  value={f.emailAddress}
-                  onChange={(e) => update({ emailAddress: e.target.value })}
-                  placeholder="Alternate email"
-                />
+                <Input type="email" value={f.emailAddress} onChange={(e)=>update({emailAddress:e.target.value})} placeholder="Alternate email" />
               </Field>
               <Field label="WhatsApp Number" required error={err.whatsappNumber}>
-                <Input
-                  value={f.whatsappNumber}
-                  onChange={(e) => update({ whatsappNumber: e.target.value })}
-                  placeholder="+91 9XXXXXXXXX"
-                />
+                <Input value={f.whatsappNumber} onChange={(e)=>update({whatsappNumber:e.target.value})} placeholder="+91 9XXXXXXXXX" />
               </Field>
               <Field label="Alternate Contact Number" required error={err.altContact}>
-                <Input
-                  value={f.altContact}
-                  onChange={(e) => update({ altContact: e.target.value })}
-                  placeholder="Required"
-                />
+                <Input value={f.altContact} onChange={(e)=>update({altContact:e.target.value})} placeholder="Required" />
               </Field>
             </div>
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Age (numerals)" required error={err.age}>
-                  <Input
-                    type="number"
-                    value={f.age}
-                    onChange={(e) => update({ age: e.target.value })}
-                    placeholder="e.g., 17"
-                  />
+                  <Input type="number" value={f.age} onChange={(e)=>update({age:e.target.value})} placeholder="e.g., 17" />
                 </Field>
                 <Field label="Grade (numerals)" required error={err.grade}>
-                  <Input
-                    type="number"
-                    value={f.grade}
-                    onChange={(e) => update({ grade: e.target.value })}
-                    placeholder="e.g., 12"
-                  />
+                  <Input type="number" value={f.grade} onChange={(e)=>update({grade:e.target.value})} placeholder="e.g., 12" />
                 </Field>
               </div>
               <Field label="Institution" required error={err.institution}>
-                <Input
-                  value={f.institution}
-                  onChange={(e) => update({ institution: e.target.value })}
-                  placeholder="School/College"
-                />
+                <Input value={f.institution} onChange={(e)=>update({institution:e.target.value})} placeholder="School/College" />
               </Field>
               <Field label="MUN Experience (number)" required error={err.munExperience}>
-                <Input
-                  type="number"
-                  value={f.munExperience}
-                  onChange={(e) => update({ munExperience: e.target.value })}
-                  placeholder="e.g., 5"
-                />
+                <Input type="number" value={f.munExperience} onChange={(e)=>update({munExperience:e.target.value})} placeholder="e.g., 5" />
               </Field>
             </div>
           </div>
@@ -597,68 +651,44 @@ export default function Register() {
 
         {/* Preferences */}
         <NoirCard className="p-6 md:p-8 mt-8">
-          <div className="text-sm uppercase tracking-[0.25em] text-white/60">
-            Chapter II
-          </div>
-          <h2 className="mt-1 text-2xl md:text-3xl font-extrabold">
-            <Gilded>Preferences</Gilded>
-          </h2>
+          <div className="text-sm uppercase tracking-[0.25em] text-white/60">II • Preferences</div>
+          <h2 className="mt-1 text-2xl md:text-3xl font-extrabold"><Gilded>Chambers</Gilded></h2>
           <div className="mt-6 grid md:grid-cols-2 gap-6">
             <div className="space-y-5">
               <Field label="Committee Preference 1" required error={err.committeePref1}>
-                <FancySelect
+                <SelectMenu
                   value={f.committeePref1}
-                  onChange={(e) => update({ committeePref1: e.target.value })}
+                  onChange={(e)=>update({committeePref1:e.target.value})}
                   options={committees}
                   invalid={!!err.committeePref1}
                 />
               </Field>
               <Field label="Portfolio Preference 1" required error={err.portfolio1a}>
-                <Input
-                  value={f.portfolio1a}
-                  onChange={(e) => update({ portfolio1a: e.target.value })}
-                  placeholder="Top portfolio"
-                />
+                <Input value={f.portfolio1a} onChange={(e)=>update({portfolio1a:e.target.value})} placeholder="Top portfolio" />
               </Field>
               <Field label="Portfolio Preference 2" required error={err.portfolio1b}>
-                <Input
-                  value={f.portfolio1b}
-                  onChange={(e) => update({ portfolio1b: e.target.value })}
-                  placeholder="Alternate"
-                />
+                <Input value={f.portfolio1b} onChange={(e)=>update({portfolio1b:e.target.value})} placeholder="Alternate" />
               </Field>
             </div>
             <div className="space-y-5">
               <Field label="Committee Preference 2" required error={err.committeePref2}>
-                <FancySelect
+                <SelectMenu
                   value={f.committeePref2}
-                  onChange={(e) => update({ committeePref2: e.target.value })}
+                  onChange={(e)=>update({committeePref2:e.target.value})}
                   options={committees}
                   invalid={!!err.committeePref2}
                 />
               </Field>
               <Field label="Portfolio Preference 1 (Pref 2)" required error={err.portfolio2a}>
-                <Input
-                  value={f.portfolio2a}
-                  onChange={(e) => update({ portfolio2a: e.target.value })}
-                  placeholder="Portfolio"
-                />
+                <Input value={f.portfolio2a} onChange={(e)=>update({portfolio2a:e.target.value})} placeholder="Portfolio" />
               </Field>
               <Field label="Portfolio Preference 2 (Pref 2)" required error={err.portfolio2b}>
-                <Input
-                  value={f.portfolio2b}
-                  onChange={(e) => update({ portfolio2b: e.target.value })}
-                  placeholder="Alternate"
-                />
+                <Input value={f.portfolio2b} onChange={(e)=>update({portfolio2b:e.target.value})} placeholder="Alternate" />
               </Field>
 
               {(isIPL(f.committeePref1) || isIPL(f.committeePref2)) && (
                 <Field label="Co-Delegate (IPL only)" required error={err.iplCoDelegate}>
-                  <Textarea
-                    value={f.iplCoDelegate}
-                    onChange={(e) => update({ iplCoDelegate: e.target.value })}
-                    placeholder="Name, email, phone"
-                  />
+                  <Textarea value={f.iplCoDelegate} onChange={(e)=>update({iplCoDelegate:e.target.value})} placeholder="Name, email, phone" />
                 </Field>
               )}
             </div>
@@ -666,45 +696,32 @@ export default function Register() {
 
           <div className="mt-6 grid md:grid-cols-2 gap-6">
             <Field label="Any questions (optional)">
-              <Textarea
-                value={f.questions}
-                onChange={(e) => update({ questions: e.target.value })}
-                placeholder="Optional"
-              />
+              <Textarea value={f.questions} onChange={(e)=>update({questions:e.target.value})} placeholder="Optional" />
             </Field>
             <Field label="Reference (optional)">
-              <Input
-                value={f.reference}
-                onChange={(e) => update({ reference: e.target.value })}
-                placeholder="Name/phone/invite code"
-              />
+              <Input value={f.reference} onChange={(e)=>update({reference:e.target.value})} placeholder="Name/phone/invite code" />
             </Field>
           </div>
         </NoirCard>
 
         {/* Tribute (Payment) */}
         <NoirCard className="p-6 md:p-8 mt-8">
-          <div className="text-sm uppercase tracking-[0.25em] text-white/60">
-            Chapter III
-          </div>
-          <h2 className="mt-1 text-2xl md:text-3xl font-extrabold">
-            <Gilded>Tribute</Gilded>
-          </h2>
+          <div className="text-sm uppercase tracking-[0.25em] text-white/60">III • Tribute</div>
+          <h2 className="mt-1 text-2xl md:text-3xl font-extrabold"><Gilded>Payment</Gilded></h2>
           <p className="mt-2 text-sm text-white/70">
-            Early Bird: <b>₹2,000</b> per delegate (IPL: <b>₹2,000</b>). Payment & proof are
-            required.
+            Early Bird: <b>₹2,000</b> per delegate (IPL: <b>₹2,000</b>). Payment & proof are required.
           </p>
 
           <div className="grid lg:grid-cols-[1fr_280px] gap-6 mt-4">
             <div className="space-y-4">
               <Field label="Payment Option" required>
-                <FancySelect
+                <SelectMenu
                   value={f.paymentOption}
-                  onChange={(e) => update({ paymentOption: e.target.value })}
+                  onChange={(e)=>update({paymentOption:e.target.value})}
                   options={[
                     `UPI: ${upiPrimary}`,
                     `UPI: ${upiAlt}`,
-                    "Bank: JSFB0004049 (A/C 4049010060672314)",
+                    "Bank: IFSC JSFB0004049 • A/C 4049010060672314",
                   ]}
                 />
               </Field>
@@ -724,57 +741,28 @@ export default function Register() {
                 </button>
               </div>
 
-              <Field
-                label="Upload Payment Screenshot"
-                required
-                error={err.paymentFile}
-                hint="JPG/PNG/WEBP up to 7 MB"
-              >
+              <Field label="Upload Payment Screenshot" required error={err.paymentFile} hint="JPG/PNG/WEBP up to 7 MB">
                 <div className="flex items-center gap-3">
                   <label className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 cursor-pointer hover:bg-white/20">
                     <CloudUpload size={16} /> Choose file
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleFile(e.target.files?.[0])}
-                    />
+                    <input type="file" accept="image/*" className="hidden" onChange={(e)=>handleFile(e.target.files?.[0])}/>
                   </label>
-                  {f.paymentFile && (
-                    <span className="text-sm text-white/80 truncate">
-                      {f.paymentFile.name}
-                    </span>
-                  )}
+                  {f.paymentFile && <span className="text-sm text-white/80 truncate">{f.paymentFile.name}</span>}
                 </div>
               </Field>
 
               <div className="rounded-xl border border-white/15 bg-white/5 p-2 grid place-items-center">
-                {f.paymentPreview ? (
-                  <img
-                    src={f.paymentPreview}
-                    alt="Payment preview"
-                    className="max-h-40 rounded-lg object-contain"
-                  />
-                ) : (
-                  <div className="text-white/60 text-sm py-6">
-                    Preview will appear here
-                  </div>
-                )}
+                {f.paymentPreview
+                  ? <img src={f.paymentPreview} alt="Payment preview" className="max-h-40 rounded-lg object-contain"/>
+                  : <div className="text-white/60 text-sm py-6">Preview will appear here</div>}
               </div>
             </div>
 
             <div className="rounded-2xl border border-white/15 bg-white/[0.06] p-3">
               <div className="text-center text-sm text-white/80">Scan UPI QR</div>
-              <img
-                src={qrURL}
-                alt="UPI QR"
-                className="mt-2 w-full h-[240px] object-contain rounded-xl bg-black/20"
-                loading="lazy"
-                decoding="async"
-              />
+              <img src="https://i.postimg.cc/FK1VQQC7/Untitled-design-8.png" alt="UPI QR" className="mt-2 w-full h-[240px] object-contain rounded-xl bg-black/20" loading="lazy" decoding="async"/>
               <div className="mt-3 text-[12px] text-white/60 text-center">
-                After paying, upload your screenshot above. We store it in Drive, and the Sheet
-                gets the link.
+                After paying, upload your screenshot above. We store it in Drive, and the Sheet gets the link.
               </div>
             </div>
           </div>
@@ -782,42 +770,21 @@ export default function Register() {
 
         {/* Oath + Actions */}
         <NoirCard className="p-6 md:p-8 mt-8 mb-20">
-          <div className="text-sm uppercase tracking-[0.25em] text-white/60">
-            Chapter IV
-          </div>
-          <h2 className="mt-1 text-2xl md:text-3xl font-extrabold">
-            <Gilded>The Oath</Gilded>
-          </h2>
-          <p className="mt-2 text-white/80">
-            Two days. One stage. Bring your discipline, your design, your diplomacy.
-          </p>
+          <div className="text-sm uppercase tracking-[0.25em] text-white/60">IV • Finalise</div>
+          <h2 className="mt-1 text-2xl md:text-3xl font-extrabold"><Gilded>Confirm</Gilded></h2>
+          <p className="mt-2 text-white/80">Two days. One stage. Bring your discipline, your design, your diplomacy.</p>
           <div className="mt-5 flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={submit}
-              disabled={busy}
-              className={cls(
-                "inline-flex items-center gap-2 rounded-2xl px-5 py-3 border border-white/20 bg-white/15 hover:bg-white/25 text-white",
-                busy && "opacity-60 cursor-not-allowed"
-              )}
-            >
-              {busy ? <Loader2 className="animate-spin" size={18} /> : <Crown size={18} />}
+            <button onClick={submit} disabled={busy}
+              className={cls("inline-flex items-center gap-2 rounded-2xl px-5 py-3 border border-white/20 bg-white/15 hover:bg-white/25 text-white", busy && "opacity-60 cursor-not-allowed")}>
+              {busy ? <Loader2 className="animate-spin" size={18}/> : <Crown size={18}/>}
               {busy ? "Submitting…" : "Submit Registration"}
             </button>
-            <button
-              onClick={async () => {
-                localStorage.setItem(DRAFT_KEY, JSON.stringify(f));
-                if (loggedIn) await saveCloudDraft(user.id, f);
-                setToast({ type: "ok", text: "Draft saved." });
-              }}
-              className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 border border-white/20 bg-white/10 hover:bg-white/20 text-white"
-            >
+            <button onClick={async ()=>{ localStorage.setItem(DRAFT_KEY, JSON.stringify(f)); if (loggedIn) await saveCloudDraft(user.id, f); setToast({type:"ok", text:"Draft saved."});}}
+              className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 border border-white/20 bg-white/10 hover:bg-white/20 text-white">
               Save Draft
             </button>
-            <Link
-              to="/assistance"
-              className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 border border-white/20 bg-white/10 hover:bg-white/20 text-white"
-            >
-              Need help? <ChevronRight size={16} />
+            <Link to="/assistance" className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 border border-white/20 bg-white/10 hover:bg-white/20 text-white">
+              Need help? <ChevronRight size={16}/>
             </Link>
           </div>
         </NoirCard>
@@ -827,43 +794,22 @@ export default function Register() {
       <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] sm:w-auto">
         <div className="mx-auto max-w-3xl rounded-2xl border border-white/15 bg-white/[0.08] backdrop-blur px-4 py-2 text-[12px] text-white/80 text-center shadow-[0_20px_60px_rgba(0,0,0,.35)]">
           By registering and viewing this website you agree to{" "}
-          <a
-            href="https://noirmun.com/legal"
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-4 hover:text-white"
-          >
-            noirmun.com/legal
-          </a>
-          .
+          <a href="https://noirmun.com/legal" target="_blank" rel="noreferrer" className="underline underline-offset-4 hover:text-white">noirmun.com/legal</a>.
         </div>
       </div>
 
-      {/* toasts */}
+      {/* toast */}
       <AnimatePresence>
         {toast && (
-          <motion.div
-            initial={{ y: 16, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 16, opacity: 0 }}
-            className="fixed bottom-3 right-3 z-50"
-          >
-            <div
-              className={cls(
-                "rounded-xl px-3 py-2 border backdrop-blur text-sm flex items-center gap-2",
-                toast.type === "ok"
-                  ? "bg-emerald-400/15 border-emerald-300/30 text-emerald-100"
-                  : "bg-red-400/15 border-red-300/30 text-red-100"
-              )}
-            >
-              {toast.type === "ok" ? <CheckCircle2 size={16} /> : <Info size={16} />}
+          <motion.div initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }}
+            className="fixed bottom-3 right-3 z-50">
+            <div className={cls(
+              "rounded-xl px-3 py-2 border backdrop-blur text-sm flex items-center gap-2",
+              toast.type === "ok" ? "bg-emerald-400/15 border-emerald-300/30 text-emerald-100" : "bg-red-400/15 border-red-300/30 text-red-100"
+            )}>
+              {toast.type === "ok" ? <CheckCircle2 size={16}/> : <Info size={16}/>}
               <span>{toast.text}</span>
-              <button
-                onClick={() => setToast(null)}
-                className="ml-1 opacity-70 hover:opacity-100"
-              >
-                <X size={14} />
-              </button>
+              <button onClick={()=>setToast(null)} className="ml-1 opacity-70 hover:opacity-100"><X size={14}/></button>
             </div>
           </motion.div>
         )}
@@ -873,3 +819,6 @@ export default function Register() {
     </div>
   );
 }
+```
+
+If you want the select menu even tighter or with more glow/blur, tell me which part to push (e.g., “more highlight on active option”, “denser spacing on mobile”), and I’ll tweak the tokens.
