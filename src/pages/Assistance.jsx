@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LOGO_URL,
-  REGISTER_URL,
   WHATSAPP_ESCALATE,
   DATES_TEXT,
   COMMITTEES,
@@ -323,9 +322,7 @@ function WILTChat() {
             <div
               key={i}
               className={`max-w-[85%] mb-2 px-3 py-2 rounded-xl whitespace-pre-wrap leading-relaxed break-words ${
-                m.from === "bot"
-                  ? "border"
-                  : "ml-auto border"
+                m.from === "bot" ? "border" : "ml-auto border"
               }`}
               style={{
                 color: "var(--noir-ink)",
@@ -794,7 +791,7 @@ function EventKeycard() {
       </div>
 
       <div className="mt-3 flex gap-2 flex-wrap">
-        <a href={REGISTER_URL} target="_blank" rel="noreferrer"><Pill>Register <ExternalLink size={12}/></Pill></a>
+        <a href="https://noirmun.com/register" target="_blank" rel="noreferrer"><Pill>Register <ExternalLink size={12}/></Pill></a>
         <a href={WHATSAPP_ESCALATE} target="_blank" rel="noreferrer"><Pill>WhatsApp Exec</Pill></a>
       </div>
 
@@ -823,7 +820,7 @@ export default function Assistance() {
   }, []);
 
   return (
-    <div className="min-h-[100dvh] text-white relative pb-[calc(env(safe-area-inset-bottom,0)+8px)]">
+    <div className="min-h+[100dvh] text-white relative pb-[calc(env(safe-area-inset-bottom,0)+8px)]">
       <RomanBackdrop />
 
       {/* Header (logo links home) */}
@@ -839,7 +836,7 @@ export default function Assistance() {
         {/* Desktop nav (Register uses same Pill) */}
         <nav className="hidden sm:flex items-center gap-2">
           <Pill onClick={() => setFocus((v) => !v)}>{focus ? "Show Info" : "Focus Mode"}</Pill>
-          <a href={REGISTER_URL} target="_blank" rel="noreferrer"><Pill>Register <ExternalLink size={12}/></Pill></a>
+          <a href="https://noirmun.com/register" target="_blank" rel="noreferrer"><Pill>Register <ExternalLink size={12}/></Pill></a>
           <Link to="/"><Pill>Home</Pill></Link>
         </nav>
 
@@ -855,7 +852,7 @@ export default function Assistance() {
           <Pill onClick={() => { setFocus((v) => !v); setOpenMenu(false); }}>
             {focus ? "Show Info" : "Focus Mode"}
           </Pill>
-          <a href={REGISTER_URL} target="_blank" rel="noreferrer"><Pill>Register</Pill></a>
+          <a href="https://noirmun.com/register" target="_blank" rel="noreferrer"><Pill>Register</Pill></a>
           <Link to="/"><Pill>Home</Pill></Link>
         </div>
       )}
