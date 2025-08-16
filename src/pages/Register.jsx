@@ -563,7 +563,7 @@ export default function Register() {
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
                 <Gilded>Registration</Gilded> • Noir MUN 2025
               </h1>
-              <p className="mt-2 text-white/80">Concise, exact, and elegant—like a Roman inscription.</p>
+              <p className="mt-2 text-white/80">Dialouge Today, Impact Tomorrow.</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <a
                   href={matrixHref}
