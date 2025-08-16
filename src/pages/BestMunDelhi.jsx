@@ -1,6 +1,7 @@
 // src/pages/BestMunDelhi.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
   LOGO_URL,
   REGISTER_URL,
@@ -52,36 +53,129 @@ function useSEO() {
   }, []);
 }
 
+/* ---------- Atmosphere (copied from Home) ---------- */
+function Atmosphere() {
+  const star = useRef(null);
+  useEffect(() => {
+    const c = star.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    let w = (c.width = innerWidth),
+      h = (c.height = innerHeight);
+    const pts = Array.from({ length: 120 }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      v: Math.random() * 0.35 + 0.1,
+    }));
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(255,255,255,.4)";
+      pts.forEach((p) => {
+        p.y += p.v;
+        if (p.y > h) p.y = 0;
+        ctx.fillRect(p.x, p.y, 1, 1);
+      });
+      requestAnimationFrame(draw);
+    };
+    const onResize = () => {
+      w = (c.width = innerWidth);
+      h = (c.height = innerHeight);
+    };
+    addEventListener("resize", onResize);
+    draw();
+    return () => removeEventListener("resize", onResize);
+  }, []);
+  return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
+}
+
+/* ---------- Roman Layer (copied from Home) ---------- */
+function RomanLayer() {
+  const { scrollYProgress } = useScroll();
+  const yBust = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const yColumn = useTransform(scrollYProgress, [0, 1], [0, -160]);
+  const yLaurel = useTransform(scrollYProgress, [0, 1], [0, -60]);
+
+  const IMG_LEFT =
+    "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png";
+  const IMG_RIGHT =
+    "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png";
+  const IMG_CENTER =
+    "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png";
+
+  return (
+    <>
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]"
+        style={{
+          backgroundImage:
+            "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))",
+        }}
+      />
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <motion.div
+          style={{ y: yBust }}
+          className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+        />
+        <motion.div
+          style={{ y: yColumn }}
+          className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl"
+        />
+      </div>
+      <motion.img
+        src={IMG_LEFT}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[240px] md:w-[320px] opacity-[.55] md:opacity-[.75] mix-blend-screen select-none -z-10"
+        style={{ y: yBust, filter: "grayscale(60%) contrast(110%) blur(0.2px)" }}
+      />
+      <motion.img
+        src={IMG_RIGHT}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[230px] md:w-[310px] opacity-[.50] md:opacity-[.72] mix-blend-screen select-none -z-10"
+        style={{ y: yColumn, filter: "grayscale(60%) contrast(112%) blur(0.2px)" }}
+      />
+      <motion.img
+        src={IMG_CENTER}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
+        style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")",
+        }}
+      />
+    </>
+  );
+}
+
 export default function BestMunDelhi() {
   useSEO();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const staff = [
-    ["Sameer Jhamb", "Founder"],
-    ["Maahir Gulati", "Co-Founder"],
-    ["Gautam Khera", "President"],
-    ["Daanish Narang", "Chief Advisor"],
-    ["Vishesh Kumar", "Junior Advisor"],
-    ["Jhalak Batra", "Secretary General"],
-    ["Anushka Dua", "Director General"],
-    ["Mahi Choudharie", "Deputy Director General"],
-    ["Namya Negi", "Deputy Secretary General"],
-    ["Shambhavi Sharma", "Vice President"],
-    ["Shubh Dahiya", "Executive Director"],
-    ["Nimay Gupta", "Deputy Executive Director"],
-    ["Gauri Khatter", "Charge D'Affaires"],
-    ["Garima", "Conference Director"],
-    ["Madhav Sadana", "Conference Director"],
-    ["Shreyas Kalra", "Chef D Cabinet"],
-  ];
+  const { scrollYProgress } = useScroll();
+  const yHalo = useTransform(scrollYProgress, [0, 1], [0, -120]);
 
   return (
     <div className="min-h-screen text-white relative overflow-clip bg-black">
-      {/* Background */}
-      <div className="fixed inset-0 -z-20 bg-[radial-gradient(1200px_800px_at_80%_-20%,rgba(255,255,255,0.08),rgba(0,0,0,0)),radial-gradient(1000px_600px_at_10%_20%,rgba(255,255,255,0.06),rgba(0,0,0,0))]" />
-      <div
-        className="fixed inset-0 -z-10 opacity-[.06] pointer-events-none"
-        style={{ backgroundImage: "url('/noise.png')" }}
+      {/* Shared Background */}
+      <Atmosphere />
+      <RomanLayer />
+      <motion.div
+        className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl"
+        style={{ y: yHalo }}
+      />
+      <motion.div
+        className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl"
+        style={{ y: yHalo }}
       />
 
       {/* Header */}
@@ -137,22 +231,11 @@ export default function BestMunDelhi() {
             {/* Mobile burger */}
             <button
               aria-label="Toggle menu"
-              className="ml-auto sm:hidden inline-flex items-center justify-center rounded-lg p-2 hover:bg-white/10 active:scale-[.98]"
+              className="ml-auto sm:hidden inline-flex items-center justify-center rounded-lg p-2 hover:bg_white/10 hover:bg-white/10 active:scale-[.98]"
               onClick={() => setMenuOpen((s) => !s)}
             >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M4 7h16M4 12h16M4 17h16"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                />
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
               </svg>
             </button>
           </div>
@@ -196,16 +279,15 @@ export default function BestMunDelhi() {
 
       {/* Main */}
       <main className="max-w-7xl mx-auto px-3 sm:px-4 py-8 sm:py-12 space-y-12 sm:space-y-16">
-        {/* Hero / Why Noir */}
+        {/* Why Noir */}
         <section className="grid md:grid-cols-2 gap-6 sm:gap-10 items-start">
           <div>
             <h2 className="text-2xl sm:text-3xl font-extrabold leading-tight">
               Why Noir is Delhi NCR’s benchmark MUN
             </h2>
             <p className="mt-3 text-white/80 text-sm sm:text-base">
-              Noir MUN 2025 blends intellectual depth with production value:
-              carefully curated councils, dynamic crisis elements, and a
-              delegate-first ethos. This is where debate feels cinematic.
+              Noir MUN 2025 blends intellectual depth with production value: carefully curated councils,
+              dynamic crisis elements, and a delegate-first ethos. This is where debate feels cinematic.
             </p>
             <ul className="mt-4 list-disc list-inside text-white/80 space-y-1 text-sm sm:text-base">
               <li>Executive Board with national & international credentials</li>
@@ -213,8 +295,6 @@ export default function BestMunDelhi() {
               <li>Integrated media, coverage, and press engagement</li>
               <li>Affordable fee without compromise on scale</li>
             </ul>
-
-            {/* Mobile CTA block width */}
             <a
               href={REGISTER_URL}
               target="_blank"
@@ -229,14 +309,10 @@ export default function BestMunDelhi() {
             <h3 className="text-lg sm:text-xl font-bold">Councils at Noir 2025</h3>
             <ul className="mt-3 space-y-2 text-white/80 text-sm sm:text-base">
               {COMMITTEES.map((c) => (
-                <li key={c.name}>
-                  <span className="font-semibold">{c.name}</span> — {c.agenda}
-                </li>
+                <li key={c.name}><span className="font-semibold">{c.name}</span> — {c.agenda}</li>
               ))}
             </ul>
-            <div className="mt-4 text-xs sm:text-sm text-white/60">
-              Detailed study guides & dossiers available post-allocation.
-            </div>
+            <div className="mt-4 text-xs sm:text-sm text-white/60">Detailed study guides & dossiers available post-allocation.</div>
           </div>
         </section>
 
@@ -244,9 +320,7 @@ export default function BestMunDelhi() {
         <section className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
           <div className="rounded-2xl border border-white/15 p-5 sm:p-6 bg-white/[0.04]">
             <h3 className="text-base sm:text-lg font-bold">Dates & Venue</h3>
-            <p className="mt-2 text-white/80 text-sm sm:text-base">
-              {DATES_TEXT} • Faridabad (Venue TBA)
-            </p>
+            <p className="mt-2 text-white/80 text-sm sm:text-base">{DATES_TEXT} • Faridabad (Venue TBA)</p>
           </div>
           <div className="rounded-2xl border border-white/15 p-5 sm:p-6 bg-white/[0.04]">
             <h3 className="text-base sm:text-lg font-bold">Delegate Fee</h3>
@@ -264,15 +338,19 @@ export default function BestMunDelhi() {
 
         {/* Team */}
         <section>
-          <h2 className="text-xl sm:text-2xl font-extrabold">
-            Executive & Advisory Team
-          </h2>
+          <h2 className="text-xl sm:text-2xl font-extrabold">Executive & Advisory Team</h2>
           <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {staff.map(([n, r]) => (
-              <div
-                key={n}
-                className="rounded-xl border border-white/15 p-4 bg-white/[0.04]"
-              >
+            {[
+              ["Sameer Jhamb", "Founder"], ["Maahir Gulati", "Co-Founder"], ["Gautam Khera", "President"],
+              ["Daanish Narang", "Chief Advisor"], ["Vishesh Kumar", "Junior Advisor"],
+              ["Jhalak Batra", "Secretary General"], ["Anushka Dua", "Director General"],
+              ["Mahi Choudharie", "Deputy Director General"], ["Namya Negi", "Deputy Secretary General"],
+              ["Shambhavi Sharma", "Vice President"], ["Shubh Dahiya", "Executive Director"],
+              ["Nimay Gupta", "Deputy Executive Director"], ["Gauri Khatter", "Charge D'Affaires"],
+              ["Garima", "Conference Director"], ["Madhav Sadana", "Conference Director"], ["Shreyas Kalra", "Chef D Cabinet"],
+              ["Ikshit Sethi", "Convenor"], // included here as well for consistency
+            ].map(([n, r]) => (
+              <div key={n} className="rounded-xl border border-white/15 p-4 bg-white/[0.04]">
                 <div className="font-semibold text-sm sm:text-base">{n}</div>
                 <div className="text-white/70 text-xs sm:text-sm">{r}</div>
               </div>
@@ -284,48 +362,16 @@ export default function BestMunDelhi() {
         <section>
           <h2 className="text-xl sm:text-2xl font-extrabold">FAQs</h2>
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 text-white/80">
-            <div>
-              <h4 className="font-semibold text-sm sm:text-base">
-                Beginner-friendly?
-              </h4>
-              <p className="mt-1 text-sm sm:text-base">
-                Absolutely. Briefs and moderated formats make it easy for
-                first-timers.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm sm:text-base">
-                Crisis elements?
-              </h4>
-              <p className="mt-1 text-sm sm:text-base">
-                Select councils integrate crisis mechanics and directives for
-                dynamic debate.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm sm:text-base">Updates?</h4>
-              <p className="mt-1 text-sm sm:text-base">
-                Register for direct updates or use our WhatsApp escalation on
-                Home.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm sm:text-base">
-                Why “best” in Delhi NCR?
-              </h4>
-              <p className="mt-1 text-sm sm:text-base">
-                Quality EB, production scale, delegate-centric design, and
-                transparent logistics.
-              </p>
-            </div>
+            <div><h4 className="font-semibold text-sm sm:text-base">Beginner-friendly?</h4><p className="mt-1 text-sm sm:text-base">Absolutely. Briefs and moderated formats make it easy for first-timers.</p></div>
+            <div><h4 className="font-semibold text-sm sm:text-base">Crisis elements?</h4><p className="mt-1 text-sm sm:text-base">Select councils integrate crisis mechanics and directives for dynamic debate.</p></div>
+            <div><h4 className="font-semibold text-sm sm:text-base">Updates?</h4><p className="mt-1 text-sm sm:text-base">Register for direct updates or use our WhatsApp escalation on Home.</p></div>
+            <div><h4 className="font-semibold text-sm sm:text-base">Why “best” in Delhi NCR?</h4><p className="mt-1 text-sm sm:text-base">Quality EB, production scale, delegate-centric design, and transparent logistics.</p></div>
           </div>
         </section>
 
         {/* Call to Action */}
         <section className="rounded-2xl border border-white/15 p-6 sm:p-8 bg-white/[0.04] text-center">
-          <h3 className="text-lg sm:text-xl font-bold">
-            Ready to join Delhi NCR’s leading MUN?
-          </h3>
+          <h3 className="text-lg sm:text-xl font-bold">Ready to join Delhi NCR’s leading MUN?</h3>
           <a
             href={REGISTER_URL}
             target="_blank"
@@ -335,11 +381,7 @@ export default function BestMunDelhi() {
             Register for Noir MUN 2025
           </a>
           <div className="mt-3 text-white/70 text-xs sm:text-sm">
-            Need help? Visit{" "}
-            <Link to="/assistance" className="underline">
-              MUN Assistance
-            </Link>
-            .
+            Need help? Visit <Link to="/assistance" className="underline">MUN Assistance</Link>.
           </div>
         </section>
       </main>
@@ -359,57 +401,26 @@ export default function BestMunDelhi() {
           {/* Column 2 */}
           <div className="space-y-2">
             <div className="font-semibold text-white/90">Navigation</div>
-            <Link to="/" className="block text-white/70 hover:text-white">
-              Home
-            </Link>
-            <a
-              href={REGISTER_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="block text-white/70 hover:text-white"
-            >
-              Register
-            </a>
-            <Link to="/assistance" className="block text-white/70 hover:text-white">
-              Assistance
-            </Link>
-            <Link to="/committees" className="block text-white/70 hover:text-white">
-              Committees
-            </Link>
+            <Link to="/" className="block text-white/70 hover:text-white">Home</Link>
+            <a href={REGISTER_URL} target="_blank" rel="noreferrer" className="block text-white/70 hover:text-white">Register</a>
+            <Link to="/assistance" className="block text-white/70 hover:text-white">Assistance</Link>
+            <Link to="/committees" className="block text-white/70 hover:text-white">Committees</Link>
           </div>
 
           {/* Column 3 */}
           <div className="space-y-2">
             <div className="font-semibold text-white/90">Committees</div>
             {COMMITTEES.slice(0, 4).map((c) => (
-              <div key={c.name} className="text-white/70">
-                {c.name}
-              </div>
+              <div key={c.name} className="text-white/70">{c.name}</div>
             ))}
-            <Link to="/committees" className="text-white/70 hover:text-white">
-              View all
-            </Link>
+            <Link to="/committees" className="text-white/70 hover:text-white">View all</Link>
           </div>
 
           {/* Column 4 */}
           <div className="space-y-2">
             <div className="font-semibold text-white/90">Socials</div>
-            <a
-              href="https://instagram.com/noirmun"
-              target="_blank"
-              rel="noreferrer"
-              className="block text-white/70 hover:text-white"
-            >
-              Instagram
-            </a>
-            <a
-              href="https://linktr.ee/noirmun"
-              target="_blank"
-              rel="noreferrer"
-              className="block text-white/70 hover:text-white"
-            >
-              Linktree
-            </a>
+            <a href="https://instagram.com/noirmun" target="_blank" rel="noreferrer" className="block text-white/70 hover:text-white">Instagram</a>
+            <a href="https://linktr.ee/noirmun" target="_blank" rel="noreferrer" className="block text-white/70 hover:text-white">Linktree</a>
           </div>
         </div>
         <div className="text-center text-[11px] text-white/60 py-3 border-t border-white/10">
@@ -421,10 +432,6 @@ export default function BestMunDelhi() {
       <style>{`
         :root { --theme: ${THEME_HEX}; }
         a { color: #fff; -webkit-tap-highlight-color: transparent; }
-        /* Smaller phones: tighten spacing but keep readability */
-        @media (max-width: 360px) {
-          h1 { font-size: 0.95rem; }
-        }
       `}</style>
     </div>
   );
