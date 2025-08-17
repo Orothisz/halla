@@ -80,7 +80,6 @@ function PortalDropdown({ anchorRef, open, onClose, width, children }) {
     }
   }, [open, anchorRef, width, onClose]);
   if (!open) return null;
-  // FIX: z-index class typo
   return createPortal(<div className="fixed z-[9999]" style={{ top: box.top, left: box.left, width: box.width }}>{children}</div>, document.body);
 }
 function FancySelect({ value, onChange, options, className = "", disabled=false }) {
@@ -182,9 +181,10 @@ export default function Adminv1() {
   const [lastSynced, setLastSynced] = useState("");
   const [piiMask, setPiiMask] = useState(recall("adm.piiMask", true));
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(recall("adm.pageSize", 50));
-  const [selectedIds, setSelectedIds] = useState(new Set()); // single source of truth
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [cols, setCols] = useState(recall("adm.cols", { email:true, phone:true, committee:true, portfolio:true, status:true }));
-  const [sourcePref, setSourcePref] = useState(recall("adm.kpiSource","grid"));
+  // DEFAULT TO "totals" to avoid grid≠totals surprises
+  const [sourcePref, setSourcePref] = useState(recall("adm.kpiSource","totals"));
   const [toast, setToast] = useState([]);
   const [health, setHealth] = useState({ da: null, dc: null, mismatched: false, paid: {grid:null, totals:null}, unpaid: {grid:null, totals:null} });
 
@@ -198,33 +198,37 @@ export default function Adminv1() {
   useEffect(() => persist("adm.kpiSource", sourcePref), [sourcePref]);
   useEffect(() => { setPage(1); }, [qDeb, status, committee]);
 
-  /* Endpoints (using Vercel proxies via VITE_ envs) */
-  const API_URL = (import.meta.env.VITE_DAPRIVATE_API_URL || "").trim();   // e.g. "/api/daprivate"
-  const DC_URL  = (import.meta.env.VITE_DELCOUNT_JSON_URL || "").trim();   // e.g. "/api/delcount"
+  /* Endpoints (Vercel proxies) */
+  const API_URL = (import.meta.env.VITE_DAPRIVATE_API_URL || "").trim();
+  const DC_URL  = (import.meta.env.VITE_DELCOUNT_JSON_URL || "").trim();
 
   /* Normalizers */
   const normalizeRows = useCallback((arr) => {
-    const norm = (arr || []).filter(r => r && (r.full_name || r.email || r.phone)).map((r, i) => {
-      const out = {
-        id: Number(r.id || r.sno || i + 1),
-        full_name: r.full_name || r.name || "",
-        email: r.email || "",
-        phone: r.phone || r["phone no."] || "",
-        alt_phone: r.alt_phone || r.alternate || "",
-        committee_pref1: r.committee_pref1 || r.committee || "",
-        portfolio_pref1: r.portfolio_pref1 || r.portfolio || "",
-        mail_sent: r.mail_sent || r["mail sent"] || "",
-        payment_status: OUT_TO_UI(r.payment_status),
-      };
-      out._slab = S([out.full_name, out.email, out.phone, out.committee_pref1, out.portfolio_pref1].join(" "));
-      return out;
-    });
+    // Accept common upstream variants so nothing gets dropped accidentally
+    const norm = (arr || [])
+      .filter(r => r && (r.full_name || r.name || r.email || r.phone || r["phone no."]))
+      .map((r, i) => {
+        const out = {
+          id: Number(r.id || r.sno || i + 1),
+          full_name: r.full_name || r.name || "",
+          email: r.email || "",
+          phone: r.phone || r["phone no."] || "",
+          alt_phone: r.alt_phone || r.alternate || "",
+          committee_pref1: r.committee_pref1 || r.committee || "",
+          portfolio_pref1: r.portfolio_pref1 || r.portfolio || "",
+          mail_sent: r.mail_sent || r["mail sent"] || "",
+          // Accept both upstream encodings
+          payment_status: OUT_TO_UI(r.payment_status || r.status || ""),
+        };
+        out._slab = S([out.full_name, out.email, out.phone, out.committee_pref1, out.portfolio_pref1].join(" "));
+        return out;
+      });
     const setC = new Set(); norm.forEach((r) => r.committee_pref1 && setC.add(r.committee_pref1));
     setCommittees(Array.from(setC).sort());
     return norm;
   }, []);
 
-  /* KPI compute (STRICT: top summary B6/B8) */
+  /* KPI compute */
   const computeKPI = useCallback((dcJson) => {
     const grid = Array.isArray(dcJson?.grid) ? dcJson.grid : null;
     const B = (row1) => numify(grid?.[row1-1]?.[1]);
