@@ -80,7 +80,8 @@ function PortalDropdown({ anchorRef, open, onClose, width, children }) {
     }
   }, [open, anchorRef, width, onClose]);
   if (!open) return null;
-  return createPortal(<div className="fixed z[9999]" style={{ top: box.top, left: box.left, width: box.width }}>{children}</div>, document.body);
+  // FIX: z-index class typo
+  return createPortal(<div className="fixed z-[9999]" style={{ top: box.top, left: box.left, width: box.width }}>{children}</div>, document.body);
 }
 function FancySelect({ value, onChange, options, className = "", disabled=false }) {
   const [open, setOpen] = useState(false);
@@ -181,7 +182,7 @@ export default function Adminv1() {
   const [lastSynced, setLastSynced] = useState("");
   const [piiMask, setPiiMask] = useState(recall("adm.piiMask", true));
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(recall("adm.pageSize", 50));
-  const [selectedIds, setSelectedIds] = useState(new Set()); // <-- single source of truth
+  const [selectedIds, setSelectedIds] = useState(new Set()); // single source of truth
   const [cols, setCols] = useState(recall("adm.cols", { email:true, phone:true, committee:true, portfolio:true, status:true }));
   const [sourcePref, setSourcePref] = useState(recall("adm.kpiSource","grid"));
   const [toast, setToast] = useState([]);
@@ -197,9 +198,9 @@ export default function Adminv1() {
   useEffect(() => persist("adm.kpiSource", sourcePref), [sourcePref]);
   useEffect(() => { setPage(1); }, [qDeb, status, committee]);
 
-  /* Endpoints (fix: accept either env name) */
-  const API_URL = (import.meta.env.VITE_DAPRIVATE_API_URL || import.meta.env.VITE_DAPRIVATE_JSON_URL || "").trim();
-  const DC_URL  = (import.meta.env.VITE_DELCOUNT_JSON_URL || "").trim();
+  /* Endpoints (using Vercel proxies via VITE_ envs) */
+  const API_URL = (import.meta.env.VITE_DAPRIVATE_API_URL || "").trim();   // e.g. "/api/daprivate"
+  const DC_URL  = (import.meta.env.VITE_DELCOUNT_JSON_URL || "").trim();   // e.g. "/api/delcount"
 
   /* Normalizers */
   const normalizeRows = useCallback((arr) => {
@@ -223,7 +224,7 @@ export default function Adminv1() {
     return norm;
   }, []);
 
-  /* KPI compute (STRICT: top summary B6/B7/B8) */
+  /* KPI compute (STRICT: top summary B6/B8) */
   const computeKPI = useCallback((dcJson) => {
     const grid = Array.isArray(dcJson?.grid) ? dcJson.grid : null;
     const B = (row1) => numify(grid?.[row1-1]?.[1]);
@@ -257,16 +258,26 @@ export default function Adminv1() {
     if (!silent) setLoading(true);
     setKpiStale(false);
     const controller = new AbortController();
-    const timeout = setTimeout(()=>controller.abort(),8000);
-    const fetchJson = async (url) => {
+    const timeout = setTimeout(()=>controller.abort(),12000);
+
+    const fetchJson = async (url, opts = {}) => {
       const t0 = performance.now();
       try {
-        const r = await fetch(`${url}${url.includes("?")?"&":"?"}t=${Date.now()}`, { cache:"no-store", signal:controller.signal });
+        const r = await fetch(`${url}${url.includes("?")?"&":"?"}t=${Date.now()}`, {
+          cache:"no-store",
+          signal:controller.signal,
+          ...opts,
+        });
         const ms = Math.round(performance.now()-t0);
-        if (!r.ok) return { ok:false, ms, json:null, status:r.status };
-        const json = await r.json(); return { ok:true, ms, json, status:r.status };
-      } catch { const ms = Math.round(performance.now()-t0); return { ok:false, ms, json:null, status:0 }; }
+        let json = null;
+        try { json = await r.json(); } catch { json = null; }
+        return { ok:r.ok, ms, json, status:r.status };
+      } catch {
+        const ms = Math.round(performance.now()-t0);
+        return { ok:false, ms, json:null, status:0 };
+      }
     };
+
     try {
       const [da, dc] = await Promise.all([
         API_URL ? fetchJson(API_URL) : Promise.resolve({ ok:false }),
@@ -306,7 +317,7 @@ export default function Adminv1() {
   const start = (pageClamped-1)*pageSize;
   const pageRows = visible.slice(start, start+pageSize);
 
-  /* Bulk selection (FIXED: single state) */
+  /* Bulk selection */
   const allOnPageSelected = pageRows.length>0 && pageRows.every(r=>selectedIds.has(r.id));
   const toggleRowSel = (id) => setSelectedIds(s => { const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
   const togglePageSel = () => setSelectedIds(s => { const n=new Set(s); if (allOnPageSelected) pageRows.forEach(r=>n.delete(r.id)); else pageRows.forEach(r=>n.add(r.id)); return n; });
@@ -353,7 +364,7 @@ export default function Adminv1() {
       if(r) // eslint-disable-next-line no-await-in-loop
         await saveRow(r,{payment_status:newStatus});
     }
-    setSelectedIds(new Set()); // FIXED: clear using the single setter
+    setSelectedIds(new Set());
     addToast("Bulk update complete","ok");
   }
 
