@@ -1,5 +1,6 @@
-// Serverless proxy for Apps Script (DAPrivate)
-export const config = { runtime: 'nodejs20' };
+// Proxy to Apps Script (DAPrivate)
+// NOTE: Vercel accepts only "nodejs" here (or omit entirely).
+export const config = { runtime: 'nodejs' };
 
 function allowCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -8,8 +9,7 @@ function allowCors(res) {
 }
 
 async function readBody(req) {
-  // Vercel may already parse JSON; otherwise collect the raw body
-  if (req.body && typeof req.body === 'object') return req.body;
+  if (req.body && typeof req.body === 'object') return req.body; // already parsed
   return new Promise((resolve) => {
     let buf = '';
     req.on('data', (c) => (buf += c));
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   allowCors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  const TARGET = process.env.DAPRIVATE_TARGET; // e.g. https://script.google.com/macros/s/.../exec
+  const TARGET = process.env.DAPRIVATE_TARGET; // https://script.google.com/macros/s/.../exec
   if (!TARGET) return res.status(500).json({ ok: false, error: 'DAPRIVATE_TARGET env missing' });
 
   const ac = new AbortController();
