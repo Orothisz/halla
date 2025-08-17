@@ -60,20 +60,12 @@ function normalizeRow(r, i) {
 
 // DelCount → KPI
 // Your sheet indexes (1-indexed): B8 = Paid, B9 = Unpaid
+// DelCount → KPI (explicit rows 8 + 9, col B)
 function kpiFromDelCount(json) {
   const grid = json?.rows || json?.values || json?.grid || [];
-  // 0-indexed rows: 7 -> B8, 8 -> B9
-  let paid   = numify(grid?.[7]?.[1]);
-  let unpaid = numify(grid?.[8]?.[1]);
-
-  // header-based fallback if positions move
-  if ((!paid && !unpaid) && Array.isArray(grid) && grid.length) {
-    for (const row of grid) {
-      const label = S(row?.[0]);
-      if (label.startsWith("paid"))   paid   = numify(row?.[1]);
-      if (label.startsWith("unpaid")) unpaid = numify(row?.[1]);
-    }
-  }
+  // defensive: 0-indexed, so row 7 = Excel row 8, row 8 = Excel row 9
+  const paid   = numify(grid?.[7]?.[1]); // row 8 col B
+  const unpaid = numify(grid?.[8]?.[1]); // row 9 col B
 
   const total =
     numify(json?.totals?.delegates ?? json?.totals?.total) ||
@@ -82,6 +74,7 @@ function kpiFromDelCount(json) {
 
   return { total, paid, unpaid, rejected: 0 };
 }
+
 
 /* ---------------- Portal dropdown (light theme, never clipped) ---------------- */
 function PortalDropdown({ anchorRef, open, onClose, width, children }) {
