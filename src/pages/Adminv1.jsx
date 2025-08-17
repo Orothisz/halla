@@ -1,3 +1,4 @@
+// src/pages/Adminv1.jsx
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
@@ -79,7 +80,7 @@ function PortalDropdown({ anchorRef, open, onClose, width, children }) {
     }
   }, [open, anchorRef, width, onClose]);
   if (!open) return null;
-  return createPortal(<div className="fixed z-[9999]" style={{ top: box.top, left: box.left, width: box.width }}>{children}</div>, document.body);
+  return createPortal(<div className="fixed z[9999]" style={{ top: box.top, left: box.left, width: box.width }}>{children}</div>, document.body);
 }
 function FancySelect({ value, onChange, options, className = "", disabled=false }) {
   const [open, setOpen] = useState(false);
@@ -180,7 +181,7 @@ export default function Adminv1() {
   const [lastSynced, setLastSynced] = useState("");
   const [piiMask, setPiiMask] = useState(recall("adm.piiMask", true));
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(recall("adm.pageSize", 50));
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [selectedIds, setSelectedIds] = useState(new Set()); // <-- single source of truth
   const [cols, setCols] = useState(recall("adm.cols", { email:true, phone:true, committee:true, portfolio:true, status:true }));
   const [sourcePref, setSourcePref] = useState(recall("adm.kpiSource","grid"));
   const [toast, setToast] = useState([]);
@@ -225,12 +226,12 @@ export default function Adminv1() {
   /* KPI compute (STRICT: top summary B6/B7/B8) */
   const computeKPI = useCallback((dcJson) => {
     const grid = Array.isArray(dcJson?.grid) ? dcJson.grid : null;
-    const B = (row1) => numify(grid?.[row1-1]?.[1]); // B = index 2 (1-based), so [1] in 0-based
+    const B = (row1) => numify(grid?.[row1-1]?.[1]);
     let g = { total:null, paid:null, unpaid:null };
     if (grid) {
-      g.total  = B(6); // TOTAL DELEGATES (row 6, col B)
-      g.paid   = B(7); // PAID
-      g.unpaid = B(8); // UNPAID
+      g.total  = B(6);
+      g.paid   = B(7);
+      g.unpaid = B(8);
       if (!g.total && (g.paid!=null || g.unpaid!=null)) g.total = (g.paid||0) + (g.unpaid||0);
     }
     const t = {
@@ -305,11 +306,10 @@ export default function Adminv1() {
   const start = (pageClamped-1)*pageSize;
   const pageRows = visible.slice(start, start+pageSize);
 
-  /* Bulk selection */
-  const [selectedIds, setSel] = useState(new Set());
+  /* Bulk selection (FIXED: single state) */
   const allOnPageSelected = pageRows.length>0 && pageRows.every(r=>selectedIds.has(r.id));
-  const toggleRowSel=(id)=>setSel(s=>{const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n;});
-  const togglePageSel=()=>setSel(s=>{const n=new Set(s); if (allOnPageSelected) pageRows.forEach(r=>n.delete(r.id)); else pageRows.forEach(r=>n.add(r.id)); return n;});
+  const toggleRowSel = (id) => setSelectedIds(s => { const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
+  const togglePageSel = () => setSelectedIds(s => { const n=new Set(s); if (allOnPageSelected) pageRows.forEach(r=>n.delete(r.id)); else pageRows.forEach(r=>n.add(r.id)); return n; });
 
   /* Toasts & Undo */
   const addToast=(text,tone="default",ms=3000)=>{const id=Math.random().toString(36).slice(2); setToast(t=>[...t,{id,text,tone}]); if(ms) setTimeout(()=>setToast(t=>t.filter(x=>x.id!==id)),ms);};
@@ -345,11 +345,16 @@ export default function Adminv1() {
       setRows(rs=>rs.map(x=>x.id===row.id?row:x)); addToast("Update failed","error");
     }
   }
-  async function bulkStatus(newStatus){ const ids=Array.from(selectedIds); if(!ids.length) return;
+  async function bulkStatus(newStatus){
+    const ids=Array.from(selectedIds); if(!ids.length) return;
     addToast(`Updating ${ids.length} rows…`,"default",2000);
-    for (const id of ids){ const r=rows.find(x=>x.id===id); if(r) // eslint-disable-next-line no-await-in-loop
-      await saveRow(r,{payment_status:newStatus}); }
-    setSel(new Set()); addToast("Bulk update complete","ok");
+    for (const id of ids){
+      const r=rows.find(x=>x.id===id);
+      if(r) // eslint-disable-next-line no-await-in-loop
+        await saveRow(r,{payment_status:newStatus});
+    }
+    setSelectedIds(new Set()); // FIXED: clear using the single setter
+    addToast("Bulk update complete","ok");
   }
 
   /* Logs & health */
