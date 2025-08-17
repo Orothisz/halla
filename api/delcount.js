@@ -1,5 +1,5 @@
-// Serverless proxy for Apps Script (DelCount)
-export const config = { runtime: 'nodejs20' };
+// Proxy to Apps Script (DelCount)
+export const config = { runtime: 'nodejs' };
 
 function allowCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   allowCors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  const TARGET = process.env.DELCOUNT_TARGET; // e.g. https://script.google.com/macros/s/.../exec
+  const TARGET = process.env.DELCOUNT_TARGET; // https://script.google.com/macros/s/.../exec
   if (!TARGET) return res.status(500).json({ ok: false, error: 'DELCOUNT_TARGET env missing' });
 
   const ac = new AbortController();
