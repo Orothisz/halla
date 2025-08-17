@@ -64,24 +64,32 @@ function normalizeRow(r, i) {
 // DelCount → KPI (read from Apps Script totals)
 // DelCount → KPI
 // Prefers raw grid (row 7 & 8, col B), falls back to totals.* if grid missing
+// DelCount → KPI (STRICT: Paid = row7 colB, Unpaid = row8 colB; 1-based)
 function kpiFromDelCount(json) {
   let paid = 0, unpaid = 0, total = 0, rejected = 0;
 
-  // Try raw grid first: 1-based row7/8 -> 0-based [6]/[7], col B -> index [1]
-  const grid = json?.rows || json?.values || json?.grid;
-  if (Array.isArray(grid) && grid.length >= 8) {
-    paid   = numify(grid?.[6]?.[1]); // row 7, col B
-    unpaid = numify(grid?.[7]?.[1]); // row 8, col B
-    // TOTAL DELEGATES is row 6, col B in your sheet (1-based) -> [5][1]
-    total  = numify(grid?.[5]?.[1]) || (paid + unpaid);
+  // Prefer raw grid if present (you added payload.grid in Apps Script)
+  const grid = json?.grid || json?.rows || json?.values;
+  if (Array.isArray(grid)) {
+    total  = numify(grid?.[5]?.[1]); // row 6, col B
+    paid   = numify(grid?.[6]?.[1]); // row 7, col B  ✅
+    unpaid = numify(grid?.[7]?.[1]); // row 8, col B  ✅
   }
 
-  // Fallback to the totals object from your Apps Script, if grid not present
-  if (!(paid || unpaid)) {
+  // Fallback to totals only if grid is missing
+  if (!Array.isArray(grid)) {
+    total  = numify(json?.totals?.delegates);
     paid   = numify(json?.totals?.paid);
     unpaid = numify(json?.totals?.unpaid);
-    total  = numify(json?.totals?.delegates) || (paid + unpaid);
   }
+
+  rejected = numify(json?.totals?.cancellations);
+  // final fallback for total
+  if (!total) total = paid + unpaid;
+
+  return { total, paid, unpaid, rejected };
+}
+
 
   // Show cancellations in "Rejected" card (as you had)
   rejected = numify(json?.totals?.cancellations);
