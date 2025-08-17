@@ -9,7 +9,7 @@ import {
 import { supabase } from "../lib/supabase";
 import { LOGO_URL } from "../shared/constants";
 
-/* ---------------- Background (simpler/cleaner) ---------------- */
+/* ---------------- Background (simple / subtle) ---------------- */
 function NoirBg() {
   return (
     <>
@@ -30,7 +30,13 @@ function useDebounced(value, delay = 160) {
   return v;
 }
 
-// map PAID/CANCELLED/"" -> paid/unpaid/rejected
+// "33", "33.0", "33 delegates" → 33
+const numify = (x) => {
+  const n = Number(String(x ?? "").replace(/[^\d.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+};
+
+// map PAID / CANCELLED / "" → paid / rejected / unpaid
 function statusFromSheet(val) {
   const x = S(val);
   if (x.includes("cancel")) return "rejected";
@@ -53,7 +59,32 @@ function normalizeRow(r, i) {
   };
 }
 
-/* ---------------- Portal dropdown (light theme) ---------------- */
+// DelCount → KPI
+// Accepts shapes:
+//   { totals: { paid, unpaid, delegates } }
+//   { rows | values | grid: 2D array }, where B7=paid, B8=unpaid (1-indexed)
+function kpiFromDelCount(json) {
+  const grid = json?.rows || json?.values || json?.grid || [];
+  let paid   = numify(grid?.[6]?.[1]); // row 7, col B
+  let unpaid = numify(grid?.[7]?.[1]); // row 8, col B
+
+  if ((!paid && !unpaid) && Array.isArray(grid) && grid.length) {
+    for (const row of grid) {
+      const label = S(row?.[0]);
+      if (label.startsWith("paid"))   paid   = numify(row?.[1]);
+      if (label.startsWith("unpaid")) unpaid = numify(row?.[1]);
+    }
+  }
+
+  const total =
+    numify(json?.totals?.delegates ?? json?.totals?.total) ||
+    numify(grid?.[5]?.[1]) || // sometimes "TOTAL DELEGATES" at row 6 col B
+    (paid + unpaid);
+
+  return { total, paid, unpaid, rejected: 0 };
+}
+
+/* ---------------- Portal dropdown (light theme, never clipped) ---------------- */
 function PortalDropdown({ anchorRef, open, onClose, width, children }) {
   const [box, setBox] = useState({ top: 0, left: 0, width: 200 });
   useEffect(() => {
@@ -148,7 +179,7 @@ function InlineEdit({ value, onSave, placeholder = "—" }) {
 
 /* ---------------- Page ---------------- */
 export default function Adminv1() {
-  // session for greeting & logs
+  // session (greeting + logs)
   const [me, setMe] = useState({ id: null, email: "", name: "" });
   useEffect(() => {
     (async () => {
@@ -157,28 +188,27 @@ export default function Adminv1() {
       if (user) {
         const { data: prof } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
         setMe({
-          id: user.id,
-          email: user.email,
+          id: user.id, email: user.email,
           name: prof?.full_name || user.user_metadata?.name || (user.email ? user.email.split("@")[0] : "admin"),
         });
       }
     })();
   }, []);
 
-  // data + ui state
+  // state
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [breakdown, setBreakdown] = useState([]);
   const [committees, setCommittees] = useState([]);
   const [q, setQ] = useState("");
   const qDeb = useDebounced(q, 200);
-  const [status, setStatus] = useState("all");        // paid | unpaid | rejected
+  const [status, setStatus] = useState("all");   // paid | unpaid | rejected
   const [committee, setCommittee] = useState("all");
-  const [tab, setTab] = useState("delegates");       // delegates | history
+  const [tab, setTab] = useState("delegates");   // delegates | history
   const [logs, setLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
-  // KPIs from DelCount rows (row7/row8 col B), with robust fallbacks
+  // KPIs from DelCount (B7/B8 are source of truth)
   const [kpi, setKpi] = useState({ total: 0, paid: 0, unpaid: 0, rejected: 0 });
 
   useEffect(() => { fetchAll(); }, []);
@@ -205,18 +235,9 @@ export default function Adminv1() {
         const res = await fetch(DC_URL, { cache: "no-store" });
         if (!res.ok) throw new Error(`DelCount fetch ${res.status}`);
         const json = await res.json();
+        setKpi(kpiFromDelCount(json));
 
-        // Accept flexible shapes:
-        // 1) { totals: { paid, unpaid, delegates } }
-        // 2) { rows: [[A1,B1,...], ...] } where paid=rows[6][1], unpaid=rows[7][1], total=rows[0 or 5][1]
-        // 3) { grid: same as rows }
-        const rowsGrid = json.rows || json.grid || [];
-        const tPaid  = Number(json?.totals?.paid ?? (rowsGrid?.[6]?.[1])) || 0; // row7 col B => [6][1]
-        const tUnpd  = Number(json?.totals?.unpaid ?? (rowsGrid?.[7]?.[1])) || 0; // row8 col B => [7][1]
-        const tTotal = Number(json?.totals?.delegates ?? json?.totals?.total ?? (rowsGrid?.[5]?.[1] ?? rowsGrid?.[0]?.[1])) || (tPaid + tUnpd);
-
-        setKpi({ total: tTotal, paid: tPaid, unpaid: tUnpd, rejected: 0 });
-
+        // optional committee breakdown
         const committeesJson = json?.committees || {};
         const bd = Object.keys(committeesJson).map((name) => ({
           name,
@@ -226,7 +247,7 @@ export default function Adminv1() {
         }));
         setBreakdown(bd);
       } else {
-        // fallback KPIs from DA PRIVATE if DelCount missing
+        // fallback if no DelCount endpoint is provided
         const paid = rows.filter((r) => r.payment_status === "paid").length;
         const rej  = rows.filter((r) => r.payment_status === "rejected").length;
         const total = rows.length;
@@ -238,7 +259,7 @@ export default function Adminv1() {
     } finally { setLoading(false); }
   }
 
-  // search + filters
+  // filters
   const visible = useMemo(() => {
     const qq = S(qDeb);
     return rows.filter((r) => {
@@ -252,24 +273,23 @@ export default function Adminv1() {
 
   // export
   function exportCSV() {
-    const headers = ["id", "full_name", "email", "phone", "alt_phone", "committee_pref1", "portfolio_pref1", "mail_sent", "payment_status"];
+    const headers = ["id","full_name","email","phone","alt_phone","committee_pref1","portfolio_pref1","mail_sent","payment_status"];
     const csv = [headers.join(","), ...visible.map((r) => headers.map((h) => JSON.stringify(r[h] ?? "")).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `delegates_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    a.href = url; a.download = `delegates_${new Date().toISOString().slice(0,10)}.csv`; a.click();
     URL.revokeObjectURL(url);
   }
 
-  // write to sheet + log
+  // save to sheet + log
   async function saveRow(row, patch) {
     const WRITE_URL = (import.meta.env.VITE_SHEET_WRITE_URL || import.meta.env.VITE_DAPRIVATE_JSON_URL)?.trim();
     if (!WRITE_URL) return;
     const token = import.meta.env.VITE_SHEET_WRITE_TOKEN?.trim();
 
-    // optimistic
     const next = { ...row, ...patch };
-    setRows((rs) => rs.map((x) => (x.id === row.id ? next : x)));
+    setRows((rs) => rs.map((x) => (x.id === row.id ? next : x))); // optimistic
 
     const field = Object.keys(patch)[0];
     const oldVal = safe(row[field]);
@@ -291,8 +311,7 @@ export default function Adminv1() {
           mail_sent: next.mail_sent,
           payment_status: next.payment_status, // paid | unpaid | rejected
         },
-        // send a duplicate key some scripts expect
-        updates: {
+        updates: { // some scripts expect `updates`
           full_name: next.full_name,
           email: next.email,
           phone: next.phone,
@@ -324,8 +343,7 @@ export default function Adminv1() {
       }
     } catch (e) {
       console.error(e);
-      // revert if failed
-      setRows((rs) => rs.map((x) => (x.id === row.id ? row : x)));
+      setRows((rs) => rs.map((x) => (x.id === row.id ? row : x))); // revert
     }
   }
 
@@ -378,11 +396,11 @@ export default function Adminv1() {
 
       {tab === "delegates" ? (
         <main className="mx-auto max-w-7xl px-4 py-4">
-          {/* KPIs from DelCount */}
+          {/* KPIs (from DelCount B7/B8) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-5">
-            <KPI title="Total"   value={kpi.total}  tone="from-white/15 to-white/5" icon={<BadgeCheck size={18} />} />
-            <KPI title="Unpaid"  value={kpi.unpaid} tone="from-yellow-500/25 to-yellow-500/10" icon={<Clock3 size={18} />} />
-            <KPI title="Paid"    value={kpi.paid}   tone="from-emerald-500/25 to-emerald-500/10" icon={<BadgeCheck size={18} />} />
+            <KPI title="Total"    value={kpi.total}   tone="from-white/15 to-white/5" icon={<BadgeCheck size={18} />} />
+            <KPI title="Unpaid"   value={kpi.unpaid}  tone="from-yellow-500/25 to-yellow-500/10" icon={<Clock3 size={18} />} />
+            <KPI title="Paid"     value={kpi.paid}    tone="from-emerald-500/25 to-emerald-500/10" icon={<BadgeCheck size={18} />} />
             <KPI title="Rejected" value={kpi.rejected} tone="from-red-500/25 to-red-500/10" icon={<AlertCircle size={18} />} />
           </div>
 
@@ -431,9 +449,9 @@ export default function Adminv1() {
                 value={status}
                 onChange={setStatus}
                 options={[
-                  { value: "all",    label: "All statuses" },
+                  { value: "all", label: "All statuses" },
                   { value: "unpaid", label: "Unpaid" },
-                  { value: "paid",   label: "Paid" },
+                  { value: "paid", label: "Paid" },
                   { value: "rejected", label: "Rejected" },
                 ]}
                 className="flex-1"
@@ -505,8 +523,8 @@ export default function Adminv1() {
                               value={r.payment_status}
                               onChange={(v) => saveRow(r, { payment_status: v })}
                               options={[
-                                { value: "paid",    label: "paid" },
-                                { value: "unpaid",  label: "unpaid" },
+                                { value: "paid", label: "paid" },
+                                { value: "unpaid", label: "unpaid" },
                                 { value: "rejected", label: "rejected" },
                               ]}
                             />
@@ -541,7 +559,7 @@ export default function Adminv1() {
                     value={r.payment_status}
                     onChange={(v) => saveRow(r, { payment_status: v })}
                     options={[
-                      { value: "paid",   label: "paid" },
+                      { value: "paid", label: "paid" },
                       { value: "unpaid", label: "unpaid" },
                       { value: "rejected", label: "rejected" },
                     ]}
