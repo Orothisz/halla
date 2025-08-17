@@ -61,19 +61,19 @@ function normalizeRow(r, i) {
 // DelCount → KPI
 // Your sheet indexes (1-indexed): B8 = Paid, B9 = Unpaid
 // DelCount → KPI (explicit rows 8 + 9, col B)
+// DelCount → KPI (read from Apps Script totals)
 function kpiFromDelCount(json) {
-  const grid = json?.rows || json?.values || json?.grid || [];
-  // defensive: 0-indexed, so row 7 = Excel row 8, row 8 = Excel row 9
-  const paid   = numify(grid?.[7]?.[1]); // row 8 col B
-  const unpaid = numify(grid?.[8]?.[1]); // row 9 col B
+  const paid   = numify(json?.totals?.paid);
+  const unpaid = numify(json?.totals?.unpaid);
+  const cancelled = numify(json?.totals?.cancellations);
 
   const total =
-    numify(json?.totals?.delegates ?? json?.totals?.total) ||
-    numify(grid?.[5]?.[1]) || // sometimes "TOTAL DELEGATES" at row 6 col B
-    (paid + unpaid);
+    numify(json?.totals?.delegates) ||
+    (paid + unpaid); // fallback if 'delegates' isn't provided
 
-  return { total, paid, unpaid, rejected: 0 };
+  return { total, paid, unpaid, rejected: cancelled || 0 };
 }
+
 
 
 /* ---------------- Portal dropdown (light theme, never clipped) ---------------- */
