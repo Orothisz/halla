@@ -5,7 +5,248 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Download, Search, RefreshCw, BadgeCheck, Clock3, AlertCircle,
   History as HistoryIcon, Edit3
+} from "lucide-react";// src/pages/Adminv1.jsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  Download, Search, RefreshCw, BadgeCheck, Clock3, AlertCircle,
+  History as HistoryIcon, Edit3
 } from "lucide-react";
+import { supabase } from "../lib/supabase";
+import { LOGO_URL } from "../shared/constants";
+
+/* ---------------- Background ---------------- */
+function NoirBg() {
+  return (
+    <>
+      <div className="fixed inset-0 -z-20 bg-[radial-gradient(1200px_800px_at_80%_-20%,rgba(255,255,255,0.06),rgba(0,0,0,0)),radial-gradient(1000px_600px_at_10%_20%,rgba(255,255,255,0.04),rgba(0,0,0,0))]" />
+      <div className="fixed inset-0 -z-10 opacity-[.03] pointer-events-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22><filter id=%22n%22><feTurbulence type=%22fractalNoise%22 baseFrequency=%220.6%22 numOctaves=%222%22/></filter><rect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/></svg>')]" />
+    </>
+  );
+}
+
+/* ---------------- Helpers ---------------- */
+const cls = (...xs) => xs.filter(Boolean).join(" ");
+const safe = (v) => (typeof v === "string" ? v : v == null ? "" : String(v));
+const S = (v) => safe(v).toLowerCase().trim();
+const numify = (x) => {
+  const n = Number(String(x ?? "").replace(/[^\d.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+};
+
+// normalize statuses
+function statusFromSheet(val) {
+  const x = S(val);
+  if (x.includes("cancel")) return "rejected";
+  if (x.includes("paid") || x === "yes") return "paid";
+  return "unpaid";
+}
+
+function normalizeRow(r, i) {
+  return {
+    id: Number(r.id ?? r.sno ?? r["s.no"]) || i + 1,
+    full_name: r.full_name ?? r.name ?? "",
+    email: r.email ?? "",
+    phone: r.phone ?? r["phone no."] ?? "",
+    alt_phone: r.alt_phone ?? r.alternate ?? "",
+    committee_pref1: r.committee_pref1 ?? r.committee ?? "",
+    portfolio_pref1: r.portfolio_pref1 ?? r.portfolio ?? "",
+    mail_sent: r.mail_sent ?? r["mail sent"] ?? "",
+    payment_status: statusFromSheet(r.payment_status ?? r.paid),
+  };
+}
+
+// DelCount → KPI (Paid=B8, Unpaid=B9)
+function kpiFromDelCount(json) {
+  const grid = json?.rows || json?.values || json?.grid || [];
+  const paid   = numify(grid?.[7]?.[1]); // row 8, col B
+  const unpaid = numify(grid?.[8]?.[1]); // row 9, col B
+  const total =
+    numify(json?.totals?.delegates ?? json?.totals?.total) ||
+    numify(grid?.[5]?.[1]) || // sometimes row 6 col B
+    (paid + unpaid);
+  return { total, paid, unpaid, rejected: 0 };
+}
+
+/* ---------------- Dropdown ---------------- */
+function PortalDropdown({ anchorRef, open, onClose, width, children }) {
+  const [box, setBox] = useState({ top: 0, left: 0, width: 200 });
+  useEffect(() => {
+    function measure() {
+      if (!anchorRef?.current) return;
+      const r = anchorRef.current.getBoundingClientRect();
+      setBox({ top: r.bottom + 6, left: r.left, width: width || r.width });
+    }
+    if (open) {
+      measure();
+      const off = () => onClose();
+      window.addEventListener("scroll", measure, true);
+      window.addEventListener("resize", measure);
+      document.addEventListener("mousedown", off);
+      return () => {
+        window.removeEventListener("scroll", measure, true);
+        window.removeEventListener("resize", measure);
+        document.removeEventListener("mousedown", off);
+      };
+    }
+  }, [open, anchorRef, width, onClose]);
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed z-[9999]" style={{ top: box.top, left: box.left, width: box.width }}>
+      {children}
+    </div>,
+    document.body
+  );
+}
+
+function FancySelect({ value, onChange, options, className = "" }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+  const current = options.find((o) => o.value === value) || options[0];
+  return (
+    <div className={"relative " + className}>
+      <button
+        ref={btnRef}
+        type="button"
+        className="w-full justify-between px-3 py-2 rounded-xl bg-white/90 text-gray-900 hover:bg-white outline-none inline-flex items-center gap-2"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+      >
+        <span className="truncate">{current?.label}</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" className={open ? "rotate-180 transition" : "transition"}>
+          <path fill="currentColor" d="M7 10l5 5 5-5z" />
+        </svg>
+      </button>
+      <PortalDropdown anchorRef={btnRef} open={open} onClose={() => setOpen(false)}>
+        <div className="rounded-xl border border-gray-200 bg-white text-gray-900 shadow-2xl max-h-64 overflow-auto">
+          {options.map((o) => (
+            <button
+              key={o.value}
+              className={"w-full text-left px-3 py-2 hover:bg-gray-100 " + (o.value === value ? "bg-gray-100" : "")}
+              onClick={(e) => { e.stopPropagation(); onChange(o.value); setOpen(false); }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </PortalDropdown>
+    </div>
+  );
+}
+
+/* ---------------- Page ---------------- */
+export default function Adminv1() {
+  const [me, setMe] = useState({ id: null, email: "", name: "" });
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState([]);
+  const [committees, setCommittees] = useState([]);
+  const [q, setQ] = useState("");
+  const [status, setStatus] = useState("all");
+  const [committee, setCommittee] = useState("all");
+  const [tab, setTab] = useState("delegates");
+  const [kpi, setKpi] = useState({ total: 0, paid: 0, unpaid: 0, rejected: 0 });
+
+  useEffect(() => {
+    (async () => {
+      const { data: s } = await supabase.auth.getSession();
+      const user = s?.session?.user;
+      if (user) {
+        const { data: prof } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
+        setMe({
+          id: user.id, email: user.email,
+          name: prof?.full_name || user.user_metadata?.name || (user.email ? user.email.split("@")[0] : "admin"),
+        });
+      }
+    })();
+  }, []);
+
+  useEffect(() => { fetchAll(); }, []);
+  async function fetchAll() {
+    setLoading(true);
+    try {
+      const DA_URL = import.meta.env.VITE_DAPRIVATE_JSON_URL?.trim();
+      const DC_URL = import.meta.env.VITE_DELCOUNT_JSON_URL?.trim();
+
+      if (DA_URL) {
+        const res = await fetch(DA_URL, { cache: "no-store" });
+        const json = await res.json();
+        const data = Array.isArray(json?.rows) ? json.rows : [];
+        const norm = data.map(normalizeRow);
+        setRows(norm);
+        const setC = new Set();
+        norm.forEach((r) => r.committee_pref1 && setC.add(r.committee_pref1));
+        setCommittees(Array.from(setC).sort());
+      }
+
+      if (DC_URL) {
+        const res = await fetch(DC_URL, { cache: "no-store" });
+        const json = await res.json();
+        setKpi(kpiFromDelCount(json));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally { setLoading(false); }
+  }
+
+  const visible = useMemo(() => {
+    const qq = S(q);
+    return rows.filter((r) => {
+      const slab = [r.full_name, r.email, r.phone, r.committee_pref1, r.portfolio_pref1].map(S).join(" • ");
+      const hit = !qq || slab.includes(qq);
+      const passStatus = status === "all" ? true : S(r.payment_status) === status;
+      const passCommittee = committee === "all" ? true : S(r.committee_pref1) === S(committee);
+      return hit && passStatus && passCommittee;
+    });
+  }, [rows, q, status, committee]);
+
+  return (
+    <div className="relative min-h-[100dvh] text-white">
+      <NoirBg />
+
+      {/* Topbar */}
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-black/40 border-b border-white/10">
+        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <img src={LOGO_URL} alt="Noir" className="h-8 w-8 rounded-lg ring-1 ring-white/10" />
+            <div>
+              <div className="text-base font-semibold">Admin • Dashboard</div>
+              <div className="text-xs opacity-70">hi, {me.name || "admin"}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={fetchAll} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2">
+              <RefreshCw size={16} /> Refresh
+            </button>
+            <button className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2">
+              <Download size={16} /> Export CSV
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* KPIs */}
+      <div className="mx-auto max-w-7xl px-4 pt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KPI title="Total"    value={kpi.total}   icon={<BadgeCheck size={18} />} />
+        <KPI title="Unpaid"   value={kpi.unpaid}  icon={<Clock3 size={18} />} />
+        <KPI title="Paid"     value={kpi.paid}    icon={<BadgeCheck size={18} />} />
+        <KPI title="Rejected" value={kpi.rejected} icon={<AlertCircle size={18} />} />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Bits ---------------- */
+function KPI({ title, value, icon }) {
+  return (
+    <div className="rounded-2xl border border-white/10 p-4 bg-gradient-to-br from-white/15 to-white/5">
+      <div className="flex items-center justify-between">
+        <div className="text-sm opacity-80">{title}</div>
+        <div className="opacity-80">{icon}</div>
+      </div>
+      <div className="mt-2 text-2xl font-semibold">{value}</div>
+    </div>
+  );
+}
+
 import { supabase } from "../lib/supabase";
 import { LOGO_URL } from "../shared/constants";
 
