@@ -65,38 +65,28 @@ function normalizeRow(r, i) {
 // DelCount → KPI
 // Prefers raw grid (row 7 & 8, col B), falls back to totals.* if grid missing
 // DelCount → KPI (STRICT: Paid = row7 colB, Unpaid = row8 colB; 1-based)
+// DelCount → KPI (STRICT: Paid = row7 colB, Unpaid = row8 colB; 1-based)
 function kpiFromDelCount(json) {
   let paid = 0, unpaid = 0, total = 0, rejected = 0;
 
-  // Prefer raw grid if present (you added payload.grid in Apps Script)
+  // Prefer raw grid if present (payload.grid you added in Apps Script)
   const grid = json?.grid || json?.rows || json?.values;
   if (Array.isArray(grid)) {
     total  = numify(grid?.[5]?.[1]); // row 6, col B
     paid   = numify(grid?.[6]?.[1]); // row 7, col B  ✅
     unpaid = numify(grid?.[7]?.[1]); // row 8, col B  ✅
-  }
-
-  // Fallback to totals only if grid is missing
-  if (!Array.isArray(grid)) {
+  } else {
+    // Fallback to totals if grid is not present
     total  = numify(json?.totals?.delegates);
     paid   = numify(json?.totals?.paid);
     unpaid = numify(json?.totals?.unpaid);
   }
 
   rejected = numify(json?.totals?.cancellations);
-  // final fallback for total
   if (!total) total = paid + unpaid;
 
   return { total, paid, unpaid, rejected };
 }
-
-
-  // Show cancellations in "Rejected" card (as you had)
-  rejected = numify(json?.totals?.cancellations);
-
-  return { total, paid, unpaid, rejected };
-}
-
 
 
 /* ---------------- Portal dropdown (light theme, never clipped) ---------------- */
