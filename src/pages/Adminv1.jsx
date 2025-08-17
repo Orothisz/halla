@@ -1,13 +1,20 @@
 // src/pages/Adminv1.jsx
-// ------------------------------------------------------------
-// Admin Dashboard (robust + resilient)
-// - Uses VERCEL proxy endpoints set in client env:
-//     VITE_DAPRIVATE_API_URL  (e.g. "/api/daprivate")
-//     VITE_DELCOUNT_JSON_URL  (e.g. "/api/delcount")
-// - Expects those proxies to forward to Apps Script web apps.
-// - Extremely tolerant to upstream JSON shape & header variants.
-// - No duplicate state names; selection & editing stable.
-// ------------------------------------------------------------
+// ===================================================================================
+// FINAL: Direct-to-AppsScript Admin Dashboard (no Vercel serverless needed)
+// - Calls your Google Apps Script web apps **directly from the browser**.
+// - Accepts ANY of these env names for resilience:
+//     VITE_DAPRIVATE_API_URL   (prefer)   | VITE_DAPRIVATE_JSON_URL
+//     VITE_DELCOUNT_JSON_URL   (prefer)   | VITE_DELCOUNT_API_URL
+// - You can also override via URL params (helpful for hot fixes without a deploy):
+//     /adminv1?api=https://script.google.com/.../exec&dc=https://script.google.com/.../exec
+// - Self-healing features:
+//     • Retries with exponential backoff
+//     • Falls back to last-good cache in localStorage (shown as "stale")
+//     • Extremely tolerant JSON parsing & field name mapping
+//     • Built-in "Setup" panel (if envs missing) that persists to localStorage
+//     • Inline debug snapshot (toggle with ?debug=1)
+// - Clean, safe front-end only. The two Apps Script you shared already set CORS:*.
+// ===================================================================================
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
@@ -15,7 +22,8 @@ import {
   Download, Search, RefreshCw, BadgeCheck, Clock3, AlertCircle,
   History as HistoryIcon, Edit3, Wifi, WifiOff, ShieldAlert, CheckCircle2,
   Copy, ChevronLeft, ChevronRight, Eye, EyeOff, Columns, Settings, TriangleAlert,
-  Users, CheckSquare, Square, Wand2, ChartNoAxesGantt, Filter, SlidersHorizontal
+  Users, CheckSquare, Square, Wand2, ChartNoAxesGantt, Filter, SlidersHorizontal,
+  Globe
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { LOGO_URL } from "../shared/constants";
@@ -34,9 +42,7 @@ const nowISO = () => new Date().toISOString().replace(/\.\d+Z$/,"Z");
 function useDebounced(v, d=180){ const [x,setX]=useState(v); useEffect(()=>{const t=setTimeout(()=>setX(v),d); return()=>clearTimeout(t)},[v,d]); return x; }
 const persist = (k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 const recall = (k,f)=>{try{const v=localStorage.getItem(k); return v?JSON.parse(v):f}catch{return f}};
-const getQueryFlag = (name) => {
-  try { return new URLSearchParams(window.location.search).get(name); } catch { return null; }
-};
+const qp = () => { try{ return new URLSearchParams(window.location.search); }catch{ return new URLSearchParams(); } };
 
 /* ================= Background ornament ================= */
 function RomanLayer() {
@@ -181,6 +187,15 @@ export default function Adminv1() {
   const adminList = useMemo(() => (import.meta.env.VITE_ADMIN_EMAILS || "").toLowerCase().split(",").map(s => s.trim()).filter(Boolean), []);
   const canEdit = !!me.id && (adminList.length ? adminList.includes((me.email||"").toLowerCase()) : true);
 
+  /* Envs & overrides */
+  const Q = qp();
+  const envApi = (import.meta.env.VITE_DAPRIVATE_API_URL || import.meta.env.VITE_DAPRIVATE_JSON_URL || "").trim();
+  const envDc  = (import.meta.env.VITE_DELCOUNT_JSON_URL || import.meta.env.VITE_DELCOUNT_API_URL || "").trim();
+  const [apiUrl, setApiUrl] = useState(() => Q.get("api") || recall("adm.apiUrl", envApi));
+  const [dcUrl,  setDcUrl ] = useState(() => Q.get("dc")  || recall("adm.dcUrl",  envDc));
+  useEffect(()=>persist("adm.apiUrl", apiUrl),[apiUrl]);
+  useEffect(()=>persist("adm.dcUrl",  dcUrl ),[dcUrl ]);
+
   /* State */
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
@@ -199,7 +214,7 @@ export default function Adminv1() {
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(recall("adm.pageSize", 50));
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [cols, setCols] = useState(recall("adm.cols", { email:true, phone:true, committee:true, portfolio:true, status:true }));
-  const [sourcePref, setSourcePref] = useState(recall("adm.kpiSource","totals")); // default to totals to avoid early mismatch
+  const [sourcePref, setSourcePref] = useState(recall("adm.kpiSource","totals")); // safer default
   const [toast, setToast] = useState([]);
   const [health, setHealth] = useState({ da: null, dc: null, mismatched: false, paid: {grid:null, totals:null}, unpaid: {grid:null, totals:null} });
   const [lastDa, setLastDa] = useState(null); // debug snapshot for upstream
@@ -214,13 +229,10 @@ export default function Adminv1() {
   useEffect(() => persist("adm.kpiSource", sourcePref), [sourcePref]);
   useEffect(() => { setPage(1); }, [qDeb, status, committee]);
 
-  /* Endpoints */
-  const API_URL = (import.meta.env.VITE_DAPRIVATE_API_URL || "").trim();
-  const DC_URL  = (import.meta.env.VITE_DELCOUNT_JSON_URL || "").trim();
+  const debugMode = (Q.get("debug") === "1");
 
   /* Normalizers */
   const normalizeRows = useCallback((arr) => {
-    // Tolerate upstream variants; don't drop useful rows.
     const norm = (arr || [])
       .filter(r =>
         r && (
@@ -263,7 +275,7 @@ export default function Adminv1() {
     const B = (row1) => numify(grid?.[row1-1]?.[1]);
     let g = { total:null, paid:null, unpaid:null };
     if (grid) {
-      g.total  = B(6);
+      g.total  = B(6); // rows 6..8, col B
       g.paid   = B(7);
       g.unpaid = B(8);
       if (!g.total && (g.paid!=null || g.unpaid!=null)) g.total = (g.paid||0) + (g.unpaid||0);
@@ -286,40 +298,53 @@ export default function Adminv1() {
     return next;
   }, [sourcePref]);
 
+  /* Backoff fetcher + caching */
+  async function fetchWithBackoff(url, opts, tries=[400,900,1800]) {
+    const t0 = performance.now();
+    try {
+      const r = await fetch(`${url}${url.includes("?")?"&":"?"}t=${Date.now()}`, { cache:"no-store", ...opts });
+      const ms = Math.round(performance.now()-t0);
+      const txt = await r.text();
+      let json = null; try{ json = JSON.parse(txt); }catch{ json = null; }
+      return { ok:r.ok && !!json, ms, json, status:r.status, raw: txt };
+    } catch (e) {
+      // retry
+      if (tries.length) { await new Promise(res=>setTimeout(res, tries[0])); return fetchWithBackoff(url, opts, tries.slice(1)); }
+      return { ok:false, ms: Math.round(performance.now()-t0), json:null, status:0, raw: null };
+    }
+  }
+
   /* Fetchers */
   async function fetchAll({ silent=false } = {}) {
     if (!silent) setLoading(true);
     setKpiStale(false);
-    const controller = new AbortController();
-    const timeout = setTimeout(()=>controller.abort(),12000);
 
-    const fetchJson = async (url, opts = {}) => {
-      const t0 = performance.now();
-      try {
-        const r = await fetch(`${url}${url.includes("?")?"&":"?"}t=${Date.now()}`, {
-          cache:"no-store",
-          signal:controller.signal,
-          ...opts,
-        });
-        const ms = Math.round(performance.now()-t0);
-        let json = null;
-        try { json = await r.json(); } catch { json = null; }
-        return { ok:r.ok, ms, json, status:r.status };
-      } catch {
-        const ms = Math.round(performance.now()-t0);
-        return { ok:false, ms, json:null, status:0 };
-      }
-    };
+    const allowFetch = (url) => typeof url === "string" && /^https?:\/\//i.test(url);
 
-    try {
-      const [da, dc] = await Promise.all([
-        API_URL ? fetchJson(API_URL) : Promise.resolve({ ok:false }),
-        DC_URL  ? fetchJson(DC_URL)  : Promise.resolve({ ok:false }),
-      ]);
-      setHealth(h=>({ ...h, da, dc }));
-
-      // ---- DAPrivate rows (tolerate variants) ----
-      if (da.ok && da.json) {
+    // ---- DAPrivate rows (direct to AppsScript) ----
+    let da = { ok:false, ms:0, json:null, status:0 };
+    if (allowFetch(apiUrl)) {
+      da = await fetchWithBackoff(apiUrl, { method:"GET" });
+      setHealth(h=>({ ...h, da }));
+      if (!da.ok) {
+        // Fall back to cached last-good
+        const cached = recall("adm.cache.da", null);
+        if (cached?.json) {
+          setLastDa(cached.json);
+          const rowsIn =
+            Array.isArray(cached.json.rows)  ? cached.json.rows  :
+            Array.isArray(cached.json.data)  ? cached.json.data  :
+            Array.isArray(cached.json.items) ? cached.json.items :
+            Array.isArray(cached.json?.result?.rows) ? cached.json.result.rows :
+            [];
+          setRows(normalizeRows(rowsIn));
+          addToast("Using cached registrations (stale)", "warn", 4000);
+        } else {
+          setRows([]); setLastDa({ ok:false, error:"DAPrivate fetch failed & no cache", status: da.status });
+        }
+      } else {
+        persist("adm.cache.da", { json: da.json, at: Date.now() });
+        setLastDa(da.json);
         const rowsIn =
           Array.isArray(da.json.rows)  ? da.json.rows  :
           Array.isArray(da.json.data)  ? da.json.data  :
@@ -327,14 +352,40 @@ export default function Adminv1() {
           Array.isArray(da.json?.result?.rows) ? da.json.result.rows :
           [];
         setRows(normalizeRows(rowsIn));
-        setLastDa(da.json);
-      } else {
-        setRows([]);
-        setLastDa({ ok:false, error:"No JSON or HTTP failure", status: da?.status ?? 0 });
       }
+    } else {
+      setHealth(h=>({ ...h, da:{ ok:false, ms:0, status:0 }}));
+      setRows([]);
+      setLastDa({ ok:false, error:"DAPrivate URL missing" });
+    }
 
-      // ---- DelCount (KPIs) ----
-      if (dc.ok && dc.json) {
+    // ---- DelCount KPIs (direct to AppsScript) ----
+    let dc = { ok:false, ms:0, json:null, status:0 };
+    if (allowFetch(dcUrl)) {
+      dc = await fetchWithBackoff(dcUrl, { method:"GET" });
+      setHealth(h=>({ ...h, dc }));
+      if (!dc.ok) {
+        const cached = recall("adm.cache.dc", null);
+        if (cached?.json) {
+          setKpi(computeKPI(cached.json));
+          const committeesJson = cached.json?.committees || {};
+          const entries = Array.isArray(committeesJson)
+            ? committeesJson
+            : Object.keys(committeesJson).map((name) => ({ name, ...committeesJson[name] }));
+          const bd = (entries || []).map((c)=>({
+            name: c.name || c.committee || "",
+            total: Number(c.total)||0,
+            paid: Number(c.paid)||0,
+            unpaid: Number(c.unpaid)||0,
+          })).sort((a,b)=>b.total-a.total);
+          setBreakdown(bd);
+          setKpiStale(true);
+          addToast("Using cached KPIs (stale)", "warn", 4000);
+        } else {
+          setKpiStale(true);
+        }
+      } else {
+        persist("adm.cache.dc", { json: dc.json, at: Date.now() });
         setKpi(computeKPI(dc.json));
         const committeesJson = dc.json?.committees || {};
         const entries = Array.isArray(committeesJson)
@@ -347,13 +398,17 @@ export default function Adminv1() {
           unpaid: Number(c.unpaid)||0,
         })).sort((a,b)=>b.total-a.total);
         setBreakdown(bd);
-      } else setKpiStale(true);
+      }
+    } else {
+      setHealth(h=>({ ...h, dc:{ ok:false, ms:0, status:0 }}));
+      setKpiStale(true);
+    }
 
-      setLastSynced(nowISO());
-    } finally { clearTimeout(timeout); if (!silent) setLoading(false); }
+    setLastSynced(nowISO());
+    if (!silent) setLoading(false);
   }
-  useEffect(()=>{ fetchAll(); }, []);
-  useEffect(()=>{ if (!live) return; const t=setInterval(()=>fetchAll({silent:true}),25000); return ()=>clearInterval(t); }, [live]);
+  useEffect(()=>{ fetchAll(); /* eslint-disable-next-line */},[]);
+  useEffect(()=>{ if (!live) return; const t=setInterval(()=>fetchAll({silent:true}),25000); return ()=>clearInterval(t); }, [live, apiUrl, dcUrl]);
 
   /* Derived lists / pagination */
   const visible = useMemo(() => {
@@ -381,9 +436,9 @@ export default function Adminv1() {
   const undoQ=useRef([]); const queueUndo=(rowId,prev)=>{const timer=setTimeout(()=>{undoQ.current=undoQ.current.filter(x=>x.rowId!==rowId)},10000); undoQ.current.push({rowId,prev,timer}); addToast(<span>Saved. <button className="underline" onClick={()=>doUndo(rowId)}>Undo</button></span>,"ok",10000);};
   async function doUndo(rowId){const i=undoQ.current.findIndex(x=>x.rowId===rowId); if(i<0) return; const {prev,timer}=undoQ.current[i]; clearTimeout(timer); undoQ.current.splice(i,1); await saveRow(prev, prev, true);}
 
-  /* Save (inline) + bulk */
+  /* Save (inline) + bulk (direct POST to AppsScript) */
   async function saveRow(row, patch, isUndo=false){
-    if (!API_URL){ addToast("DAPrivate URL missing","error"); return; }
+    if (!apiUrl){ addToast("DAPrivate URL missing","error"); return; }
     if (patch.email!=null && patch.email!==row.email && patch.email && !emailOk(patch.email)) return addToast("Invalid email","error");
     if (patch.phone!=null && patch.phone!==row.phone && patch.phone && !phoneOk(patch.phone)) return addToast("Invalid phone","error");
 
@@ -391,7 +446,7 @@ export default function Adminv1() {
     setRows(rs=>rs.map(x=>x.id===row.id?next:x)); // optimistic
 
     try{
-      const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+      const res=await fetch(apiUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
         action:"update", id:row.id, fields:{
           full_name:next.full_name, email:next.email, phone:next.phone, alt_phone:next.alt_phone,
           committee_pref1:next.committee_pref1, portfolio_pref1:next.portfolio_pref1,
@@ -435,9 +490,10 @@ export default function Adminv1() {
     if(e.key.toLowerCase()==="l"&&!e.metaKey&&!e.ctrlKey){e.preventDefault(); setLive(v=>!v);} };
     window.addEventListener("keydown",onKey); return()=>window.removeEventListener("keydown",onKey);},[]);
 
-  const debugMode = getQueryFlag("debug")==="1";
-
   /* ======================= Render ======================= */
+  const logo = LOGO_URL || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='100%' height='100%' rx='12' fill='%23fff'/><text x='50%' y='56%' text-anchor='middle' font-family='sans-serif' font-size='28' fill='%23000'>N</text></svg>";
+  const needSetup = !apiUrl || !dcUrl;
+
   return (
     <div className="relative min-h-[100dvh] text-white">
       <RomanLayer />
@@ -446,7 +502,7 @@ export default function Adminv1() {
       <header className="sticky top-0 z-50 backdrop-blur-md bg-black/40 border-b border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <img src={LOGO_URL} alt="Noir" className="h-8 w-8 rounded-lg ring-1 ring-white/10" />
+            <img src={logo} alt="Noir" className="h-8 w-8 rounded-lg ring-1 ring-white/10" />
             <div>
               <div className="text-base font-semibold">Admin • Dashboard</div>
               <div className="text-xs opacity-70">hi, {me.name || "admin"} {canEdit ? <Tag tone="ok">editor</Tag> : <Tag>viewer</Tag>}</div>
@@ -454,7 +510,7 @@ export default function Adminv1() {
           </div>
           <div className="flex items-center gap-2">
             <Tag title="Last synced">{lastSynced ? <><CheckCircle2 size={14}/> {lastSynced}</> : "—"}</Tag>
-            {kpiStale && <Tag tone="warn" title="DelCount unavailable; showing last KPIs"><ShieldAlert size={14}/> stale</Tag>}
+            {kpiStale && <Tag tone="warn" title="DelCount unavailable; showing cached KPIs"><ShieldAlert size={14}/> stale</Tag>}
             {health.mismatched && <Tag tone="error" title={`grid≠totals (paid ${health.paid.grid} vs ${health.paid.totals}, unpaid ${health.unpaid.grid} vs ${health.unpaid.totals})`}><TriangleAlert size={14}/> KPI mismatch</Tag>}
             <button onClick={()=>fetchAll()} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><RefreshCw size={16}/> Refresh</button>
             <button onClick={()=>{
@@ -473,16 +529,43 @@ export default function Adminv1() {
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="mx-auto max-w-7xl px-4 pt-4">
-        <div className="flex flex-wrap gap-2">
-          <TabButton active={tab==="delegates"} onClick={()=>setTab("delegates")} icon={<Edit3 size={16}/>}>Delegates</TabButton>
-          <TabButton active={tab==="history"} onClick={()=>setTab("history")} icon={<HistoryIcon size={16}/>}>History</TabButton>
-          <TabButton active={tab==="health"} onClick={()=>setTab("health")} icon={<ShieldAlert size={16}/>}>Health</TabButton>
-        </div>
-      </div>
+      {/* Setup panel if envs missing or user wants to override */}
+      {needSetup && (
+        <main className="mx-auto max-w-3xl px-4 py-6">
+          <div className="rounded-2xl border border-yellow-400/30 bg-yellow-500/10 p-5">
+            <div className="font-semibold mb-3 flex items-center gap-2"><Globe size={16}/> Connect to Apps Script</div>
+            <div className="grid gap-3">
+              <label className="text-sm">
+                DAPrivate (Rows) URL
+                <input value={apiUrl} onChange={(e)=>setApiUrl(e.target.value)} placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                  className="mt-1 w-full px-3 py-2 rounded-lg bg-white/10 outline-none" />
+              </label>
+              <label className="text-sm">
+                DelCount (KPIs) URL
+                <input value={dcUrl} onChange={(e)=>setDcUrl(e.target.value)} placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                  className="mt-1 w-full px-3 py-2 rounded-lg bg-white/10 outline-none" />
+              </label>
+              <div className="flex gap-2">
+                <button onClick={()=>fetchAll()} className="px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/25 text-sm inline-flex items-center gap-2"><CheckCircle2 size={16}/> Save & Load</button>
+              </div>
+              <div className="text-xs opacity-80">Tip: You can also pass them via query params once: <code>?api=...&dc=...</code>. They’ll be saved to localStorage.</div>
+            </div>
+          </div>
+        </main>
+      )}
 
-      {tab==="delegates" && (
+      {/* Tabs */}
+      {!needSetup && (
+        <div className="mx-auto max-w-7xl px-4 pt-4">
+          <div className="flex flex-wrap gap-2">
+            <TabButton active={tab==="delegates"} onClick={()=>setTab("delegates")} icon={<Edit3 size={16}/>}>Delegates</TabButton>
+            <TabButton active={tab==="history"} onClick={()=>setTab("history")} icon={<HistoryIcon size={16}/>}>History</TabButton>
+            <TabButton active={tab==="health"} onClick={()=>setTab("health")} icon={<ShieldAlert size={16}/>}>Health</TabButton>
+          </div>
+        </div>
+      )}
+
+      {!needSetup && tab==="delegates" && (
         <main className="mx-auto max-w-7xl px-4 py-4">
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-5">
@@ -599,7 +682,7 @@ export default function Adminv1() {
         </main>
       )}
 
-      {tab==="history" && (
+      {!needSetup && tab==="history" && (
         <main className="mx-auto max-w-7xl px-4 py-6">
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
             <div className="px-4 py-3 font-semibold">Edit History</div>
@@ -628,7 +711,7 @@ export default function Adminv1() {
         </main>
       )}
 
-      {tab==="health" && (
+      {!needSetup && tab==="health" && (
         <main className="mx-auto max-w-7xl px-4 py-6">
           <div className="grid md:grid-cols-2 gap-4">
             <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
@@ -662,6 +745,21 @@ export default function Adminv1() {
                     title="Read from totals.paid / totals.unpaid">Totals</button>
                   {health.mismatched && <Tag tone="error"><TriangleAlert size={14}/> grid≠totals</Tag>}
                 </div>
+
+                {/* Quick override of endpoints inside Health */}
+                <div className="mt-4">
+                  <div className="font-semibold mb-2 flex items-center gap-2"><Globe size={16}/> Endpoints</div>
+                  <div className="grid gap-2 text-xs">
+                    <input value={apiUrl} onChange={(e)=>setApiUrl(e.target.value)} placeholder="DAPrivate URL"
+                      className="px-2 py-1 rounded-lg bg-white/10 outline-none"/>
+                    <input value={dcUrl} onChange={(e)=>setDcUrl(e.target.value)} placeholder="DelCount URL"
+                      className="px-2 py-1 rounded-lg bg-white/10 outline-none"/>
+                    <div className="flex gap-2">
+                      <button onClick={()=>fetchAll()} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><RefreshCw size={14}/> Reload</button>
+                    </div>
+                    <div className="opacity-70">These are saved locally. Add <code>?debug=1</code> to see payload snapshots.</div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -687,8 +785,8 @@ export default function Adminv1() {
       <div className="fixed right-3 bottom-3 z-[10000] space-y-2">
         {toast.map(t=>(
           <div key={t.id} className={cls("rounded-xl px-3 py-2 text-sm shadow-xl backdrop-blur-sm",
-            t.tone==="error"?"bg-red-600/30 ring-1 ring-red-500/50":t.tone==="ok"?"bg-emerald-600/30 ring-1 ring-emerald-500/50":"bg-black/50 ring-1 ring-white/10")}>
-            <div className="flex items-center gap-2">{t.tone==="error"?<ShieldAlert size={14}/>:t.tone==="ok"?<CheckCircle2 size={14}/>:<Settings size={14}/>}<span className="break-words">{t.text}</span></div>
+            t.tone==="error"?"bg-red-600/30 ring-1 ring-red-500/50":t.tone==="ok"?"bg-emerald-600/30 ring-1 ring-emerald-500/50":t.tone==="warn"?"bg-yellow-600/30 ring-1 ring-yellow-500/50":"bg-black/50 ring-1 ring-white/10")}>
+            <div className="flex items-center gap-2">{t.tone==="error"?<ShieldAlert size={14}/>:t.tone==="ok"?<CheckCircle2 size={14}/>:t.tone==="warn"?<TriangleAlert size={14}/>:<Settings size={14}/>}{t.text}</div>
           </div>
         ))}
       </div>
@@ -732,7 +830,6 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
               </Td>
               <Td className="truncate">{r.id}</Td>
               <Td className="truncate" title={r.full_name}>
-                {/* Inline editing component handles both view & edit modes */}
                 <InlineEdit value={r.full_name} onSave={(v)=>saveRow(r,{full_name:v})} disabled={!canEdit}/>
               </Td>
               {cols.email && (
