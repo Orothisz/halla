@@ -204,6 +204,8 @@ export default function Adminv1() {
   const [status, setStatus] = useState("all");   // paid | unpaid | rejected
   const [committee, setCommittee] = useState("all");
   const [tab, setTab] = useState("delegates");   // delegates | history
+
+  // ✅ single source of truth for history state
   const [logs, setLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
@@ -346,9 +348,7 @@ export default function Adminv1() {
     }
   }
 
-  // history
-  const [logs, setLogs] = useState([]);
-  const [logsLoading, setLogsLoading] = useState(false);
+  // ---------------- history (uses the single logs state) ----------------
   async function loadLogs() {
     setLogsLoading(true);
     try {
@@ -377,7 +377,7 @@ export default function Adminv1() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={fetchAll} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2">
+            <button onClick={fetchAll} className="px-3 py-2 rounded-xl bg-white/10 hover:bg白/15 text-sm inline-flex items-center gap-2">
               <RefreshCw size={16} /> Refresh
             </button>
             <button onClick={exportCSV} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2">
