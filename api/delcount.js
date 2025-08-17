@@ -1,23 +1,24 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+// Serverless proxy for Apps Script (DelCount)
+export const config = { runtime: 'nodejs20' };
 
-const TARGET = process.env.DELCOUNT_TARGET;
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (!TARGET) {
-    res.status(500).json({ ok: false, error: 'DELCOUNT_TARGET env missing' });
-    return;
-  }
-
+function allowCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+export default async function handler(req, res) {
+  allowCors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
 
+  const TARGET = process.env.DELCOUNT_TARGET; // e.g. https://script.google.com/macros/s/.../exec
+  if (!TARGET) return res.status(500).json({ ok: false, error: 'DELCOUNT_TARGET env missing' });
+
   const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), 20000);
+  const timeout = setTimeout(() => ac.abort(), 20000);
 
   try {
-    const upstream = await fetch(`${TARGET}?t=${Date.now()}`, { signal: ac.signal, cache: 'no-store' });
+    const upstream = await fetch(`${TARGET}?t=${Date.now()}`, { cache: 'no-store', signal: ac.signal });
     const text = await upstream.text();
     try {
       const json = JSON.parse(text);
@@ -26,10 +27,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch {
       return res.status(502).json({ ok: false, error: 'Upstream not JSON', raw: text.slice(0, 500) });
     }
-  } catch (e: any) {
-    const aborted = e?.name === 'AbortError';
+  } catch (e) {
+    const aborted = e && e.name === 'AbortError';
     return res.status(502).json({ ok: false, error: aborted ? 'Upstream timeout' : String(e) });
   } finally {
-    clearTimeout(t);
+    clearTimeout(timeout);
   }
 }
