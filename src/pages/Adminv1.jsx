@@ -7,7 +7,7 @@ import {
   History as HistoryIcon, Edit3, Wifi, WifiOff, ShieldAlert, CheckCircle2,
   Copy, ChevronLeft, ChevronRight, Eye, EyeOff, Columns, Settings, TriangleAlert,
   Users, CheckSquare, Square, Wand2, ChartNoAxesGantt, Filter, SlidersHorizontal,
-  Globe, MonitorSmartphone, Smartphone, Trash2, CopyCheck, ListFilter
+  Globe, MonitorSmartphone, Smartphone, Trash2, FileText, FileSpreadsheet, Bug
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { LOGO_URL } from "../shared/constants";
@@ -26,12 +26,12 @@ const nowISO = () => new Date().toISOString().replace(/\.\d+Z$/,"Z");
 function useDebounced(v, d=160){ const [x,setX]=useState(v); useEffect(()=>{const t=setTimeout(()=>setX(v),d); return()=>clearTimeout(t)},[v,d]); return x; }
 const qp = () => { try{ return new URLSearchParams(window.location.search); }catch{ return new URLSearchParams(); } };
 
-/* Fold accents, collapse spaces, strip punctuation; also expose digits */
+/* fold accents, collapse spaces, strip punctuation; also expose digits */
 const fold = (s) => S(s)
   .normalize("NFKD")
-  .replace(/[\u0300-\u036f]/g, "")
-  .replace(/[._\-+/()]/g, " ")
-  .replace(/\s+/g, " ")
+  .replace(/[\u0300-\u036f]/g, "")      // remove diacritics
+  .replace(/[._\-+/()]/g, " ")          // unify separators
+  .replace(/\s+/g, " ")                 // collapse space
   .trim();
 const digits = (s) => String(s||"").replace(/\D/g,"");
 
@@ -96,7 +96,8 @@ function PortalDropdown({ anchorRef, open, onClose, width, children }) {
   if (!open) return null;
   return createPortal(<div className="fixed z-[9999]" style={{ top: box.top, left: box.left, width: box.width }}>{children}</div>, document.body);
 }
-function FancySelect({ value, onChange, options, className = "", disabled=false }) {
+
+function FancySelect({ value, onChange, options, className = "", disabled=false, buttonContent }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const current = options.find((o) => o.value === value) || options[0];
@@ -106,14 +107,14 @@ function FancySelect({ value, onChange, options, className = "", disabled=false 
         className={cls("w-full justify-between px-3 py-2 rounded-xl text-sm outline-none inline-flex items-center gap-2",
           disabled ? "bg-white/20 opacity-60 cursor-not-allowed" : "bg-white/90 text-gray-900 hover:bg-white")}
         onClick={(e) => { e.stopPropagation(); if (!disabled) setOpen((v) => !v); }}>
-        <span className="truncate">{current?.label}</span>
+        {buttonContent || <span className="truncate">{current?.label}</span>}
         <svg width="16" height="16" viewBox="0 0 24 24" className={open ? "rotate-180 transition" : "transition"}><path fill="currentColor" d="M7 10l5 5 5-5z" /></svg>
       </button>
       <PortalDropdown anchorRef={btnRef} open={open} onClose={() => setOpen(false)}>
-        <div className="rounded-xl border border-gray-200 bg-white text-gray-900 shadow-2xl max-h-64 overflow-auto">
+        <div className="rounded-xl border border-gray-200 bg-white text-gray-900 shadow-2xl max-h-64 overflow-auto min-w-[220px]">
           {options.map((o) => (
             <button key={o.value} className={"w-full text-left px-3 py-2 hover:bg-gray-100 " + (o.value === value ? "bg-gray-100" : "")}
-              onClick={(e) => { e.stopPropagation(); onChange(o.value); setOpen(false); }}>
+              onClick={(e) => { e.stopPropagation(); if (o.onClick) o.onClick(); else onChange(o.value); setOpen(false); }}>
               {o.label}
             </button>
           ))}
@@ -173,6 +174,25 @@ function Highlighter({ text, tokens }) {
   return <>{spans}</>;
 }
 
+/* ======= Simple Modal (for invoices & exports) ======= */
+function Modal({ open, onClose, children, title, maxWidth="max-w-2xl" }) {
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[9998]">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="absolute left-1/2 top-10 -translate-x-1/2 w-[92vw] sm:w-auto">
+        <div className={cls("rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-4 text-white shadow-2xl", maxWidth)}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-semibold">{title}</div>
+            <button onClick={onClose} className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15">Close</button>
+          </div>
+          <div className="max-h-[75vh] overflow-auto">{children}</div>
+        </div>
+      </div>
+    </div>, document.body
+  );
+}
+
 /* ========================= Page ========================= */
 export default function Adminv1() {
   /* Session / RBAC */
@@ -190,7 +210,7 @@ export default function Adminv1() {
   const adminList = useMemo(() => (import.meta.env.VITE_ADMIN_EMAILS || "").toLowerCase().split(",").map(s => s.trim()).filter(Boolean), []);
   const canEdit = !!me.id && (adminList.length ? adminList.includes((me.email||"").toLowerCase()) : true);
 
-  /* Endpoints: ?api & ?dc or VITE_* */
+  /* Endpoint discovery */
   const Q = qp();
   const envApi = (import.meta.env.VITE_DAPRIVATE_API_URL || import.meta.env.VITE_DAPRIVATE_JSON_URL || "").trim();
   const envDc  = (import.meta.env.VITE_DELCOUNT_JSON_URL || import.meta.env.VITE_DELCOUNT_API_URL || "").trim();
@@ -205,7 +225,7 @@ export default function Adminv1() {
   const [q, setQ] = useState(""); const qDeb = useDebounced(q, 160);
   const [status, setStatus] = useState("all");
   const [committee, setCommittee] = useState("all");
-  const [onlyDup, setOnlyDup] = useState(false);          // ⬅ NEW: duplicate filter
+  const [dupFilter, setDupFilter] = useState("all"); // "all" | "dups"
   const [tab, setTab] = useState("delegates");
   const [live, setLive] = useState(true);
   const [logs, setLogs] = useState([]); const [logsLoading, setLogsLoading] = useState(false);
@@ -221,6 +241,9 @@ export default function Adminv1() {
   const [compact, setCompact] = useState(true);
   const [lastDa, setLastDa] = useState(null);
   const [health, setHealth] = useState({ da: null, dc: null, mismatched: false, paid: {grid:null, totals:null}, unpaid: {grid:null, totals:null} });
+  const [exportOpen, setExportOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState({ amount: "2300", date: new Date().toISOString().slice(0,10), time: "10:00", note:"", paid:true, sign:"admin • noirmun.com" });
 
   /* ===== KPI compute ===== */
   const computeKPI = useCallback((dcJson) => {
@@ -265,7 +288,7 @@ export default function Adminv1() {
     }
   }
 
-  /* Normalizers + duplicate detection */
+  /* Normalizers (build folded index + digits) */
   const normalizeRows = useCallback((arr) => {
     const norm = (arr || [])
       .filter(r => r && (r.full_name || r.name || r.email || r.phone || r["phone no."] || r["phone no"] || r["phone_no"]))
@@ -278,7 +301,7 @@ export default function Adminv1() {
         const out = {
           id: Number(r.id || r.sno || r["s.no"] || r["s_no"] || i + 1),
           full_name: r.full_name || r.name || r["full name"] || "",
-          email: (r.email || "").trim(),
+          email: r.email || "",
           phone: r.phone || r["phone no."] || r["phone no"] || r["phone_no"] || "",
           alt_phone: r.alt_phone || r.alternate || r["alternate phone"] || "",
           committee_pref1: r.committee_pref1 || r.committee || r["committee 1"] || "",
@@ -292,31 +315,8 @@ export default function Adminv1() {
         return out;
       });
 
-    // build committee list
     const setC = new Set(); norm.forEach((r) => r.committee_pref1 && setC.add(r.committee_pref1));
     setCommittees(Array.from(setC).sort((a,b)=>fold(a).localeCompare(fold(b))));
-
-    // duplicate detection
-    const byEmail = new Map();
-    const byPhone = new Map();
-    norm.forEach(r => {
-      const kE = S(r.email);
-      const kP = r._digits;
-      if (kE) byEmail.set(kE, (byEmail.get(kE)||0)+1);
-      if (kP) byPhone.set(kP, (byPhone.get(kP)||0)+1);
-    });
-    norm.forEach(r => {
-      const kE = S(r.email);
-      const kP = r._digits;
-      const dupEmail = kE && (byEmail.get(kE)||0) > 1;
-      const dupPhone = kP && (byPhone.get(kP)||0) > 1;
-      r._dup = !!(dupEmail || dupPhone);
-      r._dupKeys = {
-        email: dupEmail ? kE : null,
-        phone: dupPhone ? kP : null
-      };
-    });
-
     return norm;
   }, []);
 
@@ -377,24 +377,40 @@ export default function Adminv1() {
   }
   useEffect(()=>{ fetchAll(); /* eslint-disable-next-line */},[apiUrl,dcUrl]);
   useEffect(()=>{ if (!live) return; const t=setInterval(()=>fetchAll({silent:true}),25000); return ()=>clearInterval(t); }, [live, apiUrl, dcUrl]);
-  useEffect(()=>{ setPage(1); }, [qDeb, status, committee, onlyDup]);
+  useEffect(()=>{ setPage(1); }, [qDeb, status, committee, dupFilter]);
 
-  /* ===== SEARCH: folded, phrase-aware, digit-aware ===== */
+  /* ===== SEARCH (folded, phrase-aware, digit-aware) ===== */
   const qFolded = fold(qDeb);
   const query = useMemo(() => parseQuery(qFolded), [qFolded]);
+
+  /* Duplicate detection (email, phone digits, exact folded name) */
+  const dupIndex = useMemo(() => {
+    const byEmail = new Map(), byPhone = new Map(), byName = new Map();
+    rows.forEach(r=>{
+      const e = S(r.email);
+      const p = r._digits;
+      const n = fold(r.full_name);
+      if (e) byEmail.set(e, [...(byEmail.get(e)||[]), r.id]);
+      if (p) byPhone.set(p, [...(byPhone.get(p)||[]), r.id]);
+      if (n) byName.set(n, [...(byName.get(n)||[]), r.id]);
+    });
+    const dupSet = new Set();
+    const pushDup = (ids) => { if (ids.length>1) ids.forEach(id=>dupSet.add(id)); };
+    [...byEmail.values(), ...byPhone.values(), ...byName.values()].forEach(pushDup);
+    return dupSet;
+  }, [rows]);
 
   const visible = useMemo(() => {
     const must = query.must, not = query.not, phrases = query.phrases;
     const hasAny = Boolean(must.length || not.length || phrases.length);
     const pass = (r) => {
-      if (onlyDup && !r._dup) return false; // duplicate filter
       const statusOk = status==="all" ? true : S(r.payment_status)===status;
       const commOk = committee==="all" ? true : fold(r.committee_pref1)===fold(committee);
       if (!statusOk || !commOk) return false;
+      if (dupFilter==="dups" && !dupIndex.has(r.id)) return false;
 
       if (!hasAny) return true;
 
-      // must terms
       for (const t of must) {
         const isNum = /\d/.test(t);
         if (isNum) {
@@ -405,18 +421,12 @@ export default function Adminv1() {
           if (!r._slab.includes(t)) return false;
         }
       }
-      // not terms
-      for (const t of not) {
-        if (r._slab.includes(t)) return false;
-      }
-      // phrases
-      for (const p of phrases) {
-        if (!r._slab.includes(p)) return false;
-      }
+      for (const t of not) { if (r._slab.includes(t)) return false; }
+      for (const p of phrases) { if (!r._slab.includes(p)) return false; }
       return true;
     };
     return rows.filter(pass);
-  }, [rows, query, status, committee, onlyDup]);
+  }, [rows, query, status, committee, dupFilter, dupIndex]);
 
   const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
   const pageClamped = Math.min(Math.max(1,page), totalPages);
@@ -483,9 +493,133 @@ export default function Adminv1() {
   } finally { setLogsLoading(false); } }
   useEffect(()=>{ if(tab==="history") loadLogs(); },[tab]);
 
+  /* ======================= Export helpers ======================= */
+  function toCSV(items, headers) {
+    const head = headers.join(",");
+    const body = items.map(r => headers.map(h => JSON.stringify(r[h] ?? "")).join(",")).join("\n");
+    return [head, body].join("\n");
+  }
+  function downloadBlob(name, blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+  }
+  function exportCSVAll() {
+    const headers=["id","full_name","email","phone","alt_phone","committee_pref1","portfolio_pref1","mail_sent","payment_status"];
+    const csv = toCSV(visible, headers);
+    downloadBlob(delegates_${new Date().toISOString().slice(0,10)}.csv, new Blob([csv], {type:"text/csv;charset=utf-8;"}));
+  }
+  function exportCSVCommitteeWise() {
+    const map = new Map();
+    visible.forEach(r=>{
+      const key = r.committee_pref1 || "Unassigned";
+      map.set(key, [...(map.get(key)||[]), r]);
+    });
+    const headers=["id","full_name","email","phone","alt_phone","committee_pref1","portfolio_pref1","mail_sent","payment_status"];
+    // sequentially trigger downloads (no zip dependency)
+    map.forEach((arr, name)=>{
+      const csv = toCSV(arr, headers);
+      const safeName = name.replace(/[^\w\d-]+/g,"_");
+      downloadBlob(committee_${safeName}_${new Date().toISOString().slice(0,10)}.csv, new Blob([csv], {type:"text/csv;charset=utf-8;"}));
+    });
+  }
+
+  /* ======================= Invoice export (printable) ======================= */
+  function openInvoicesPrint({ targets }) {
+    const fmt = (d) => new Date(d).toLocaleDateString();
+    const dateStr = invoiceForm.date;
+    const timeStr = invoiceForm.time;
+    const paidText = invoiceForm.paid ? "PAID" : "UNPAID";
+    const amount = Number(invoiceForm.amount||0);
+    const sign = invoiceForm.sign || "admin • noirmun.com";
+    const note = safe(invoiceForm.note);
+
+    const html = `
+<!DOCTYPE html><html>
+<head>
+<meta charset="utf-8"/>
+<title>Invoices</title>
+<style>
+  @media print { @page { size: A4; margin: 16mm; } }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #111; }
+  .inv { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin: 16px 0; }
+  .row { display:flex; justify-content: space-between; align-items: center; }
+  .h1 { font-weight:700; font-size: 20px; }
+  .muted { color:#555; font-size: 12px; }
+  .paid { color:#0a7a3d; font-weight:700; }
+  .unpaid { color:#b45309; font-weight:700; }
+  .hr { height:1px; background:#eee; margin:12px 0; }
+  table { width:100%; border-collapse: collapse; }
+  th,td { text-align:left; padding:6px 4px; border-bottom:1px solid #eee; font-size: 13px; }
+  .tot { text-align:right; font-weight:700; }
+  .foot { margin-top: 12px; display:flex; justify-content: space-between; align-items:center; }
+  .logo { display:flex; align-items:center; gap:8px; font-weight:700; }
+  .badge { padding:4px 8px; border-radius: 999px; border:1px solid currentColor; font-size:12px; }
+</style>
+</head>
+<body>
+${targets.map((r,idx)=>`
+  <div class="inv">
+    <div class="row">
+      <div class="logo">
+        <img src="${LOGO_URL || ""}" alt="" style="height:28px;width:28px;border-radius:8px;border:1px solid #eee;object-fit:cover"/>
+        <div>NoirMUN • Invoice</div>
+      </div>
+      <div><span class="badge ${invoiceForm.paid?"paid":"unpaid"}">${paidText}</span></div>
+    </div>
+    <div class="hr"></div>
+    <div class="row">
+      <div>
+        <div class="h1">${safe(r.full_name)||"Delegate"}</div>
+        <div class="muted">${safe(r.email)||"—"} • ${safe(r.phone)||"—"}</div>
+      </div>
+      <div class="muted" style="text-align:right">
+        <div>Date: ${dateStr || "—"}</div>
+        <div>Time: ${timeStr || "—"}</div>
+        <div>Invoice #: ${String(r.id).padStart(4,"0")}</div>
+      </div>
+    </div>
+    <table style="margin-top:10px">
+      <thead><tr><th style="width:60%">Description</th><th style="width:20%">Qty</th><th class="tot" style="width:20%">Amount</th></tr></thead>
+      <tbody>
+        <tr><td>Delegate Registration • ${safe(r.committee_pref1)||"Committee"}${r.portfolio_pref1?(" • "+safe(r.portfolio_pref1)):""}</td><td>1</td><td class="tot">₹ ${amount.toLocaleString("en-IN")}</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><td></td><td class="tot">Total</td><td class="tot">₹ ${amount.toLocaleString("en-IN")}</td></tr>
+      </tfoot>
+    </table>
+    ${note ? <div class="muted" style="margin-top:8px">Note: ${note}</div> : ""}
+    <div class="foot">
+      <div class="muted">Generated ${new Date().toLocaleString()}</div>
+      <div class="muted">Signed by: <b>${sign}</b></div>
+    </div>
+  </div>
+`).join("")}
+<script>window.onload = () => window.print();</script>
+</body>
+</html>`;
+    const w = window.open("", "_blank");
+    if (!w) { addToast("Popup blocked. Allow popups to print invoices.", "warn", 6000); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  }
+
   /* ======================= Render ======================= */
   const logo = LOGO_URL || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='100%' height='100%' rx='12' fill='%23fff'/><text x='50%' y='56%' text-anchor='middle' font-family='sans-serif' font-size='28' fill='%23000'>N</text></svg>";
   const needSetup = !apiUrl && !dcUrl;
+
+  /* Export dropdown options */
+  const exportBtn = (
+    <div className="inline-flex items-center gap-2"><Download size={16}/> Export</div>
+  );
+  const exportOptions = [
+    { value:"csv_all", label:"CSV • current filter", onClick: exportCSVAll },
+    { value:"csv_committee", label:"CSV • committee-wise (multi-file)", onClick: exportCSVCommitteeWise },
+    { value:"invoices", label:"Invoices • open dialog", onClick: ()=>setInvoiceOpen(true) },
+  ];
+
+  /* Selected/Targets helpers */
+  const selectedRows = useMemo(()=>rows.filter(r=>selectedIds.has(r.id)),[rows,selectedIds]);
+  const invoiceTargets = selectedRows.length ? selectedRows : pageRows;
 
   return (
     <div className="relative min-h-[100dvh] text-white">
@@ -505,13 +639,12 @@ export default function Adminv1() {
             <Tag title="Last synced">{lastSynced ? <><CheckCircle2 size={14}/> {lastSynced}</> : "—"}</Tag>
             {kpiStale && <Tag tone="warn" title="DelCount unavailable; showing cached KPIs"><ShieldAlert size={14}/> stale</Tag>}
             {health.mismatched && <Tag tone="error" title={grid≠totals (paid ${health.paid.grid} vs ${health.paid.totals}, unpaid ${health.unpaid.grid} vs ${health.unpaid.totals})}><TriangleAlert size={14}/> KPI mismatch</Tag>}
+
             <button onClick={()=>fetchAll()} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><RefreshCw size={16}/> Refresh</button>
-            <button onClick={()=>{
-              const headers=["id","full_name","email","phone","alt_phone","committee_pref1","portfolio_pref1","mail_sent","payment_status"];
-              const csv=[headers.join(","), ...visible.map(r=>headers.map(h=>JSON.stringify(r[h]??"")).join(","))].join("\n");
-              const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}); const url=URL.createObjectURL(blob);
-              const a=document.createElement("a"); a.href=url; a.download=delegates_${new Date().toISOString().slice(0,10)}.csv; a.click(); URL.revokeObjectURL(url);
-            }} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><Download size={16}/> Export CSV</button>
+
+            <FancySelect value={"export"} onChange={()=>{}} options={exportOptions} className="w-auto"
+              buttonContent={exportBtn}/>
+
             <button onClick={()=>setLive(v=>!v)} className={cls("px-3 py-2 rounded-xl text-sm inline-flex items-center gap-2",
               live ? "bg-emerald-500/20 hover:bg-emerald-500/25 text-emerald-200" : "bg-white/10 hover:bg-white/15")}
               title={live?"Live sync ON (25s)":"Live sync OFF"}>
@@ -564,11 +697,18 @@ export default function Adminv1() {
       {!needSetup && tab==="delegates" && (
         <main className="mx-auto max-w-7xl px-4 py-4">
           {/* KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-5">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3 mb-5">
             <KPI title="Total" value={kpi.total} tone="from-white/15 to-white/5" icon={<Users size={18}/>}/>
             <KPI title="Unpaid" value={kpi.unpaid} tone="from-yellow-500/25 to-yellow-500/10" icon={<Clock3 size={18}/>}/>
             <KPI title="Paid" value={kpi.paid} tone="from-emerald-500/25 to-emerald-500/10" icon={<BadgeCheck size={18}/>}/>
             <KPI title="Rejected" value={kpi.rejected} tone="from-red-500/25 to-red-500/10" icon={<AlertCircle size={18}/>}/>
+            <div className="rounded-2xl border border-white/10 p-4 bg-gradient-to-br from-white/10 to-white/5">
+              <div className="flex items-center justify-between">
+                <div className="text-sm opacity-80">Duplicates</div>
+                <Bug size={16} className="opacity-80"/>
+              </div>
+              <div className="mt-2 text-2xl font-semibold">{dupIndex.size}</div>
+            </div>
           </div>
 
           {/* Committee breakdown */}
@@ -593,8 +733,8 @@ export default function Adminv1() {
           )}
 
           {/* Controls */}
-          <div className="mb-3 grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div className="relative">
+          <div className="mb-3 grid grid-cols-1 xl:grid-cols-4 gap-3">
+            <div className="relative xl:col-span-2">
               <Search className="absolute left-3 top-2.5 opacity-80" size={18} />
               <input value={q} onChange={(e)=>setQ(e.target.value)}
                 placeholder='Search: name, email, phone, committee, portfolio (quotes "", -minus, numbers OK)'
@@ -608,8 +748,11 @@ export default function Adminv1() {
                 options={[{value:"all",label:"All committees"}, ...committees.map(c=>({value:c,label:c}))]}
                 className="flex-1"/>
             </div>
-            <div className="flex items-center gap-2 justify-between lg:justify-end">
-              <button onClick={()=>{setQ("");setStatus("all");setCommittee("all");setOnlyDup(false);}}
+            <div className="flex items-center gap-2">
+              <FancySelect value={dupFilter} onChange={setDupFilter}
+                options={[{value:"all",label:"All delegates"},{value:"dups",label:"Duplicates only"}]}
+                className="w-[160px]"/>
+              <button onClick={()=>{setQ("");setStatus("all");setCommittee("all");setDupFilter("all");}}
                 className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><Filter size={16}/> Clear</button>
               <button onClick={()=>setCols(c=>({...c,email:!c.email,phone:!c.phone}))}
                 className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><Columns size={16}/> Columns</button>
@@ -618,14 +761,19 @@ export default function Adminv1() {
             </div>
           </div>
 
-          {/* Duplicate toggle + quick stats */}
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <button onClick={()=>setOnlyDup(v=>!v)}
-              className={cls("px-3 py-1.5 rounded-lg text-sm inline-flex items-center gap-2",
-                onlyDup ? "bg-red-500/20 text-red-100 ring-1 ring-red-400/50" : "bg-white/10 hover:bg-white/15")}>
-              <ListFilter size={16}/> {onlyDup ? "Showing duplicates only" : "Filter duplicates"}
-            </button>
-            <DuplicateSummary rows={rows}/>
+          {/* Bulk actions */}
+          <div className="mb-3 flex flex-wrap gap-2 items-center">
+            <Tag><CheckSquare size={14}/> {selectedIds.size} selected</Tag>
+            <button disabled={!canEdit||!selectedIds.size} onClick={()=>bulkStatus("paid")}
+              className={cls("px-3 py-1.5 rounded-lg text-sm inline-flex items-center gap-2", selectedIds.size&&canEdit?"bg-emerald-500/20 hover:bg-emerald-500/25":"bg-white/10 opacity-60 cursor-not-allowed")}>
+              <BadgeCheck size={14}/> Mark Paid</button>
+            <button disabled={!canEdit||!selectedIds.size} onClick={()=>bulkStatus("unpaid")}
+              className={cls("px-3 py-1.5 rounded-lg text-sm inline-flex items-center gap-2", selectedIds.size&&canEdit?"bg-yellow-500/20 hover:bg-yellow-500/25":"bg-white/10 opacity-60 cursor-not-allowed")}>
+              <Clock3 size={14}/> Mark Unpaid</button>
+            <button disabled={!canEdit||!selectedIds.size} onClick={()=>bulkStatus("rejected")}
+              className={cls("px-3 py-1.5 rounded-lg text-sm inline-flex items-center gap-2", selectedIds.size&&canEdit?"bg-red-500/20 hover:bg-red-500/25":"bg-white/10 opacity-60 cursor-not-allowed")}>
+              <AlertCircle size={14}/> Mark Rejected</button>
+
             <div className="ml-auto inline-flex items-center gap-2">
               <SlidersHorizontal size={16} className="opacity-70"/><span className="text-sm opacity-80">Rows per page</span>
               <FancySelect value={String(pageSize)} onChange={(v)=>setPageSize(Number(v))}
@@ -644,6 +792,7 @@ export default function Adminv1() {
               piiMask={piiMask}
               highlightTokens={[...query.must, ...query.phrases]}
               saveRow={saveRow}
+              dupIndex={dupIndex}
             />
           ) : (
             <TableDesktop
@@ -658,6 +807,7 @@ export default function Adminv1() {
               piiMask={piiMask}
               highlightTokens={[...query.must, ...query.phrases]}
               saveRow={saveRow}
+              dupIndex={dupIndex}
             />
           )}
 
@@ -774,20 +924,69 @@ export default function Adminv1() {
           </div>
         ))}
       </div>
+
+      {/* Export modal (shortcut buttons) */}
+      <Modal open={exportOpen} onClose={()=>setExportOpen(false)} title="Export">
+        <div className="grid gap-2">
+          <button onClick={()=>{setExportOpen(false); exportCSVAll();}} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 inline-flex items-center gap-2"><FileSpreadsheet size={16}/> CSV • current filter</button>
+          <button onClick={()=>{setExportOpen(false); exportCSVCommitteeWise();}} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 inline-flex items-center gap-2"><FileSpreadsheet size={16}/> CSV • committee-wise (multi-file)</button>
+          <button onClick={()=>{setExportOpen(false); setInvoiceOpen(true);}} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 inline-flex items-center gap-2"><FileText size={16}/> Invoices</button>
+        </div>
+      </Modal>
+
+      {/* Invoice modal */}
+      <Modal open={invoiceOpen} onClose={()=>setInvoiceOpen(false)} title="Export invoices">
+        <div className="grid gap-3 text-sm">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="grid gap-1">Date<input type="date" value={invoiceForm.date} onChange={e=>setInvoiceForm(f=>({...f, date:e.target.value}))} className="px-2 py-1 rounded-lg bg-white/10 outline-none"/></label>
+            <label className="grid gap-1">Time<input type="time" value={invoiceForm.time} onChange={e=>setInvoiceForm(f=>({...f, time:e.target.value}))} className="px-2 py-1 rounded-lg bg-white/10 outline-none"/></label>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <label className="grid gap-1">Amount (₹)
+              <select value={invoiceForm.amount} onChange={e=>setInvoiceForm(f=>({...f, amount:e.target.value}))} className="px-2 py-1 rounded-lg bg-white/10 outline-none">
+                <option value="1969">1969 • Early Bird 1</option>
+                <option value="2000">2000 • Early Bird 2</option>
+                <option value="2300">2300 • Base</option>
+              </select>
+            </label>
+            <label className="grid gap-1">Paid?
+              <select value={String(invoiceForm.paid)} onChange={e=>setInvoiceForm(f=>({...f, paid: e.target.value==="true"}))} className="px-2 py-1 rounded-lg bg-white/10 outline-none">
+                <option value="true">Yes (mark PAID)</option>
+                <option value="false">No (mark UNPAID)</option>
+              </select>
+            </label>
+            <label className="grid gap-1">Sign as
+              <input value={invoiceForm.sign} onChange={e=>setInvoiceForm(f=>({...f, sign:e.target.value}))} className="px-2 py-1 rounded-lg bg-white/10 outline-none"/>
+            </label>
+          </div>
+          <label className="grid gap-1">Note (optional)
+            <input value={invoiceForm.note} onChange={e=>setInvoiceForm(f=>({...f, note:e.target.value}))} className="px-2 py-1 rounded-lg bg-white/10 outline-none" placeholder="e.g., thank you for registering"/>
+          </label>
+
+          <div className="text-xs opacity-80">
+            Targets: <b>{invoiceTargets.length}</b> {selectedRows.length ? "(selected rows)" : "(current page)"}
+          </div>
+
+          <div className="flex items-center justify-end gap-2">
+            <button onClick={()=>setInvoiceOpen(false)} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm">Cancel</button>
+            <button onClick={()=>{ openInvoicesPrint({targets:invoiceTargets}); }} className="px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/25 text-sm inline-flex items-center gap-2"><FileText size={16}/> Open printable</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
 /* ===== Desktop table ===== */
-function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggleRowSel,togglePageSel,canEdit,piiMask,highlightTokens,saveRow}) {
+function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggleRowSel,togglePageSel,canEdit,piiMask,highlightTokens,saveRow,dupIndex}) {
   return (
     <div className="hidden md:block overflow-x-auto rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
       <table className="w-full text-sm table-fixed">
         <colgroup>
-          <col className="w-12"/><col className="w-14"/><col className="w-[240px]"/>
+          <col className="w-12"/><col className="w-14"/><col className="w-[220px]"/>
           {cols.email && <col className="w-[260px]"/>}{cols.phone && <col className="w-[160px]"/>}
-          {cols.committee && <col className="w-[220px]"/>}{cols.portfolio && <col className="w-[260px]"/>}
-          {cols.status && <col className="w-[240px]"/>}
+          {cols.committee && <col className="w-[200px]"/>}{cols.portfolio && <col className="w-[220px]"/>}
+          {cols.status && <col className="w-[260px]"/>}
         </colgroup>
         <thead className="bg-white/10 sticky top-0 z-10">
           <tr className="whitespace-nowrap">
@@ -816,7 +1015,7 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
               <Td className="truncate" title={r.full_name}>
                 <div className="flex items-center gap-2">
                   <InlineEdit value={r.full_name} onSave={(v)=>saveRow(r,{full_name:v})} disabled={!canEdit}/>
-                  {r._dup && <Tag tone="warn" title="Duplicate by email or phone"><CopyCheck size={14}/> dup</Tag>}
+                  {dupIndex.has(r.id) && <Tag tone="warn" title="Possible duplicate">dup</Tag>}
                 </div>
               </Td>
               {cols.email && (
@@ -863,7 +1062,7 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
 }
 
 /* ===== Mobile cards ===== */
-function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, piiMask, highlightTokens, saveRow }) {
+function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, piiMask, highlightTokens, saveRow, dupIndex }) {
   if (loading) return <div className="grid gap-2">{Array.from({length:6}).map((_,i)=><div key={i} className="h-20 rounded-xl bg-white/10 animate-pulse"/>)}</div>;
   if (!pageRows.length) return <div className="p-8 text-center opacity-70">No results match your filters.</div>;
   return (
@@ -873,7 +1072,7 @@ function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, pi
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-sm font-semibold truncate">
-                {r.full_name || "—"} {r._dup && <Tag tone="warn" title="Duplicate by email or phone"><CopyCheck size={12}/> dup</Tag>}
+                {r.full_name || "—"} {dupIndex.has(r.id) && <span className="ml-2"><Tag tone="warn">dup</Tag></span>}
               </div>
               <div className="text-xs opacity-80 truncate">
                 {piiMask ? <span className="blur-[2px] hover:blur-0 transition"><Highlighter text={r.email} tokens={highlightTokens}/></span> : <Highlighter text={r.email} tokens={highlightTokens}/>}
@@ -898,7 +1097,10 @@ function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, pi
               <button className="px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/25 text-xs inline-flex items-center gap-1" onClick={()=>saveRow(r,{payment_status:"paid"})}><BadgeCheck size={14}/> Paid</button>
               <button className="px-2 py-1 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/25 text-xs inline-flex items-center gap-1" onClick={()=>saveRow(r,{payment_status:"unpaid"})}><Clock3 size={14}/> Unpaid</button>
               <button className="px-2 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/25 text-xs inline-flex items-center gap-1" onClick={()=>saveRow(r,{payment_status:"rejected"})}><Trash2 size={14}/> Reject</button>
-              <button className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-xs inline-flex items-center gap-1" onClick={()=>navigator.clipboard?.writeText([r.full_name,r.email,r.phone].filter(Boolean).join(" • "))}><Copy size={14}/> Copy</button>
+              <div className="flex items-center gap-2 text-xs">
+                {!!r.email && <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={mailto:${r.email}}>mail</a>}
+                {!!r.phone && <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={https://wa.me/${r.phone.replace(/\D/g,"")}} target="_blank" rel="noreferrer">wa</a>}
+              </div>
             </div>
           )}
         </div>
@@ -943,30 +1145,4 @@ function HealthRow({ label, obj }) {
       </span>
     </div>
   );
-}
-
-/* Duplicate summary chip */
-function DuplicateSummary({ rows }) {
-  const counts = useMemo(() => {
-    let emails = 0, phones = 0, both = 0, any = 0;
-    rows.forEach(r => {
-      const e = r._dupKeys?.email ? 1 : 0;
-      const p = r._dupKeys?.phone ? 1 : 0;
-      if (e || p) any++;
-      if (e) emails++;
-      if (p) phones++;
-      if (e && p) both++;
-    });
-    return { emails, phones, both, any };
-  }, [rows]);
-  if (!rows?.length) return null;
-  if (!counts.any) return <Tag title="No duplicates found"><CopyCheck size={14}/> 0 dup</Tag>;
-  return (
-    <div className="inline-flex items-center gap-2">
-      <Tag tone="warn" title="Rows with duplicate email and/or phone"><CopyCheck size={14}/> {counts.any} dup</Tag>
-      {counts.emails ? <Tag title="Rows with duplicate email">{counts.emails} email</Tag> : null}
-      {counts.phones ? <Tag title="Rows with duplicate phone">{counts.phones} phone</Tag> : null}
-      {counts.both ? <Tag title="Rows with duplicate email & phone">{counts.both} both</Tag> : null}
-    </div>
-  );
 }
