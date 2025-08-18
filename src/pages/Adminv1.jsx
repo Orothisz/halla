@@ -35,19 +35,43 @@ const fold = (s) => S(s)
   .trim();
 const digits = (s) => String(s||"").replace(/\D/g,"");
 
-/* Query parser: words, "quoted phrases", and -negatives */
+/* ---------- Query parser with field filters ---------- */
 function parseQuery(q) {
-  const out = { must: [], not: [], phrases: [] };
+  const out = { must: [], not: [], phrases: [], kv: {} };
   if (!q) return out;
-  const re = /"([^"]+)"|(\S+)/g;
+  const re = /(?:"([^"]+)")|(\S+)/g;
   let m;
   while ((m = re.exec(q))) {
     const raw = m[1] ?? m[2] ?? "";
+    if (!raw) continue;
+
     const neg = raw.startsWith("-");
-    const val = fold(neg ? raw.slice(1) : raw);
+    const body = neg ? raw.slice(1) : raw;
+
+    const colon = body.indexOf(":");
+    if (colon > 0) {
+      const keyRaw = body.slice(0, colon);
+      const valRaw = body.slice(colon + 1);
+      const key = fold(keyRaw)
+        .replace(/^is$/, "status")
+        .replace(/^comm(itee)?$/, "committee")
+        .replace(/^port(folio)?$/, "portfolio")
+        .replace(/^mail|email$/, "email")
+        .replace(/^tel|mobile|phone$/, "phone");
+      const val = fold(valRaw.replace(/^"(.*)"$/, "$1"));
+      if (!out.kv[key]) out.kv[key] = [];
+      (neg ? out.kv[key] : out.kv[key]).push(neg ? "-" + val : val); // preserve neg with leading "-"
+      continue;
+    }
+
+    const val = fold(body);
     if (!val) continue;
-    if (m[1]) (neg ? out.not : out.phrases).push(val);
-    else (neg ? out.not : out.must).push(val);
+
+    if (m[1]) {
+      (neg ? out.not : out.phrases).push(val);
+    } else {
+      (neg ? out.not : out.must).push(val);
+    }
   }
   return out;
 }
@@ -224,23 +248,11 @@ export default function Adminv1() {
     const grid = Array.isArray(dcJson?.grid) ? dcJson.grid : null;
     const B = (row1) => numify(grid?.[row1-1]?.[1]);
     let g = { total:null, paid:null, unpaid:null };
-    if (grid) {
-      g.total  = B(6); g.paid = B(7); g.unpaid = B(8);
-      if (!g.total && (g.paid!=null || g.unpaid!=null)) g.total = (g.paid||0) + (g.unpaid||0);
-    }
-    const t = {
-      total:  numify(dcJson?.totals?.delegates) || null,
-      paid:   numify(dcJson?.totals?.paid) || null,
-      unpaid: numify(dcJson?.totals?.unpaid) || null,
-    };
+    if (grid) { g.total=B(6); g.paid=B(7); g.unpaid=B(8); if (!g.total && (g.paid!=null || g.unpaid!=null)) g.total=(g.paid||0)+(g.unpaid||0); }
+    const t = { total:numify(dcJson?.totals?.delegates)||null, paid:numify(dcJson?.totals?.paid)||null, unpaid:numify(dcJson?.totals?.unpaid)||null };
     const rejected = numify(dcJson?.totals?.cancellations) || 0;
     const src = sourcePref === "totals" ? t : g;
-    const next = {
-      total:  src.total  ?? t.total  ?? g.total  ?? 0,
-      paid:   src.paid   ?? t.paid   ?? g.paid   ?? 0,
-      unpaid: src.unpaid ?? t.unpaid ?? g.unpaid ?? 0,
-      rejected,
-    };
+    const next = { total:src.total??t.total??g.total??0, paid:src.paid??t.paid??g.paid??0, unpaid:src.unpaid??t.unpaid??g.unpaid??0, rejected };
     const mismatch = (g.paid!=null && t.paid!=null && g.paid!==t.paid) || (g.unpaid!=null && t.unpaid!=null && g.unpaid!==t.unpaid);
     setHealth(h => ({ ...h, mismatched: !!mismatch, paid:{grid:g.paid, totals:t.paid}, unpaid:{grid:g.unpaid, totals:t.unpaid} }));
     return next;
@@ -262,21 +274,16 @@ export default function Adminv1() {
     }
   }
 
-  /* ---------- FIX: case-insensitive field picker ---------- */
+  /* ---------- CI field picker ---------- */
   const pick = (obj, names) => {
-    for (const n of names) {
-      if (obj && obj[n] != null && obj[n] !== "") return obj[n];
-    }
+    for (const n of names) if (obj && obj[n] != null && obj[n] !== "") return obj[n];
     if (!obj) return "";
     const keys = Object.keys(obj);
-    for (const n of names) {
-      const k = keys.find(k => k.toLowerCase() === String(n).toLowerCase());
-      if (k && obj[k] != null && obj[k] !== "") return obj[k];
-    }
+    for (const n of names) { const k = keys.find(k => k.toLowerCase() === String(n).toLowerCase()); if (k && obj[k] != null && obj[k] !== "") return obj[k]; }
     return "";
   };
 
-  /* Normalizers (build folded index + digits) */
+  /* Normalizers (build folded index + digits + tokens) */
   const normalizeRows = useCallback((arr) => {
     const norm = (arr || [])
       .filter(r => r && (pick(r,["full_name","Full Name","Name","name"]) ||
@@ -309,11 +316,14 @@ export default function Adminv1() {
           payment_status: canonical || "unpaid",
         };
 
+        // include status text in the searchable slab
         const textIndex = [
-          out.full_name, out.email, out.phone, out.alt_phone, out.committee_pref1, out.portfolio_pref1
+          out.full_name, out.email, out.phone, out.alt_phone,
+          out.committee_pref1, out.portfolio_pref1, out.payment_status
         ].filter(Boolean).join(" ");
         out._slab = fold(textIndex);
         out._digits = digits(out.phone + " " + out.alt_phone);
+        out._tokens = out._slab.split(" ").filter(Boolean);
         return out;
       });
 
@@ -330,7 +340,6 @@ export default function Adminv1() {
 
     const allow = (u)=>typeof u==="string" && /^https?:\/\//i.test(u);
 
-    // rows
     let da = { ok:false, ms:0, json:null, status:0 };
     if (allow(apiUrl)) {
       da = await fetchWithBackoff(apiUrl, { method:"GET" });
@@ -349,7 +358,6 @@ export default function Adminv1() {
       setRows([]); setLastDa({ ok:false, error:"DAPrivate URL missing" });
     }
 
-    // KPIs
     let dc = { ok:false, ms:0, json:null, status:0 };
     if (allow(dcUrl)) {
       dc = await fetchWithBackoff(dcUrl, { method:"GET" });
@@ -382,36 +390,136 @@ export default function Adminv1() {
   useEffect(()=>{ if (!live) return; const t=setInterval(()=>fetchAll({silent:true}),25000); return ()=>clearInterval(t); }, [live, apiUrl, dcUrl]);
   useEffect(()=>{ setPage(1); }, [qDeb, status, committee]);
 
-  /* ===== SEARCH: folded, phrase-aware, digit-aware ===== */
+  /* ===== SMART SEARCH ===== */
   const qFolded = fold(qDeb);
   const query = useMemo(() => parseQuery(qFolded), [qFolded]);
 
-  const visible = useMemo(() => {
-    const must = query.must, not = query.not, phrases = query.phrases;
-    const hasAny = Boolean(must.length || not.length || phrases.length);
-    const pass = (r) => {
+  // fast small Levenshtein with early exit
+  function lev(a, b, max=2){
+    if (a===b) return 0;
+    const al=a.length, bl=b.length;
+    if (Math.abs(al-bl) > max) return max+1;
+    const v0 = new Array(bl+1); const v1 = new Array(bl+1);
+    for (let j=0;j<=bl;j++) v0[j]=j;
+    for (let i=0;i<al;i++){
+      v1[0]=i+1;
+      let best=v1[0];
+      for (let j=0;j<bl;j++){
+        const cost = a[i]===b[j] ? 0 : 1;
+        v1[j+1] = Math.min(v1[j]+1, v0[j+1]+1, v0[j]+cost);
+        if (v1[j+1] < best) best = v1[j+1];
+      }
+      if (best > max) return max+1;
+      for (let j=0;j<=bl;j++) v0[j]=v1[j];
+    }
+    return v1[bl];
+  }
+
+  function fuzzyTokenHit(row, token){
+    // digits: match against phone digits only
+    if (/\d/.test(token)) {
+      const td = token.replace(/\D/g,"");
+      if (!td) return { hit:false, score:0 };
+      if (row._digits.includes(td)) return { hit:true, score:3 };
+      return { hit:false, score:0 };
+    }
+
+    // direct include
+    if (row._slab.includes(token)) {
+      let s = 2;
+      // boost if any word starts with token
+      if (row._tokens.some(w => w.startsWith(token))) s += 2;
+      // extra boost if name starts with it
+      const nameFold = fold(row.full_name);
+      if (nameFold.startsWith(token)) s += 3;
+      return { hit:true, score:s };
+    }
+
+    // fuzzy within row tokens (edit distance <=1 for short, <=2 for long)
+    const max = token.length <= 4 ? 1 : 2;
+    for (const w of row._tokens) {
+      if (Math.abs(w.length - token.length) > max) continue;
+      if (lev(w, token, max) <= max) return { hit:true, score:1 };
+    }
+    return { hit:false, score:0 };
+  }
+
+  // apply UI filters + query filters + smart token/phrase matching; compute score
+  const scoredVisible = useMemo(() => {
+    const must = query.must, not = query.not, phrases = query.phrases, kv = query.kv;
+    const hasAny = Boolean(must.length || not.length || phrases.length || Object.keys(kv).length);
+
+    function kvPass(r){
+      let ok = true;
+      for (const k of Object.keys(kv)) {
+        for (const raw of kv[k]) {
+          const neg = raw.startsWith("-");
+          const val = neg ? raw.slice(1) : raw;
+          let hit = true;
+
+          if (k==="status") hit = fold(r.payment_status) === val;
+          else if (k==="committee") hit = fold(r.committee_pref1).includes(val);
+          else if (k==="portfolio") hit = fold(r.portfolio_pref1).includes(val);
+          else if (k==="email") {
+            const f = fold(r.email);
+            hit = f.includes(val) || (val.includes("@") ? f.endsWith(val) : f.includes(val));
+          }
+          else if (k==="phone") hit = r._digits.includes(val.replace(/\D/g,""));
+          else if (k==="name")  hit = fold(r.full_name).includes(val);
+          else if (k==="id")    hit = String(r.id) === val;
+
+          if (neg ? hit : !hit) { ok=false; break; }
+        }
+        if (!ok) break;
+      }
+      return ok;
+    }
+
+    const out = [];
+    for (const r of rows) {
+      // UI dropdown filters first
       const statusOk = status==="all" ? true : S(r.payment_status)===status;
       const commOk = committee==="all" ? true : fold(r.committee_pref1)===fold(committee);
-      if (!statusOk || !commOk) return false;
+      if (!statusOk || !commOk) continue;
 
-      if (!hasAny) return true;
+      if (!hasAny) { out.push({row:r, score:0}); continue; }
 
-      for (const t of must) {
-        const isNum = /\d/.test(t);
-        if (isNum) {
-          const td = t.replace(/\D/g,"");
-          if (!td) continue;
-          if (!r._digits.includes(td)) return false;
-        } else {
-          if (!r._slab.includes(t)) return false;
-        }
+      if (!kvPass(r)) continue;
+
+      // phrases are required
+      let score = 0;
+      let failed = false;
+      for (const p of phrases) {
+        if (!r._slab.includes(p)) { failed=true; break; }
+        score += 6; // strong boost on phrase hit
       }
-      for (const t of not) { if (r._slab.includes(t)) return false; }
-      for (const p of phrases) { if (!r._slab.includes(p)) return false; }
-      return true;
-    };
-    return rows.filter(pass);
-  }, [rows, query, status, committee]);
+      if (failed) continue;
+
+      // negatives
+      for (const t of not) { if (r._slab.includes(t)) { failed=true; break; } }
+      if (failed) continue;
+
+      // must tokens with fuzzy allowance
+      for (const t of must) {
+        const res = fuzzyTokenHit(r, t);
+        if (!res.hit) { failed=true; break; }
+        score += res.score;
+      }
+      if (failed) continue;
+
+      // small extra feature-based boosts
+      if (qFolded && fold(r.full_name).includes(qFolded)) score += 1;
+      if (qFolded && r.email && fold(r.email).includes(qFolded)) score += 1;
+
+      out.push({ row: r, score });
+    }
+
+    // rank best matches first
+    out.sort((a,b)=>b.score-a.score || a.row.id - b.row.id);
+    return out;
+  }, [rows, query, status, committee, qFolded]);
+
+  const visible = scoredVisible.map(x=>x.row);
 
   const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
   const pageClamped = Math.min(Math.max(1,page), totalPages);
@@ -435,8 +543,9 @@ export default function Adminv1() {
     if (patch.phone!=null && patch.phone!==row.phone && patch.phone && !phoneOk(patch.phone)) return addToast("Invalid phone","error");
 
     const next={...row,...patch};
-    next._slab = fold([next.full_name,next.email,next.phone,next.alt_phone,next.committee_pref1,next.portfolio_pref1].join(" "));
+    next._slab = fold([next.full_name,next.email,next.phone,next.alt_phone,next.committee_pref1,next.portfolio_pref1,next.payment_status].join(" "));
     next._digits = digits(next.phone + " " + next.alt_phone);
+    next._tokens = next._slab.split(" ").filter(Boolean);
     setRows(rs=>rs.map(x=>x.id===row.id?next:x)); // optimistic
 
     try{
@@ -635,7 +744,7 @@ export default function Adminv1() {
             <div className="relative">
               <Search className="absolute left-3 top-2.5 opacity-80" size={18} />
               <input value={q} onChange={(e)=>setQ(e.target.value)}
-                placeholder='Search: name, email, phone, committee, portfolio (quotes "", -minus, numbers OK)'
+                placeholder='Search: name, email, phone, committee, portfolio — supports quotes, -, and filters like status:paid committee:"IP - Photography"'
                 className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/10 outline-none placeholder:text-white/60"/>
             </div>
             <div className="flex gap-2">
