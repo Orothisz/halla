@@ -7,7 +7,7 @@ import {
   History as HistoryIcon, Edit3, Wifi, WifiOff, ShieldAlert, CheckCircle2,
   Copy, ChevronLeft, ChevronRight, Eye, EyeOff, Columns, Settings, TriangleAlert,
   Users, CheckSquare, Square, Wand2, ChartNoAxesGantt, Filter, SlidersHorizontal,
-  Globe, MonitorSmartphone, Smartphone, Trash2, FileSpreadsheet, Bug
+  Globe, MonitorSmartphone, Smartphone, Trash2, Menu, X
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { LOGO_URL } from "../shared/constants";
@@ -29,9 +29,9 @@ const qp = () => { try{ return new URLSearchParams(window.location.search); }cat
 /* fold accents, collapse spaces, strip punctuation; also expose digits */
 const fold = (s) => S(s)
   .normalize("NFKD")
-  .replace(/[\u0300-\u036f]/g, "")      // remove diacritics
-  .replace(/[._\-+/()]/g, " ")          // unify separators
-  .replace(/\s+/g, " ")                 // collapse space
+  .replace(/[\u0300-\u036f]/g, "")
+  .replace(/[._\-+/()]/g, " ")
+  .replace(/\s+/g, " ")
   .trim();
 const digits = (s) => String(s||"").replace(/\D/g,"");
 
@@ -96,8 +96,7 @@ function PortalDropdown({ anchorRef, open, onClose, width, children }) {
   if (!open) return null;
   return createPortal(<div className="fixed z-[9999]" style={{ top: box.top, left: box.left, width: box.width }}>{children}</div>, document.body);
 }
-
-function FancySelect({ value, onChange, options, className = "", disabled=false, buttonContent }) {
+function FancySelect({ value, onChange, options, className = "", disabled=false }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const current = options.find((o) => o.value === value) || options[0];
@@ -107,14 +106,14 @@ function FancySelect({ value, onChange, options, className = "", disabled=false,
         className={cls("w-full justify-between px-3 py-2 rounded-xl text-sm outline-none inline-flex items-center gap-2",
           disabled ? "bg-white/20 opacity-60 cursor-not-allowed" : "bg-white/90 text-gray-900 hover:bg-white")}
         onClick={(e) => { e.stopPropagation(); if (!disabled) setOpen((v) => !v); }}>
-        {buttonContent || <span className="truncate">{current?.label}</span>}
+        <span className="truncate">{current?.label}</span>
         <svg width="16" height="16" viewBox="0 0 24 24" className={open ? "rotate-180 transition" : "transition"}><path fill="currentColor" d="M7 10l5 5 5-5z" /></svg>
       </button>
       <PortalDropdown anchorRef={btnRef} open={open} onClose={() => setOpen(false)}>
-        <div className="rounded-xl border border-gray-200 bg-white text-gray-900 shadow-2xl max-h-64 overflow-auto min-w-[220px]">
+        <div className="rounded-xl border border-gray-200 bg-white text-gray-900 shadow-2xl max-h-64 overflow-auto">
           {options.map((o) => (
             <button key={o.value} className={"w-full text-left px-3 py-2 hover:bg-gray-100 " + (o.value === value ? "bg-gray-100" : "")}
-              onClick={(e) => { e.stopPropagation(); if (o.onClick) o.onClick(); else onChange(o.value); setOpen(false); }}>
+              onClick={(e) => { e.stopPropagation(); onChange(o.value); setOpen(false); }}>
               {o.label}
             </button>
           ))}
@@ -174,25 +173,6 @@ function Highlighter({ text, tokens }) {
   return <>{spans}</>;
 }
 
-/* ======= Simple Modal (export only) ======= */
-function Modal({ open, onClose, children, title, maxWidth="max-w-2xl" }) {
-  if (!open) return null;
-  return createPortal(
-    <div className="fixed inset-0 z-[9998]">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="absolute left-1/2 top-10 -translate-x-1/2 w-[92vw] sm:w-auto">
-        <div className={cls("rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-4 text-white shadow-2xl", maxWidth)}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="font-semibold">{title}</div>
-            <button onClick={onClose} className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15">Close</button>
-          </div>
-          <div className="max-h-[75vh] overflow-auto">{children}</div>
-        </div>
-      </div>
-    </div>, document.body
-  );
-}
-
 /* ========================= Page ========================= */
 export default function Adminv1() {
   /* Session / RBAC */
@@ -225,7 +205,6 @@ export default function Adminv1() {
   const [q, setQ] = useState(""); const qDeb = useDebounced(q, 160);
   const [status, setStatus] = useState("all");
   const [committee, setCommittee] = useState("all");
-  const [dupFilter, setDupFilter] = useState("all"); // "all" | "dups"
   const [tab, setTab] = useState("delegates");
   const [live, setLive] = useState(true);
   const [logs, setLogs] = useState([]); const [logsLoading, setLogsLoading] = useState(false);
@@ -241,7 +220,7 @@ export default function Adminv1() {
   const [compact, setCompact] = useState(true);
   const [lastDa, setLastDa] = useState(null);
   const [health, setHealth] = useState({ da: null, dc: null, mismatched: false, paid: {grid:null, totals:null}, unpaid: {grid:null, totals:null} });
-  const [exportOpen, setExportOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false); // NEW: hamburger panel
 
   /* ===== KPI compute ===== */
   const computeKPI = useCallback((dcJson) => {
@@ -286,7 +265,7 @@ export default function Adminv1() {
     }
   }
 
-  /* Normalizers (build folded index + digits) */
+  /* Normalizers */
   const normalizeRows = useCallback((arr) => {
     const norm = (arr || [])
       .filter(r => r && (r.full_name || r.name || r.email || r.phone || r["phone no."] || r["phone no"] || r["phone_no"]))
@@ -375,28 +354,11 @@ export default function Adminv1() {
   }
   useEffect(()=>{ fetchAll(); /* eslint-disable-next-line */},[apiUrl,dcUrl]);
   useEffect(()=>{ if (!live) return; const t=setInterval(()=>fetchAll({silent:true}),25000); return ()=>clearInterval(t); }, [live, apiUrl, dcUrl]);
-  useEffect(()=>{ setPage(1); }, [qDeb, status, committee, dupFilter]);
+  useEffect(()=>{ setPage(1); }, [qDeb, status, committee]);
 
-  /* ===== SEARCH (folded, phrase-aware, digit-aware) ===== */
+  /* ===== SEARCH: folded, phrase-aware, digit-aware ===== */
   const qFolded = fold(qDeb);
   const query = useMemo(() => parseQuery(qFolded), [qFolded]);
-
-  /* Duplicate detection (email, phone digits, exact folded name) */
-  const dupIndex = useMemo(() => {
-    const byEmail = new Map(), byPhone = new Map(), byName = new Map();
-    rows.forEach(r=>{
-      const e = S(r.email);
-      const p = r._digits;
-      const n = fold(r.full_name);
-      if (e) byEmail.set(e, [...(byEmail.get(e)||[]), r.id]);
-      if (p) byPhone.set(p, [...(byPhone.get(p)||[]), r.id]);
-      if (n) byName.set(n, [...(byName.get(n)||[]), r.id]);
-    });
-    const dupSet = new Set();
-    const pushDup = (ids) => { if (ids.length>1) ids.forEach(id=>dupSet.add(id)); };
-    [...byEmail.values(), ...byPhone.values(), ...byName.values()].forEach(pushDup);
-    return dupSet;
-  }, [rows]);
 
   const visible = useMemo(() => {
     const must = query.must, not = query.not, phrases = query.phrases;
@@ -405,7 +367,6 @@ export default function Adminv1() {
       const statusOk = status==="all" ? true : S(r.payment_status)===status;
       const commOk = committee==="all" ? true : fold(r.committee_pref1)===fold(committee);
       if (!statusOk || !commOk) return false;
-      if (dupFilter==="dups" && !dupIndex.has(r.id)) return false;
 
       if (!hasAny) return true;
 
@@ -424,7 +385,7 @@ export default function Adminv1() {
       return true;
     };
     return rows.filter(pass);
-  }, [rows, query, status, committee, dupFilter, dupIndex]);
+  }, [rows, query, status, committee]);
 
   const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
   const pageClamped = Math.min(Math.max(1,page), totalPages);
@@ -467,7 +428,7 @@ export default function Adminv1() {
         actor_id: me.id, actor_email: me.email, row_id: row.id,
         field: Object.keys(patch)[0], old_value: safe(row[Object.keys(patch)[0]]), new_value: safe(next[Object.keys(patch)[0]]),
       }); }catch{} }
-      fetchAll({silent:true}); // re-sync KPIs/breakdown
+      fetchAll({silent:true});
     }catch(e){
       setRows(rs=>rs.map(x=>x.id===row.id?row:x)); addToast("Update failed","error");
     }
@@ -491,53 +452,34 @@ export default function Adminv1() {
   } finally { setLogsLoading(false); } }
   useEffect(()=>{ if(tab==="history") loadLogs(); },[tab]);
 
-  /* ======================= Export helpers ======================= */
-  function toCSV(items, headers) {
-    const head = headers.join(",");
-    const body = items.map(r => headers.map(h => JSON.stringify(r[h] ?? "")).join(",")).join("\n");
-    return [head, body].join("\n");
-  }
-  function downloadBlob(name, blob) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = name; a.click();
-    URL.revokeObjectURL(url);
-  }
-  function exportCSVAll() {
-    const headers=["id","full_name","email","phone","alt_phone","committee_pref1","portfolio_pref1","mail_sent","payment_status"];
-    const csv = toCSV(visible, headers);
-    downloadBlob(`delegates_${new Date().toISOString().slice(0,10)}.csv`, new Blob([csv], {type:"text/csv;charset=utf-8;"}));
-  }
-  function exportCSVCommitteeWise() {
-    const map = new Map();
-    visible.forEach(r=>{
-      const key = r.committee_pref1 || "Unassigned";
-      map.set(key, [...(map.get(key)||[]), r]);
-    });
-    const headers=["id","full_name","email","phone","alt_phone","committee_pref1","portfolio_pref1","mail_sent","payment_status"];
-    const today = new Date().toISOString().slice(0,10);
-    // sequentially trigger downloads (no zip dependency)
-    map.forEach((arr, name)=>{
-      const csv = toCSV(arr, headers);
-      const safeName = name.replace(/[^\w\d-]+/g,"_");
-      downloadBlob(`committee_${safeName}_${today}.csv`, new Blob([csv], {type:"text/csv;charset=utf-8;"}));
-    });
-  }
-
   /* ======================= Render ======================= */
   const logo = LOGO_URL || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='100%' height='100%' rx='12' fill='%23fff'/><text x='50%' y='56%' text-anchor='middle' font-family='sans-serif' font-size='28' fill='%23000'>N</text></svg>";
   const needSetup = !apiUrl && !dcUrl;
 
-  /* Export dropdown options */
-  const exportBtn = (
-    <div className="inline-flex items-center gap-2"><Download size={16}/> Export</div>
+  // Actions block for reuse (desktop + mobile)
+  const ActionsBlock = (
+    <>
+      <Tag title="Last synced">{lastSynced ? <><CheckCircle2 size={14}/> {lastSynced}</> : "—"}</Tag>
+      {kpiStale && <Tag tone="warn" title="DelCount unavailable; showing cached KPIs"><ShieldAlert size={14}/> stale</Tag>}
+      {health.mismatched && <Tag tone="error" title={`grid≠totals (paid ${health.paid.grid} vs ${health.paid.totals}, unpaid ${health.unpaid.grid} vs ${health.unpaid.totals})`}><TriangleAlert size={14}/> KPI mismatch</Tag>}
+      <button onClick={()=>fetchAll()} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><RefreshCw size={16}/> Refresh</button>
+      <button onClick={()=>{
+        const headers=["id","full_name","email","phone","alt_phone","committee_pref1","portfolio_pref1","mail_sent","payment_status"];
+        const csv=[headers.join(","), ...visible.map(r=>headers.map(h=>JSON.stringify(r[h]??"")).join(","))].join("\n");
+        const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}); const url=URL.createObjectURL(blob);
+        const a=document.createElement("a"); a.href=url; a.download=`delegates_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url);
+      }} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><Download size={16}/> Export CSV</button>
+      <button onClick={()=>setLive(v=>!v)} className={cls("px-3 py-2 rounded-xl text-sm inline-flex items-center gap-2",
+        live ? "bg-emerald-500/20 hover:bg-emerald-500/25 text-emerald-200" : "bg-white/10 hover:bg-white/15")}
+        title={live?"Live sync ON (25s)":"Live sync OFF"}>
+        {live ? <Wifi size={16}/> : <WifiOff size={16}/> } Live
+      </button>
+      <button onClick={()=>setTab(t=>t==="health"?"delegates":"health")} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2" title="Data health"><ChartNoAxesGantt size={16}/> {tab==="health"?"Delegates":"Health"}</button>
+      <button onClick={()=>setCompact(c=>!c)} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2" title="Toggle layout">
+        {compact ? <MonitorSmartphone size={16}/> : <Smartphone size={16}/>}{compact ? "Cards" : "Table"}
+      </button>
+    </>
   );
-  const exportOptions = [
-    { value:"csv_all", label:"CSV • current filter", onClick: exportCSVAll },
-    { value:"csv_committee", label:"CSV • committee-wise (multi-file)", onClick: exportCSVCommitteeWise },
-  ];
-
-  /* Selected helpers */
-  const selectedRows = useMemo(()=>rows.filter(r=>selectedIds.has(r.id)),[rows,selectedIds]);
 
   return (
     <div className="relative min-h-[100dvh] text-white">
@@ -553,28 +495,49 @@ export default function Adminv1() {
               <div className="text-xs opacity-70">hi, {me.name || "admin"} {canEdit ? <Tag tone="ok">editor</Tag> : <Tag>viewer</Tag>}</div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Tag title="Last synced">{lastSynced ? <><CheckCircle2 size={14}/> {lastSynced}</> : "—"}</Tag>
-            {kpiStale && <Tag tone="warn" title="DelCount unavailable; showing cached KPIs"><ShieldAlert size={14}/> stale</Tag>}
-            {health.mismatched && <Tag tone="error" title={`grid≠totals (paid ${health.paid.grid} vs ${health.paid.totals}, unpaid ${health.unpaid.grid} vs ${health.unpaid.totals})`}><TriangleAlert size={14}/> KPI mismatch</Tag>}
 
-            <button onClick={()=>fetchAll()} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><RefreshCw size={16}/> Refresh</button>
-
-            <FancySelect value={"export"} onChange={()=>{}} options={exportOptions} className="w-auto"
-              buttonContent={exportBtn}/>
-
-            <button onClick={()=>setLive(v=>!v)} className={cls("px-3 py-2 rounded-xl text-sm inline-flex items-center gap-2",
-              live ? "bg-emerald-500/20 hover:bg-emerald-500/25 text-emerald-200" : "bg-white/10 hover:bg-white/15")}
-              title={live?"Live sync ON (25s)":"Live sync OFF"}>
-              {live ? <Wifi size={16}/> : <WifiOff size={16}/> } Live
-            </button>
-            <button onClick={()=>setTab(t=>t==="health"?"delegates":"health")} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2" title="Data health"><ChartNoAxesGantt size={16}/> Health</button>
-            <button onClick={()=>setCompact(c=>!c)} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2" title="Toggle layout">
-              {compact ? <MonitorSmartphone size={16}/> : <Smartphone size={16}/>}{compact ? "Cards" : "Table"}
-            </button>
+          {/* Desktop actions */}
+          <div className="hidden md:flex items-center gap-2">
+            {ActionsBlock}
           </div>
+
+          {/* Mobile hamburger */}
+          <button
+            className="md:hidden inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15"
+            onClick={()=>setMobileOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu size={18}/>
+          </button>
         </div>
       </header>
+
+      {/* Mobile slide-over menu */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-[10000]">
+          <div className="absolute inset-0 bg-black/60" onClick={()=>setMobileOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-[84vw] max-w-xs bg-black/90 border-l border-white/10 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-semibold">Menu</div>
+              <button className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15" onClick={()=>setMobileOpen(false)} aria-label="Close menu">
+                <X size={16}/>
+              </button>
+            </div>
+            <div className="space-y-2 text-sm">
+              {/* stack the same actions vertically for phone */}
+              <div className="flex flex-wrap gap-2">{ActionsBlock}</div>
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <div className="text-xs opacity-70 mb-2">Quick Tabs</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={()=>{setTab("delegates"); setMobileOpen(false);}} className={cls("px-3 py-2 rounded-xl", tab==="delegates"?"bg-white/20":"bg-white/10 hover:bg-white/15")}>Delegates</button>
+                  <button onClick={()=>{setTab("history"); setMobileOpen(false);}}   className={cls("px-3 py-2 rounded-xl", tab==="history"  ?"bg-white/20":"bg-white/10 hover:bg-white/15")}>History</button>
+                  <button onClick={()=>{setTab("health"); setMobileOpen(false);}}    className={cls("px-3 py-2 rounded-xl", tab==="health"   ?"bg-white/20":"bg-white/10 hover:bg-white/15")}>Health</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Setup panel */}
       {needSetup && (
@@ -615,18 +578,11 @@ export default function Adminv1() {
       {!needSetup && tab==="delegates" && (
         <main className="mx-auto max-w-7xl px-4 py-4">
           {/* KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3 mb-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-5">
             <KPI title="Total" value={kpi.total} tone="from-white/15 to-white/5" icon={<Users size={18}/>}/>
             <KPI title="Unpaid" value={kpi.unpaid} tone="from-yellow-500/25 to-yellow-500/10" icon={<Clock3 size={18}/>}/>
             <KPI title="Paid" value={kpi.paid} tone="from-emerald-500/25 to-emerald-500/10" icon={<BadgeCheck size={18}/>}/>
             <KPI title="Rejected" value={kpi.rejected} tone="from-red-500/25 to-red-500/10" icon={<AlertCircle size={18}/>}/>
-            <div className="rounded-2xl border border-white/10 p-4 bg-gradient-to-br from-white/10 to-white/5">
-              <div className="flex items-center justify-between">
-                <div className="text-sm opacity-80">Duplicates</div>
-                <Bug size={16} className="opacity-80"/>
-              </div>
-              <div className="mt-2 text-2xl font-semibold">{dupIndex.size}</div>
-            </div>
           </div>
 
           {/* Committee breakdown */}
@@ -651,8 +607,8 @@ export default function Adminv1() {
           )}
 
           {/* Controls */}
-          <div className="mb-3 grid grid-cols-1 xl:grid-cols-4 gap-3">
-            <div className="relative xl:col-span-2">
+          <div className="mb-3 grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div className="relative">
               <Search className="absolute left-3 top-2.5 opacity-80" size={18} />
               <input value={q} onChange={(e)=>setQ(e.target.value)}
                 placeholder='Search: name, email, phone, committee, portfolio (quotes "", -minus, numbers OK)'
@@ -666,11 +622,8 @@ export default function Adminv1() {
                 options={[{value:"all",label:"All committees"}, ...committees.map(c=>({value:c,label:c}))]}
                 className="flex-1"/>
             </div>
-            <div className="flex items-center gap-2">
-              <FancySelect value={dupFilter} onChange={setDupFilter}
-                options={[{value:"all",label:"All delegates"},{value:"dups",label:"Duplicates only"}]}
-                className="w-[160px]"/>
-              <button onClick={()=>{setQ("");setStatus("all");setCommittee("all");setDupFilter("all");}}
+            <div className="flex items-center gap-2 justify-between lg:justify-end">
+              <button onClick={()=>{setQ("");setStatus("all");setCommittee("all");}}
                 className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><Filter size={16}/> Clear</button>
               <button onClick={()=>setCols(c=>({...c,email:!c.email,phone:!c.phone}))}
                 className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><Columns size={16}/> Columns</button>
@@ -710,7 +663,6 @@ export default function Adminv1() {
               piiMask={piiMask}
               highlightTokens={[...query.must, ...query.phrases]}
               saveRow={saveRow}
-              dupIndex={dupIndex}
             />
           ) : (
             <TableDesktop
@@ -725,7 +677,6 @@ export default function Adminv1() {
               piiMask={piiMask}
               highlightTokens={[...query.must, ...query.phrases]}
               saveRow={saveRow}
-              dupIndex={dupIndex}
             />
           )}
 
@@ -805,18 +756,10 @@ export default function Adminv1() {
                 <div className="mt-4">
                   <div className="font-semibold mb-2 flex items-center gap-2"><Globe size={16}/> Endpoints</div>
                   <div className="grid gap-2 text-xs">
-                    <div className="px-2 py-1 rounded-lg bg-white/10 flex items-center justify-between">
-                      <span>DAPrivate (Rows)</span>
-                      <span className="px-2 py-0.5 rounded-md bg-yellow-600/40 text-yellow-200 text-[11px]">Confidential</span>
-                    </div>
-                    <div className="px-2 py-1 rounded-lg bg-white/10 flex items-center justify-between">
-                      <span>DelCount (KPIs)</span>
-                      <span className="px-2 py-0.5 rounded-md bg-yellow-600/40 text-yellow-200 text-[11px]">Confidential</span>
-                    </div>
+                    <input value={apiUrl} onChange={(e)=>setApiUrl(e.target.value)} placeholder="DAPrivate URL" className="px-2 py-1 rounded-lg bg-white/10 outline-none"/>
+                    <input value={dcUrl} onChange={(e)=>setDcUrl(e.target.value)} placeholder="DelCount URL" className="px-2 py-1 rounded-lg bg-white/10 outline-none"/>
                     <div className="flex gap-2">
-                      <button onClick={()=>fetchAll()} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2">
-                        <RefreshCw size={14}/> Reload
-                      </button>
+                      <button onClick={()=>fetchAll()} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><RefreshCw size={14}/> Reload</button>
                     </div>
                   </div>
                 </div>
@@ -850,20 +793,12 @@ export default function Adminv1() {
           </div>
         ))}
       </div>
-
-      {/* Export modal (shortcut buttons) */}
-      <Modal open={exportOpen} onClose={()=>setExportOpen(false)} title="Export">
-        <div className="grid gap-2">
-          <button onClick={()=>{setExportOpen(false); exportCSVAll();}} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 inline-flex items-center gap-2"><FileSpreadsheet size={16}/> CSV • current filter</button>
-          <button onClick={()=>{setExportOpen(false); exportCSVCommitteeWise();}} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 inline-flex items-center gap-2"><FileSpreadsheet size={16}/> CSV • committee-wise (multi-file)</button>
-        </div>
-      </Modal>
     </div>
   );
 }
 
 /* ===== Desktop table ===== */
-function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggleRowSel,togglePageSel,canEdit,piiMask,highlightTokens,saveRow,dupIndex}) {
+function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggleRowSel,togglePageSel,canEdit,piiMask,highlightTokens,saveRow}) {
   return (
     <div className="hidden md:block overflow-x-auto rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
       <table className="w-full text-sm table-fixed">
@@ -871,7 +806,7 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
           <col className="w-12"/><col className="w-14"/><col className="w-[220px]"/>
           {cols.email && <col className="w-[260px]"/>}{cols.phone && <col className="w-[160px]"/>}
           {cols.committee && <col className="w-[200px]"/>}{cols.portfolio && <col className="w-[220px]"/>}
-          {cols.status && <col className="w-[260px]"/>}
+          {cols.status && <col className="w-[220px]"/>}
         </colgroup>
         <thead className="bg-white/10 sticky top-0 z-10">
           <tr className="whitespace-nowrap">
@@ -898,10 +833,7 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
               </Td>
               <Td className="truncate">{r.id}</Td>
               <Td className="truncate" title={r.full_name}>
-                <div className="flex items-center gap-2">
-                  <InlineEdit value={r.full_name} onSave={(v)=>saveRow(r,{full_name:v})} disabled={!canEdit}/>
-                  {dupIndex.has(r.id) && <Tag tone="warn" title="Possible duplicate">dup</Tag>}
-                </div>
+                <InlineEdit value={r.full_name} onSave={(v)=>saveRow(r,{full_name:v})} disabled={!canEdit}/>
               </Td>
               {cols.email && (
                 <Td className="truncate" title={r.email}>
@@ -947,7 +879,7 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
 }
 
 /* ===== Mobile cards ===== */
-function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, piiMask, highlightTokens, saveRow, dupIndex }) {
+function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, piiMask, highlightTokens, saveRow }) {
   if (loading) return <div className="grid gap-2">{Array.from({length:6}).map((_,i)=><div key={i} className="h-20 rounded-xl bg-white/10 animate-pulse"/>)}</div>;
   if (!pageRows.length) return <div className="p-8 text-center opacity-70">No results match your filters.</div>;
   return (
@@ -956,9 +888,7 @@ function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, pi
         <div key={r.id} className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-sm font-semibold truncate">
-                {r.full_name || "—"} {dupIndex.has(r.id) && <span className="ml-2"><Tag tone="warn">dup</Tag></span>}
-              </div>
+              <div className="text-sm font-semibold truncate">{r.full_name || "—"}</div>
               <div className="text-xs opacity-80 truncate">
                 {piiMask ? <span className="blur-[2px] hover:blur-0 transition"><Highlighter text={r.email} tokens={highlightTokens}/></span> : <Highlighter text={r.email} tokens={highlightTokens}/>}
               </div>
@@ -982,10 +912,7 @@ function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, pi
               <button className="px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/25 text-xs inline-flex items-center gap-1" onClick={()=>saveRow(r,{payment_status:"paid"})}><BadgeCheck size={14}/> Paid</button>
               <button className="px-2 py-1 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/25 text-xs inline-flex items-center gap-1" onClick={()=>saveRow(r,{payment_status:"unpaid"})}><Clock3 size={14}/> Unpaid</button>
               <button className="px-2 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/25 text-xs inline-flex items-center gap-1" onClick={()=>saveRow(r,{payment_status:"rejected"})}><Trash2 size={14}/> Reject</button>
-              <div className="flex items-center gap-2 text-xs">
-                {!!r.email && <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={`mailto:${r.email}`}>mail</a>}
-                {!!r.phone && <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={`https://wa.me/${r.phone.replace(/\D/g,"")}`} target="_blank" rel="noreferrer">wa</a>}
-              </div>
+              <button className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-xs inline-flex items-center gap-1" onClick={()=>navigator.clipboard?.writeText([r.full_name,r.email,r.phone].filter(Boolean).join(" • "))}><Copy size={14}/> Copy</button>
             </div>
           )}
         </div>
@@ -1014,17 +941,9 @@ function StatusPill({ s }) {
   return <span className={cls("px-2 py-1 rounded-lg text-xs", tone)}>{v}</span>;
 }
 function SkeletonRows({ cols=7 }){
-  return (
-    <>
-      {Array.from({length:8}).map((_,i)=>(
-        <tr key={i} className="border-t border-white/5">
-          {Array.from({length:cols}).map((_,j)=>(
-            <td key={j} className="px-3 py-3"><div className="h-4 rounded bg-white/10 animate-pulse"/></td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
+  return (<>{Array.from({length:8}).map((_,i)=>(
+    <tr key={i} className="border-t border-white/5">{Array.from({length:cols}).map((__,j)=>(
+      <td key={j} className="px-3 py-3"><div className="h-4 rounded bg-white/10 animate-pulse"/></td>))}</tr>))}</>);
 }
 function HealthRow({ label, obj }) {
   const ok = !!obj?.ok;
@@ -1034,7 +953,7 @@ function HealthRow({ label, obj }) {
       <span className="flex items-center gap-2">
         {ok ? <Tag tone="ok"><CheckCircle2 size={14}/> OK</Tag> : <Tag tone="error"><ShieldAlert size={14}/> FAIL</Tag>}
         <Tag>{obj?.ms ?? "—"} ms</Tag>
-        <Tag>{`HTTP ${obj?.status ?? "—"}`}</Tag>
+        <Tag>HTTP {obj?.status ?? "—"}</Tag>
       </span>
     </div>
   );
