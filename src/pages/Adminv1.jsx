@@ -46,11 +46,8 @@ function parseQuery(q) {
     const neg = raw.startsWith("-");
     const val = fold(neg ? raw.slice(1) : raw);
     if (!val) continue;
-    if (m[1]) {
-      (neg ? out.not : out.phrases).push(val);
-    } else {
-      (neg ? out.not : out.must).push(val);
-    }
+    if (m[1]) (neg ? out.not : out.phrases).push(val);
+    else (neg ? out.not : out.must).push(val);
   }
   return out;
 }
@@ -220,7 +217,7 @@ export default function Adminv1() {
   const [compact, setCompact] = useState(true);
   const [lastDa, setLastDa] = useState(null);
   const [health, setHealth] = useState({ da: null, dc: null, mismatched: false, paid: {grid:null, totals:null}, unpaid: {grid:null, totals:null} });
-  const [mobileOpen, setMobileOpen] = useState(false); // NEW: hamburger panel
+  const [mobileOpen, setMobileOpen] = useState(false); // hamburger
 
   /* ===== KPI compute ===== */
   const computeKPI = useCallback((dcJson) => {
@@ -265,34 +262,63 @@ export default function Adminv1() {
     }
   }
 
-  /* Normalizers */
+  /* ---------- FIX: case-insensitive field picker ---------- */
+  const pick = (obj, names) => {
+    for (const n of names) {
+      if (obj && obj[n] != null && obj[n] !== "") return obj[n];
+    }
+    if (!obj) return "";
+    const keys = Object.keys(obj);
+    for (const n of names) {
+      const k = keys.find(k => k.toLowerCase() === String(n).toLowerCase());
+      if (k && obj[k] != null && obj[k] !== "") return obj[k];
+    }
+    return "";
+  };
+
+  /* Normalizers (build folded index + digits) */
   const normalizeRows = useCallback((arr) => {
     const norm = (arr || [])
-      .filter(r => r && (r.full_name || r.name || r.email || r.phone || r["phone no."] || r["phone no"] || r["phone_no"]))
+      .filter(r => r && (pick(r,["full_name","Full Name","Name","name"]) ||
+                         pick(r,["email","Email"]) ||
+                         pick(r,["phone","Phone","phone no.","Phone No.","phone_no","Mobile","mobile","Contact","Contact Number"])))
       .map((r, i) => {
-        const paidRaw = String(r.paid ?? r["paid?"] ?? r.payment_status ?? r.status ?? "").toLowerCase();
+        const paidRaw = String(
+          pick(r,["paid","Paid","paid?","Paid?","payment_status","Payment Status","status","Status"]) ?? ""
+        ).toLowerCase();
+
         const canonical =
           paidRaw.includes("cancel") || paidRaw === "cancelled" ? "rejected" :
           paidRaw.includes("paid")   || paidRaw === "yes"       ? "paid"     :
           OUT_TO_UI(paidRaw);
+
         const out = {
-          id: Number(r.id || r.sno || r["s.no"] || r["s_no"] || i + 1),
-          full_name: r.full_name || r.name || r["full name"] || "",
-          email: r.email || "",
-          phone: r.phone || r["phone no."] || r["phone no"] || r["phone_no"] || "",
-          alt_phone: r.alt_phone || r.alternate || r["alternate phone"] || "",
-          committee_pref1: r.committee_pref1 || r.committee || r["committee 1"] || "",
-          portfolio_pref1: r.portfolio_pref1 || r.portfolio || r["portfolio 1"] || "",
-          mail_sent: r.mail_sent || r["mail sent"] || r["mail_sent"] || "",
+          id: Number(pick(r,["id","ID","sno","S.No","S no","s_no"])) || i + 1,
+          full_name: pick(r,["full_name","Full Name","Name","name"]) || "",
+          email: pick(r,["email","Email"]) || "",
+          phone: pick(r,["phone","Phone","phone no.","Phone No.","phone_no","Mobile","mobile","Contact","Contact Number"]) || "",
+          alt_phone: pick(r,["alt_phone","Alt Phone","alternate","Alternate","Alternate Phone"]) || "",
+          committee_pref1: pick(r,[
+            "committee_pref1","Committee Pref1","committee","Committee",
+            "committee 1","Committee 1","committee_preference_1","Committee Preference 1"
+          ]) || "",
+          portfolio_pref1: pick(r,[
+            "portfolio_pref1","Portfolio Pref1","portfolio","Portfolio","portfolio 1","Portfolio 1"
+          ]) || "",
+          mail_sent: pick(r,["mail_sent","Mail Sent","mail sent","Mail sent","email_sent","Email Sent"]) || "",
           payment_status: canonical || "unpaid",
         };
-        const textIndex = [out.full_name,out.email,out.phone,out.committee_pref1,out.portfolio_pref1].filter(Boolean).join(" ");
+
+        const textIndex = [
+          out.full_name, out.email, out.phone, out.alt_phone, out.committee_pref1, out.portfolio_pref1
+        ].filter(Boolean).join(" ");
         out._slab = fold(textIndex);
-        out._digits = digits(out.phone);
+        out._digits = digits(out.phone + " " + out.alt_phone);
         return out;
       });
 
-    const setC = new Set(); norm.forEach((r) => r.committee_pref1 && setC.add(r.committee_pref1));
+    const setC = new Set();
+    norm.forEach((r) => r.committee_pref1 && setC.add(r.committee_pref1));
     setCommittees(Array.from(setC).sort((a,b)=>fold(a).localeCompare(fold(b))));
     return norm;
   }, []);
@@ -409,8 +435,8 @@ export default function Adminv1() {
     if (patch.phone!=null && patch.phone!==row.phone && patch.phone && !phoneOk(patch.phone)) return addToast("Invalid phone","error");
 
     const next={...row,...patch};
-    next._slab = fold([next.full_name,next.email,next.phone,next.committee_pref1,next.portfolio_pref1].join(" "));
-    next._digits = digits(next.phone);
+    next._slab = fold([next.full_name,next.email,next.phone,next.alt_phone,next.committee_pref1,next.portfolio_pref1].join(" "));
+    next._digits = digits(next.phone + " " + next.alt_phone);
     setRows(rs=>rs.map(x=>x.id===row.id?next:x)); // optimistic
 
     try{
@@ -456,7 +482,6 @@ export default function Adminv1() {
   const logo = LOGO_URL || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='100%' height='100%' rx='12' fill='%23fff'/><text x='50%' y='56%' text-anchor='middle' font-family='sans-serif' font-size='28' fill='%23000'>N</text></svg>";
   const needSetup = !apiUrl && !dcUrl;
 
-  // Actions block for reuse (desktop + mobile)
   const ActionsBlock = (
     <>
       <Tag title="Last synced">{lastSynced ? <><CheckCircle2 size={14}/> {lastSynced}</> : "—"}</Tag>
@@ -524,7 +549,6 @@ export default function Adminv1() {
               </button>
             </div>
             <div className="space-y-2 text-sm">
-              {/* stack the same actions vertically for phone */}
               <div className="flex flex-wrap gap-2">{ActionsBlock}</div>
               <div className="mt-3 pt-3 border-t border-white/10">
                 <div className="text-xs opacity-70 mb-2">Quick Tabs</div>
