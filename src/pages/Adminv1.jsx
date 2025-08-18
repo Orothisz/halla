@@ -262,7 +262,7 @@ export default function Adminv1() {
   async function fetchWithBackoff(url, opts, tries=[450,1000,2000]) {
     const t0 = performance.now();
     try {
-      const u = ${url}${url.includes("?")?"&":"?"}t=${Date.now()};
+      const u = `${url}${url.includes("?")?"&":"?"}t=${Date.now()}`;
       const r = await fetch(u, { cache:"no-store", ...opts });
       const ms = Math.round(performance.now()-t0);
       const txt = await r.text();
@@ -557,7 +557,7 @@ export default function Adminv1() {
         }
       })});
       const json=await res.json().catch(()=>({}));
-      if(!res.ok || json?.ok===false) throw new Error(json?.error || HTTP ${res.status});
+      if(!res.ok || json?.ok===false) throw new Error(json?.error || `HTTP ${res.status}`);
       if(!isUndo) queueUndo(row.id,row);
       if (me.id){ try{ await supabase.from("admin_edit_logs").insert({
         actor_id: me.id, actor_email: me.email, row_id: row.id,
@@ -570,7 +570,7 @@ export default function Adminv1() {
   }
   async function bulkStatus(newStatus){
     const ids=Array.from(selectedIds); if(!ids.length) return;
-    addToast(Updating ${ids.length} rows…,"default",2000);
+    addToast(`Updating ${ids.length} rows…`,"default",2000);
     for (const id of ids){
       const r=rows.find(x=>x.id===id);
       if(r) // eslint-disable-next-line no-await-in-loop
@@ -595,13 +595,13 @@ export default function Adminv1() {
     <>
       <Tag title="Last synced">{lastSynced ? <><CheckCircle2 size={14}/> {lastSynced}</> : "—"}</Tag>
       {kpiStale && <Tag tone="warn" title="DelCount unavailable; showing cached KPIs"><ShieldAlert size={14}/> stale</Tag>}
-      {health.mismatched && <Tag tone="error" title={grid≠totals (paid ${health.paid.grid} vs ${health.paid.totals}, unpaid ${health.unpaid.grid} vs ${health.unpaid.totals})}><TriangleAlert size={14}/> KPI mismatch</Tag>}
+      {health.mismatched && <Tag tone="error" title={`grid≠totals (paid ${health.paid.grid} vs ${health.paid.totals}, unpaid ${health.unpaid.grid} vs ${health.unpaid.totals})`}><TriangleAlert size={14}/> KPI mismatch</Tag>}
       <button onClick={()=>fetchAll()} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><RefreshCw size={16}/> Refresh</button>
       <button onClick={()=>{
         const headers=["id","full_name","email","phone","alt_phone","committee_pref1","portfolio_pref1","mail_sent","payment_status"];
         const csv=[headers.join(","), ...visible.map(r=>headers.map(h=>JSON.stringify(r[h]??"")).join(","))].join("\n");
         const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}); const url=URL.createObjectURL(blob);
-        const a=document.createElement("a"); a.href=url; a.download=delegates_${new Date().toISOString().slice(0,10)}.csv; a.click(); URL.revokeObjectURL(url);
+        const a=document.createElement("a"); a.href=url; a.download=`delegates_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url);
       }} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><Download size={16}/> Export CSV</button>
       <button onClick={()=>setLive(v=>!v)} className={cls("px-3 py-2 rounded-xl text-sm inline-flex items-center gap-2",
         live ? "bg-emerald-500/20 hover:bg-emerald-500/25 text-emerald-200" : "bg-white/10 hover:bg-white/15")}
@@ -973,7 +973,7 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
                   <div className="flex items-center gap-2">
                     <span className={piiMask ? "blur-[2px] hover:blur-0 transition" : ""}><Highlighter text={r.email} tokens={highlightTokens}/></span>
                     {!!r.email && (<>
-                      <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={mailto:${r.email}}>mail</a>
+                      <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={`mailto:${r.email}`}>mail</a>
                       <button title="Copy email" className="opacity-60 hover:opacity-100" onClick={()=>navigator.clipboard?.writeText(r.email)}><Copy size={14}/></button>
                     </>)}
                   </div>
@@ -984,7 +984,7 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
                   <div className="flex items-center gap-2">
                     <span className={piiMask ? "blur-[2px] hover:blur-0 transition" : ""}>{r.phone}</span>
                     {!!r.phone && (<>
-                      <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={https://wa.me/${r.phone.replace(/\D/g,"")}} target="_blank" rel="noreferrer">wa</a>
+                      <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={`https://wa.me/${r.phone.replace(/\D/g,"")}`} target="_blank" rel="noreferrer">wa</a>
                       <button title="Copy phone" className="opacity-60 hover:opacity-100" onClick={()=>navigator.clipboard?.writeText(r.phone)}><Copy size={14}/></button>
                     </>)}
                   </div>
@@ -1075,7 +1075,7 @@ function StatusPill({ s }) {
 }
 function SkeletonRows({ cols=7 }){
   return (<>{Array.from({length:8}).map((_,i)=>(
-    <tr key={i} className="border-t border-white/5">{Array.from({length:cols}).map((,j)=>(
+    <tr key={i} className="border-t border-white/5">{Array.from({length:cols}).map((__,j)=>(
       <td key={j} className="px-3 py-3"><div className="h-4 rounded bg-white/10 animate-pulse"/></td>))}</tr>))}</>);
 }
 function HealthRow({ label, obj }) {
