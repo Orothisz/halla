@@ -7,7 +7,7 @@ import {
   History as HistoryIcon, Edit3, Wifi, WifiOff, ShieldAlert, CheckCircle2,
   Copy, ChevronLeft, ChevronRight, Eye, EyeOff, Columns, Settings, TriangleAlert,
   Users, CheckSquare, Square, Wand2, ChartNoAxesGantt, Filter, SlidersHorizontal,
-  Globe, MonitorSmartphone, Smartphone, Trash2, FileText, FileSpreadsheet, Bug
+  Globe, MonitorSmartphone, Smartphone, Trash2, FileSpreadsheet, Bug
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { LOGO_URL } from "../shared/constants";
@@ -242,9 +242,6 @@ export default function Adminv1() {
   const [lastDa, setLastDa] = useState(null);
   const [health, setHealth] = useState({ da: null, dc: null, mismatched: false, paid: {grid:null, totals:null}, unpaid: {grid:null, totals:null} });
   const [exportOpen, setExportOpen] = useState(false);
-  const [invoiceOpen, setInvoiceOpen] = useState(false);
-  const [invoiceForm, setInvoiceForm] = useState({ amount: "2300", date: new Date().toISOString().slice(0,10), time: "10:00", note:"", paid:true, sign:"admin • noirmun.com" });
-
   /* ===== KPI compute ===== */
   const computeKPI = useCallback((dcJson) => {
     const grid = Array.isArray(dcJson?.grid) ? dcJson.grid : null;
@@ -526,58 +523,7 @@ export default function Adminv1() {
   }
 
   /* ======================= Invoice export (printable) ======================= */
-  function openInvoicesPrint({ targets }) {
-    const dateStr = invoiceForm.date;
-    const timeStr = invoiceForm.time;
-    const paidText = invoiceForm.paid ? "PAID" : "UNPAID";
-    const amount = Number(invoiceForm.amount||0);
-    const sign = invoiceForm.sign || "admin • noirmun.com";
-    const note = safe(invoiceForm.note);
-    const noteHtml = note ? `<div class="muted" style="margin-top:8px">Note: ${note}</div>` : "";
 
-    const makeCard = (r) => {
-      const idStr = String(r.id).padStart(4,"0");
-      const committee = safe(r.committee_pref1)||"Committee";
-      const portfolio = r.portfolio_pref1 ? ` • ${safe(r.portfolio_pref1)}` : "";
-      const email = safe(r.email) || "—";
-      const phone = safe(r.phone) || "—";
-      return `
-        <div class="inv">
-          <div class="row">
-            <div class="logo">
-              <img src="${LOGO_URL || ""}" alt="" style="height:28px;width:28px;border-radius:8px;border:1px solid #eee;object-fit:cover"/>
-              <div>NoirMUN • Invoice</div>
-            </div>
-            <div><span class="badge ${invoiceForm.paid?"paid":"unpaid"}">${paidText}</span></div>
-          </div>
-          <div class="hr"></div>
-          <div class="row">
-            <div>
-              <div class="h1">${safe(r.full_name)||"Delegate"}</div>
-              <div class="muted">${email} • ${phone}</div>
-            </div>
-            <div class="muted" style="text-align:right">
-              <div>Date: ${dateStr || "—"}</div>
-              <div>Time: ${timeStr || "—"}</div>
-              <div>Invoice #: ${idStr}</div>
-            </div>
-          </div>
-          <table style="margin-top:10px">
-            <thead><tr><th style="width:60%">Description</th><th style="width:20%">Qty</th><th class="tot" style="width:20%">Amount</th></tr></thead>
-            <tbody>
-              <tr><td>Delegate Registration • ${committee}${portfolio}</td><td>1</td><td class="tot">₹ ${amount.toLocaleString("en-IN")}</td></tr>
-            </tbody>
-            <tfoot>
-              <tr><td></td><td class="tot">Total</td><td class="tot">₹ ${amount.toLocaleString("en-IN")}</td></tr>
-            </tfoot>
-          </table>
-          ${noteHtml}
-          <div class="foot">
-            <div class="muted">Generated ${new Date().toLocaleString()}</div>
-            <div class="muted">Signed by: <b>${sign}</b></div>
-          </div>
-        </div>`;
-    };
 
     const html = `
 <!DOCTYPE html><html>
@@ -620,11 +566,7 @@ ${targets.map(makeCard).join("")}
   const exportBtn = (
     <div className="inline-flex items-center gap-2"><Download size={16}/> Export</div>
   );
-  const exportOptions = [
-    { value:"csv_all", label:"CSV • current filter", onClick: exportCSVAll },
-    { value:"csv_committee", label:"CSV • committee-wise (multi-file)", onClick: exportCSVCommitteeWise },
-    { value:"invoices", label:"Invoices • open dialog", onClick: ()=>setInvoiceOpen(true) },
-  ];
+ 
 
   /* Selected/Targets helpers */
   const selectedRows = useMemo(()=>rows.filter(r=>selectedIds.has(r.id)),[rows,selectedIds]);
@@ -901,17 +843,26 @@ ${targets.map(makeCard).join("")}
                   {health.mismatched && <Tag tone="error"><TriangleAlert size={14}/> grid≠totals</Tag>}
                 </div>
                 <div className="mt-4">
-                  <div className="font-semibold mb-2 flex items-center gap-2"><Globe size={16}/> Endpoints</div>
-                  <div className="grid gap-2 text-xs">
-                    <input value={apiUrl} onChange={(e)=>setApiUrl(e.target.value)} placeholder="DAPrivate URL" className="px-2 py-1 rounded-lg bg-white/10 outline-none"/>
-                    <input value={dcUrl} onChange={(e)=>setDcUrl(e.target.value)} placeholder="DelCount URL" className="px-2 py-1 rounded-lg bg-white/10 outline-none"/>
-                    <div className="flex gap-2">
-                      <button onClick={()=>fetchAll()} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><RefreshCw size={14}/> Reload</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+               <div className="font-semibold mb-2 flex items-center gap-2"><Globe size={16}/> Endpoints</div>
+<div className="grid gap-2 text-xs">
+  <div className="px-2 py-1 rounded-lg bg-white/10 flex items-center justify-between">
+    <span>DAPrivate (Rows)</span>
+    <span className="px-2 py-0.5 rounded-md bg-yellow-600/40 text-yellow-200 text-[11px]">Confidential</span>
+  </div>
+  <div className="px-2 py-1 rounded-lg bg-white/10 flex items-center justify-between">
+    <span>DelCount (KPIs)</span>
+    <span className="px-2 py-0.5 rounded-md bg-yellow-600/40 text-yellow-200 text-[11px]">Confidential</span>
+  </div>
+  <div className="flex gap-2">
+    <button
+      onClick={()=>fetchAll()}
+      className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"
+    >
+      <RefreshCw size={14}/> Reload
+    </button>
+  </div>
+</div>
+
 
             <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
               <div className="font-semibold mb-3 flex items-center gap-2"><Columns size={16}/> Columns & Privacy</div>
@@ -951,48 +902,7 @@ ${targets.map(makeCard).join("")}
       </Modal>
 
       {/* Invoice modal */}
-      <Modal open={invoiceOpen} onClose={()=>setInvoiceOpen(false)} title="Export invoices">
-        <div className="grid gap-3 text-sm">
-          <div className="grid grid-cols-2 gap-3">
-            <label className="grid gap-1">Date<input type="date" value={invoiceForm.date} onChange={e=>setInvoiceForm(f=>({...f, date:e.target.value}))} className="px-2 py-1 rounded-lg bg-white/10 outline-none"/></label>
-            <label className="grid gap-1">Time<input type="time" value={invoiceForm.time} onChange={e=>setInvoiceForm(f=>({...f, time:e.target.value}))} className="px-2 py-1 rounded-lg bg-white/10 outline-none"/></label>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <label className="grid gap-1">Amount (₹)
-              <select value={invoiceForm.amount} onChange={e=>setInvoiceForm(f=>({...f, amount:e.target.value}))} className="px-2 py-1 rounded-lg bg-white/10 outline-none">
-                <option value="1969">1969 • Early Bird 1</option>
-                <option value="2000">2000 • Early Bird 2</option>
-                <option value="2300">2300 • Base</option>
-              </select>
-            </label>
-            <label className="grid gap-1">Paid?
-              <select value={String(invoiceForm.paid)} onChange={e=>setInvoiceForm(f=>({...f, paid: e.target.value==="true"}))} className="px-2 py-1 rounded-lg bg-white/10 outline-none">
-                <option value="true">Yes (mark PAID)</option>
-                <option value="false">No (mark UNPAID)</option>
-              </select>
-            </label>
-            <label className="grid gap-1">Sign as
-              <input value={invoiceForm.sign} onChange={e=>setInvoiceForm(f=>({...f, sign:e.target.value}))} className="px-2 py-1 rounded-lg bg-white/10 outline-none"/>
-            </label>
-          </div>
-          <label className="grid gap-1">Note (optional)
-            <input value={invoiceForm.note} onChange={e=>setInvoiceForm(f=>({...f, note:e.target.value}))} className="px-2 py-1 rounded-lg bg-white/10 outline-none" placeholder="e.g., thank you for registering"/>
-          </label>
-
-          <div className="text-xs opacity-80">
-            Targets: <b>{invoiceTargets.length}</b> {selectedRows.length ? "(selected rows)" : "(current page)"}
-          </div>
-
-          <div className="flex items-center justify-end gap-2">
-            <button onClick={()=>setInvoiceOpen(false)} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm">Cancel</button>
-            <button onClick={()=>{ openInvoicesPrint({targets:invoiceTargets}); }} className="px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/25 text-sm inline-flex items-center gap-2"><FileText size={16}/> Open printable</button>
-          </div>
-        </div>
-      </Modal>
-    </div>
-  );
-}
-
+    
 /* ===== Desktop table ===== */
 function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggleRowSel,togglePageSel,canEdit,piiMask,highlightTokens,saveRow,dupIndex}) {
   return (
