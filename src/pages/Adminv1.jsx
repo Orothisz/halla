@@ -924,4 +924,4 @@ function HealthRow({ label, obj }) {
       </span>
     </div>
   );
-}
+} ^^ old code for reference prettu sure what u sent isnt the fullyupdated code... go.
