@@ -174,7 +174,7 @@ function Highlighter({ text, tokens }) {
   return <>{spans}</>;
 }
 
-/* ======= Simple Modal (for invoices & exports) ======= */
+/* ======= Simple Modal (export only) ======= */
 function Modal({ open, onClose, children, title, maxWidth="max-w-2xl" }) {
   if (!open) return null;
   return createPortal(
@@ -242,6 +242,7 @@ export default function Adminv1() {
   const [lastDa, setLastDa] = useState(null);
   const [health, setHealth] = useState({ da: null, dc: null, mismatched: false, paid: {grid:null, totals:null}, unpaid: {grid:null, totals:null} });
   const [exportOpen, setExportOpen] = useState(false);
+
   /* ===== KPI compute ===== */
   const computeKPI = useCallback((dcJson) => {
     const grid = Array.isArray(dcJson?.grid) ? dcJson.grid : null;
@@ -522,42 +523,6 @@ export default function Adminv1() {
     });
   }
 
-  /* ======================= Invoice export (printable) ======================= */
-
-
-    const html = `
-<!DOCTYPE html><html>
-<head>
-<meta charset="utf-8"/>
-<title>Invoices</title>
-<style>
-  @media print { @page { size: A4; margin: 16mm; } }
-  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #111; }
-  .inv { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin: 16px 0; }
-  .row { display:flex; justify-content: space-between; align-items: center; }
-  .h1 { font-weight:700; font-size: 20px; }
-  .muted { color:#555; font-size: 12px; }
-  .paid { color:#0a7a3d; font-weight:700; }
-  .unpaid { color:#b45309; font-weight:700; }
-  .hr { height:1px; background:#eee; margin:12px 0; }
-  table { width:100%; border-collapse: collapse; }
-  th,td { text-align:left; padding:6px 4px; border-bottom:1px solid #eee; font-size: 13px; }
-  .tot { text-align:right; font-weight:700; }
-  .foot { margin-top: 12px; display:flex; justify-content: space-between; align-items:center; }
-  .logo { display:flex; align-items:center; gap:8px; font-weight:700; }
-  .badge { padding:4px 8px; border-radius: 999px; border:1px solid currentColor; font-size:12px; }
-</style>
-</head>
-<body>
-${targets.map(makeCard).join("")}
-<script>window.onload = () => window.print();</script>
-</body>
-</html>`;
-    const w = window.open("", "_blank");
-    if (!w) { addToast("Popup blocked. Allow popups to print invoices.", "warn", 6000); return; }
-    w.document.open(); w.document.write(html); w.document.close();
-  }
-
   /* ======================= Render ======================= */
   const logo = LOGO_URL || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='100%' height='100%' rx='12' fill='%23fff'/><text x='50%' y='56%' text-anchor='middle' font-family='sans-serif' font-size='28' fill='%23000'>N</text></svg>";
   const needSetup = !apiUrl && !dcUrl;
@@ -566,11 +531,13 @@ ${targets.map(makeCard).join("")}
   const exportBtn = (
     <div className="inline-flex items-center gap-2"><Download size={16}/> Export</div>
   );
- 
+  const exportOptions = [
+    { value:"csv_all", label:"CSV • current filter", onClick: exportCSVAll },
+    { value:"csv_committee", label:"CSV • committee-wise (multi-file)", onClick: exportCSVCommitteeWise },
+  ];
 
-  /* Selected/Targets helpers */
+  /* Selected helpers */
   const selectedRows = useMemo(()=>rows.filter(r=>selectedIds.has(r.id)),[rows,selectedIds]);
-  const invoiceTargets = selectedRows.length ? selectedRows : pageRows;
 
   return (
     <div className="relative min-h-[100dvh] text-white">
@@ -589,14 +556,7 @@ ${targets.map(makeCard).join("")}
           <div className="flex items-center gap-2">
             <Tag title="Last synced">{lastSynced ? <><CheckCircle2 size={14}/> {lastSynced}</> : "—"}</Tag>
             {kpiStale && <Tag tone="warn" title="DelCount unavailable; showing cached KPIs"><ShieldAlert size={14}/> stale</Tag>}
-            {health.mismatched && (
-              <Tag
-                tone="error"
-                title={`grid≠totals (paid ${health.paid.grid} vs ${health.paid.totals}, unpaid ${health.unpaid.grid} vs ${health.unpaid.totals})`}
-              >
-                <TriangleAlert size={14}/> KPI mismatch
-              </Tag>
-            )}
+            {health.mismatched && <Tag tone="error" title={`grid≠totals (paid ${health.paid.grid} vs ${health.paid.totals}, unpaid ${health.unpaid.grid} vs ${health.unpaid.totals})`}><TriangleAlert size={14}/> KPI mismatch</Tag>}
 
             <button onClick={()=>fetchAll()} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><RefreshCw size={16}/> Refresh</button>
 
@@ -843,26 +803,25 @@ ${targets.map(makeCard).join("")}
                   {health.mismatched && <Tag tone="error"><TriangleAlert size={14}/> grid≠totals</Tag>}
                 </div>
                 <div className="mt-4">
-               <div className="font-semibold mb-2 flex items-center gap-2"><Globe size={16}/> Endpoints</div>
-<div className="grid gap-2 text-xs">
-  <div className="px-2 py-1 rounded-lg bg-white/10 flex items-center justify-between">
-    <span>DAPrivate (Rows)</span>
-    <span className="px-2 py-0.5 rounded-md bg-yellow-600/40 text-yellow-200 text-[11px]">Confidential</span>
-  </div>
-  <div className="px-2 py-1 rounded-lg bg-white/10 flex items-center justify-between">
-    <span>DelCount (KPIs)</span>
-    <span className="px-2 py-0.5 rounded-md bg-yellow-600/40 text-yellow-200 text-[11px]">Confidential</span>
-  </div>
-  <div className="flex gap-2">
-    <button
-      onClick={()=>fetchAll()}
-      className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"
-    >
-      <RefreshCw size={14}/> Reload
-    </button>
-  </div>
-</div>
-
+                  <div className="font-semibold mb-2 flex items-center gap-2"><Globe size={16}/> Endpoints</div>
+                  <div className="grid gap-2 text-xs">
+                    <div className="px-2 py-1 rounded-lg bg-white/10 flex items-center justify-between">
+                      <span>DAPrivate (Rows)</span>
+                      <span className="px-2 py-0.5 rounded-md bg-yellow-600/40 text-yellow-200 text-[11px]">Confidential</span>
+                    </div>
+                    <div className="px-2 py-1 rounded-lg bg-white/10 flex items-center justify-between">
+                      <span>DelCount (KPIs)</span>
+                      <span className="px-2 py-0.5 rounded-md bg-yellow-600/40 text-yellow-200 text-[11px]">Confidential</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={()=>fetchAll()} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2">
+                        <RefreshCw size={14}/> Reload
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
               <div className="font-semibold mb-3 flex items-center gap-2"><Columns size={16}/> Columns & Privacy</div>
@@ -897,12 +856,12 @@ ${targets.map(makeCard).join("")}
         <div className="grid gap-2">
           <button onClick={()=>{setExportOpen(false); exportCSVAll();}} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 inline-flex items-center gap-2"><FileSpreadsheet size={16}/> CSV • current filter</button>
           <button onClick={()=>{setExportOpen(false); exportCSVCommitteeWise();}} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 inline-flex items-center gap-2"><FileSpreadsheet size={16}/> CSV • committee-wise (multi-file)</button>
-          <button onClick={()=>{setExportOpen(false); setInvoiceOpen(true);}} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 inline-flex items-center gap-2"><FileText size={16}/> Invoices</button>
         </div>
       </Modal>
+    </div>
+  );
+}
 
-      {/* Invoice modal */}
-    
 /* ===== Desktop table ===== */
 function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggleRowSel,togglePageSel,canEdit,piiMask,highlightTokens,saveRow,dupIndex}) {
   return (
