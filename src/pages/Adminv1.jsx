@@ -276,7 +276,7 @@ export default function Adminv1() {
   async function fetchWithBackoff(url, opts, tries=[450,1000,2000]) {
     const t0 = performance.now();
     try {
-      const u = ${url}${url.includes("?")?"&":"?"}t=${Date.now()};
+      const u = `${url}${url.includes("?")?"&":"?"}t=${Date.now()}`;
       const r = await fetch(u, { cache:"no-store", ...opts });
       const ms = Math.round(performance.now()-t0);
       const txt = await r.text();
@@ -463,7 +463,7 @@ export default function Adminv1() {
         }
       })});
       const json=await res.json().catch(()=>({}));
-      if(!res.ok || json?.ok===false) throw new Error(json?.error || HTTP ${res.status});
+      if(!res.ok || json?.ok===false) throw new Error(json?.error || `HTTP ${res.status}`);
       if(!isUndo) queueUndo(row.id,row);
       if (me.id){ try{ await supabase.from("admin_edit_logs").insert({
         actor_id: me.id, actor_email: me.email, row_id: row.id,
@@ -476,7 +476,7 @@ export default function Adminv1() {
   }
   async function bulkStatus(newStatus){
     const ids=Array.from(selectedIds); if(!ids.length) return;
-    addToast(Updating ${ids.length} rows…,"default",2000);
+    addToast(`Updating ${ids.length} rows…`,"default",2000);
     for (const id of ids){
       const r=rows.find(x=>x.id===id);
       if(r) // eslint-disable-next-line no-await-in-loop
@@ -507,7 +507,7 @@ export default function Adminv1() {
   function exportCSVAll() {
     const headers=["id","full_name","email","phone","alt_phone","committee_pref1","portfolio_pref1","mail_sent","payment_status"];
     const csv = toCSV(visible, headers);
-    downloadBlob(delegates_${new Date().toISOString().slice(0,10)}.csv, new Blob([csv], {type:"text/csv;charset=utf-8;"}));
+    downloadBlob(`delegates_${new Date().toISOString().slice(0,10)}.csv`, new Blob([csv], {type:"text/csv;charset=utf-8;"}));
   }
   function exportCSVCommitteeWise() {
     const map = new Map();
@@ -516,23 +516,68 @@ export default function Adminv1() {
       map.set(key, [...(map.get(key)||[]), r]);
     });
     const headers=["id","full_name","email","phone","alt_phone","committee_pref1","portfolio_pref1","mail_sent","payment_status"];
+    const today = new Date().toISOString().slice(0,10);
     // sequentially trigger downloads (no zip dependency)
     map.forEach((arr, name)=>{
       const csv = toCSV(arr, headers);
       const safeName = name.replace(/[^\w\d-]+/g,"_");
-      downloadBlob(committee_${safeName}_${new Date().toISOString().slice(0,10)}.csv, new Blob([csv], {type:"text/csv;charset=utf-8;"}));
+      downloadBlob(`committee_${safeName}_${today}.csv`, new Blob([csv], {type:"text/csv;charset=utf-8;"}));
     });
   }
 
   /* ======================= Invoice export (printable) ======================= */
   function openInvoicesPrint({ targets }) {
-    const fmt = (d) => new Date(d).toLocaleDateString();
     const dateStr = invoiceForm.date;
     const timeStr = invoiceForm.time;
     const paidText = invoiceForm.paid ? "PAID" : "UNPAID";
     const amount = Number(invoiceForm.amount||0);
     const sign = invoiceForm.sign || "admin • noirmun.com";
     const note = safe(invoiceForm.note);
+    const noteHtml = note ? `<div class="muted" style="margin-top:8px">Note: ${note}</div>` : "";
+
+    const makeCard = (r) => {
+      const idStr = String(r.id).padStart(4,"0");
+      const committee = safe(r.committee_pref1)||"Committee";
+      const portfolio = r.portfolio_pref1 ? ` • ${safe(r.portfolio_pref1)}` : "";
+      const email = safe(r.email) || "—";
+      const phone = safe(r.phone) || "—";
+      return `
+        <div class="inv">
+          <div class="row">
+            <div class="logo">
+              <img src="${LOGO_URL || ""}" alt="" style="height:28px;width:28px;border-radius:8px;border:1px solid #eee;object-fit:cover"/>
+              <div>NoirMUN • Invoice</div>
+            </div>
+            <div><span class="badge ${invoiceForm.paid?"paid":"unpaid"}">${paidText}</span></div>
+          </div>
+          <div class="hr"></div>
+          <div class="row">
+            <div>
+              <div class="h1">${safe(r.full_name)||"Delegate"}</div>
+              <div class="muted">${email} • ${phone}</div>
+            </div>
+            <div class="muted" style="text-align:right">
+              <div>Date: ${dateStr || "—"}</div>
+              <div>Time: ${timeStr || "—"}</div>
+              <div>Invoice #: ${idStr}</div>
+            </div>
+          </div>
+          <table style="margin-top:10px">
+            <thead><tr><th style="width:60%">Description</th><th style="width:20%">Qty</th><th class="tot" style="width:20%">Amount</th></tr></thead>
+            <tbody>
+              <tr><td>Delegate Registration • ${committee}${portfolio}</td><td>1</td><td class="tot">₹ ${amount.toLocaleString("en-IN")}</td></tr>
+            </tbody>
+            <tfoot>
+              <tr><td></td><td class="tot">Total</td><td class="tot">₹ ${amount.toLocaleString("en-IN")}</td></tr>
+            </tfoot>
+          </table>
+          ${noteHtml}
+          <div class="foot">
+            <div class="muted">Generated ${new Date().toLocaleString()}</div>
+            <div class="muted">Signed by: <b>${sign}</b></div>
+          </div>
+        </div>`;
+    };
 
     const html = `
 <!DOCTYPE html><html>
@@ -558,43 +603,7 @@ export default function Adminv1() {
 </style>
 </head>
 <body>
-${targets.map((r,idx)=>`
-  <div class="inv">
-    <div class="row">
-      <div class="logo">
-        <img src="${LOGO_URL || ""}" alt="" style="height:28px;width:28px;border-radius:8px;border:1px solid #eee;object-fit:cover"/>
-        <div>NoirMUN • Invoice</div>
-      </div>
-      <div><span class="badge ${invoiceForm.paid?"paid":"unpaid"}">${paidText}</span></div>
-    </div>
-    <div class="hr"></div>
-    <div class="row">
-      <div>
-        <div class="h1">${safe(r.full_name)||"Delegate"}</div>
-        <div class="muted">${safe(r.email)||"—"} • ${safe(r.phone)||"—"}</div>
-      </div>
-      <div class="muted" style="text-align:right">
-        <div>Date: ${dateStr || "—"}</div>
-        <div>Time: ${timeStr || "—"}</div>
-        <div>Invoice #: ${String(r.id).padStart(4,"0")}</div>
-      </div>
-    </div>
-    <table style="margin-top:10px">
-      <thead><tr><th style="width:60%">Description</th><th style="width:20%">Qty</th><th class="tot" style="width:20%">Amount</th></tr></thead>
-      <tbody>
-        <tr><td>Delegate Registration • ${safe(r.committee_pref1)||"Committee"}${r.portfolio_pref1?(" • "+safe(r.portfolio_pref1)):""}</td><td>1</td><td class="tot">₹ ${amount.toLocaleString("en-IN")}</td></tr>
-      </tbody>
-      <tfoot>
-        <tr><td></td><td class="tot">Total</td><td class="tot">₹ ${amount.toLocaleString("en-IN")}</td></tr>
-      </tfoot>
-    </table>
-    ${note ? <div class="muted" style="margin-top:8px">Note: ${note}</div> : ""}
-    <div class="foot">
-      <div class="muted">Generated ${new Date().toLocaleString()}</div>
-      <div class="muted">Signed by: <b>${sign}</b></div>
-    </div>
-  </div>
-`).join("")}
+${targets.map(makeCard).join("")}
 <script>window.onload = () => window.print();</script>
 </body>
 </html>`;
@@ -638,7 +647,14 @@ ${targets.map((r,idx)=>`
           <div className="flex items-center gap-2">
             <Tag title="Last synced">{lastSynced ? <><CheckCircle2 size={14}/> {lastSynced}</> : "—"}</Tag>
             {kpiStale && <Tag tone="warn" title="DelCount unavailable; showing cached KPIs"><ShieldAlert size={14}/> stale</Tag>}
-            {health.mismatched && <Tag tone="error" title={grid≠totals (paid ${health.paid.grid} vs ${health.paid.totals}, unpaid ${health.unpaid.grid} vs ${health.unpaid.totals})}><TriangleAlert size={14}/> KPI mismatch</Tag>}
+            {health.mismatched && (
+              <Tag
+                tone="error"
+                title={`grid≠totals (paid ${health.paid.grid} vs ${health.paid.totals}, unpaid ${health.unpaid.grid} vs ${health.unpaid.totals})`}
+              >
+                <TriangleAlert size={14}/> KPI mismatch
+              </Tag>
+            )}
 
             <button onClick={()=>fetchAll()} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><RefreshCw size={16}/> Refresh</button>
 
@@ -1023,7 +1039,7 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
                   <div className="flex items-center gap-2">
                     <span className={piiMask ? "blur-[2px] hover:blur-0 transition" : ""}><Highlighter text={r.email} tokens={highlightTokens}/></span>
                     {!!r.email && (<>
-                      <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={mailto:${r.email}}>mail</a>
+                      <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={`mailto:${r.email}`}>mail</a>
                       <button title="Copy email" className="opacity-60 hover:opacity-100" onClick={()=>navigator.clipboard?.writeText(r.email)}><Copy size={14}/></button>
                     </>)}
                   </div>
@@ -1034,7 +1050,7 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
                   <div className="flex items-center gap-2">
                     <span className={piiMask ? "blur-[2px] hover:blur-0 transition" : ""}>{r.phone}</span>
                     {!!r.phone && (<>
-                      <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={https://wa.me/${r.phone.replace(/\D/g,"")}} target="_blank" rel="noreferrer">wa</a>
+                      <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={`https://wa.me/${r.phone.replace(/\D/g,"")}`} target="_blank" rel="noreferrer">wa</a>
                       <button title="Copy phone" className="opacity-60 hover:opacity-100" onClick={()=>navigator.clipboard?.writeText(r.phone)}><Copy size={14}/></button>
                     </>)}
                   </div>
@@ -1098,8 +1114,8 @@ function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, pi
               <button className="px-2 py-1 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/25 text-xs inline-flex items-center gap-1" onClick={()=>saveRow(r,{payment_status:"unpaid"})}><Clock3 size={14}/> Unpaid</button>
               <button className="px-2 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/25 text-xs inline-flex items-center gap-1" onClick={()=>saveRow(r,{payment_status:"rejected"})}><Trash2 size={14}/> Reject</button>
               <div className="flex items-center gap-2 text-xs">
-                {!!r.email && <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={mailto:${r.email}}>mail</a>}
-                {!!r.phone && <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={https://wa.me/${r.phone.replace(/\D/g,"")}} target="_blank" rel="noreferrer">wa</a>}
+                {!!r.email && <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={`mailto:${r.email}`}>mail</a>}
+                {!!r.phone && <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={`https://wa.me/${r.phone.replace(/\D/g,"")}`} target="_blank" rel="noreferrer">wa</a>}
               </div>
             </div>
           )}
@@ -1129,9 +1145,17 @@ function StatusPill({ s }) {
   return <span className={cls("px-2 py-1 rounded-lg text-xs", tone)}>{v}</span>;
 }
 function SkeletonRows({ cols=7 }){
-  return (<>{Array.from({length:8}).map((_,i)=>(
-    <tr key={i} className="border-t border-white/5">{Array.from({length:cols}).map((,j)=>(
-      <td key={j} className="px-3 py-3"><div className="h-4 rounded bg-white/10 animate-pulse"/></td>))}</tr>))}</>);
+  return (
+    <>
+      {Array.from({length:8}).map((_,i)=>(
+        <tr key={i} className="border-t border-white/5">
+          {Array.from({length:cols}).map((_,j)=>(
+            <td key={j} className="px-3 py-3"><div className="h-4 rounded bg-white/10 animate-pulse"/></td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
 }
 function HealthRow({ label, obj }) {
   const ok = !!obj?.ok;
@@ -1141,7 +1165,7 @@ function HealthRow({ label, obj }) {
       <span className="flex items-center gap-2">
         {ok ? <Tag tone="ok"><CheckCircle2 size={14}/> OK</Tag> : <Tag tone="error"><ShieldAlert size={14}/> FAIL</Tag>}
         <Tag>{obj?.ms ?? "—"} ms</Tag>
-        <Tag>HTTP {obj?.status ?? "—"}</Tag>
+        <Tag>{`HTTP ${obj?.status ?? "—"}`}</Tag>
       </span>
     </div>
   );
