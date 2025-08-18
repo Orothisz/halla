@@ -9,7 +9,7 @@ import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
 
 import Admin from "./pages/Admin.jsx";
-    // NEW
+import Adminv1 from "./pages/Adminv1.jsx";      // NEW
 
 import BestMunDelhi from "./pages/BestMunDelhi.jsx";
 import Register from "./pages/Register.jsx";
