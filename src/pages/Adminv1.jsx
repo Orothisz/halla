@@ -1,3 +1,4 @@
+// src/pages/Adminv1.jsx
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
@@ -6,7 +7,7 @@ import {
   History as HistoryIcon, Edit3, Wifi, WifiOff, ShieldAlert, CheckCircle2,
   Copy, ChevronLeft, ChevronRight, Eye, EyeOff, Columns, Settings, TriangleAlert,
   Users, CheckSquare, Square, Wand2, ChartNoAxesGantt, Filter, SlidersHorizontal,
-  Globe, Smartphone, MonitorSmartphone, ArrowRight, Trash2, Undo2
+  Globe, MonitorSmartphone, Smartphone, Trash2
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { LOGO_URL } from "../shared/constants";
@@ -22,13 +23,37 @@ const OUT_TO_UI = (out) => (String(out||"").toLowerCase()==="verified" ? "paid"
   : String(out||"").toLowerCase()==="rejected" ? "rejected" : "unpaid");
 const UI_TO_OUT = (ui) => ui === "paid" ? "verified" : ui === "rejected" ? "rejected" : "pending";
 const nowISO = () => new Date().toISOString().replace(/\.\d+Z$/,"Z");
-function useDebounced(v, d=180){ const [x,setX]=useState(v); useEffect(()=>{const t=setTimeout(()=>setX(v),d); return()=>clearTimeout(t)},[v,d]); return x; }
+function useDebounced(v, d=160){ const [x,setX]=useState(v); useEffect(()=>{const t=setTimeout(()=>setX(v),d); return()=>clearTimeout(t)},[v,d]); return x; }
 const qp = () => { try{ return new URLSearchParams(window.location.search); }catch{ return new URLSearchParams(); } };
-const jitter = (ms) => ms + Math.floor(Math.random()*Math.min(300, ms*0.25));
 
-/* Cache helpers (write only after validation) */
-const persist = (k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} };
-const recall = (k,f)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):f; }catch{ return f } };
+/* NEW: fold accents, collapse spaces, strip punctuation; also expose digits */
+const fold = (s) => S(s)
+  .normalize("NFKD")
+  .replace(/[\u0300-\u036f]/g, "")      // remove diacritics
+  .replace(/[._\-+/()]/g, " ")          // unify separators
+  .replace(/\s+/g, " ")                 // collapse space
+  .trim();
+const digits = (s) => String(s||"").replace(/\D/g,"");
+
+/* Query parser: words, "quoted phrases", and -negatives */
+function parseQuery(q) {
+  const out = { must: [], not: [], phrases: [] };
+  if (!q) return out;
+  const re = /"([^"]+)"|(\S+)/g;
+  let m;
+  while ((m = re.exec(q))) {
+    const raw = m[1] ?? m[2] ?? "";
+    const neg = raw.startsWith("-");
+    const val = fold(neg ? raw.slice(1) : raw);
+    if (!val) continue;
+    if (m[1]) {
+      (neg ? out.not : out.phrases).push(val);
+    } else {
+      (neg ? out.not : out.must).push(val);
+    }
+  }
+  return out;
+}
 
 /* ================= Background ornament ================= */
 function RomanLayer() {
@@ -43,21 +68,9 @@ function RomanLayer() {
     <>
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-20 opacity-[.14]"
         style={{backgroundImage:"radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))"}}/>
-      <div className="pointer-events-none fixed inset-0 -z-20 hidden md:block">
-        <motion.div style={{ y: yBust }} className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl" />
-        <motion.div style={{ y: yColumn }} className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl" />
-      </div>
-      <motion.img src={IMG_LEFT} alt="" loading="lazy" decoding="async"
-        className="pointer-events-none hidden md:block fixed left-[-26px] top-[16vh] w-[320px] opacity-[.72] mix-blend-screen select-none -z-20"
-        style={{ y: yBust, filter: "grayscale(60%) contrast(110%) blur(0.2px)" }}/>
-      <motion.img src={IMG_RIGHT} alt="" loading="lazy" decoding="async"
-        className="pointer-events-none hidden md:block fixed right-[-10px] top-[30vh] w-[310px] opacity-[.68] mix-blend-screen select-none -z-20"
-        style={{ y: yColumn, filter: "grayscale(60%) contrast(112%) blur(0.2px)" }}/>
       <motion.img src={IMG_CENTER} alt="" loading="lazy" decoding="async"
         className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[92vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-20"
         style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}/>
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-20 opacity-[.06] mix-blend-overlay"
-        style={{backgroundImage:"url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")"}}/>
     </>
   );
 }
@@ -141,17 +154,27 @@ function Tag({ children, tone="default", title }) {
   return <span title={title} className={cls("inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs", classes)}>{children}</span>;
 }
 function Highlighter({ text, tokens }) {
+  // simple highlighting using folded tokens
   if (!tokens?.length || !text) return <>{text}</>;
-  const lower = text.toLowerCase();
+  const raw = String(text);
+  const lower = fold(raw);
   let i = 0; const spans = [];
   let pos = 0;
-  while (pos < text.length) {
-    let next = -1; let tk = "";
-    for (const t of tokens) { const p = lower.indexOf(t, pos); if (p >= 0 && (next < 0 || p < next)) { next = p; tk = t; } }
-    if (next < 0) { spans.push(<span key={i++}>{text.slice(pos)}</span>); break; }
-    if (next > pos) spans.push(<span key={i++}>{text.slice(pos, next)}</span>);
-    spans.push(<mark key={i++} className="bg-yellow-500/30 rounded">{text.slice(next, next + tk.length)}</mark>);
-    pos = next + tk.length;
+  // find first/shortest next hit
+  function nextHit(from) {
+    let hit = { at: -1, len: 0 };
+    tokens.forEach(t => {
+      const p = lower.indexOf(t, from);
+      if (p >= 0 && (hit.at < 0 || p < hit.at)) hit = { at: p, len: t.length };
+    });
+    return hit;
+  }
+  while (pos < raw.length) {
+    const h = nextHit(pos);
+    if (h.at < 0) { spans.push(<span key={i++}>{raw.slice(pos)}</span>); break; }
+    if (h.at > pos) spans.push(<span key={i++}>{raw.slice(pos, h.at)}</span>);
+    spans.push(<mark key={i++} className="bg-yellow-500/30 rounded">{raw.slice(h.at, h.at + h.len)}</mark>);
+    pos = h.at + h.len;
   }
   return <>{spans}</>;
 }
@@ -173,94 +196,12 @@ export default function Adminv1() {
   const adminList = useMemo(() => (import.meta.env.VITE_ADMIN_EMAILS || "").toLowerCase().split(",").map(s => s.trim()).filter(Boolean), []);
   const canEdit = !!me.id && (adminList.length ? adminList.includes((me.email||"").toLowerCase()) : true);
 
-  /* ========= Smart endpoint discovery (the “brain”) =========
-     Priority:
-     1) Query params ?api=…&dc=…
-     2) /.well-known/noir-admin.json   (optional file in public/)
-     3) Build-time envs (VITE_*)
-     4) Last-good (only after probe success)
-  */
+  /* Endpoint discovery (kept simple; supports ?api & ?dc or VITE_*) */
   const Q = qp();
   const envApi = (import.meta.env.VITE_DAPRIVATE_API_URL || import.meta.env.VITE_DAPRIVATE_JSON_URL || "").trim();
   const envDc  = (import.meta.env.VITE_DELCOUNT_JSON_URL || import.meta.env.VITE_DELCOUNT_API_URL || "").trim();
-  const [apiUrl, setApiUrl] = useState("");
-  const [dcUrl,  setDcUrl ] = useState("");
-  const [sourceNote, setSourceNote] = useState(""); // shows where we loaded endpoints from
-  const [discoveryLog, setDiscoveryLog] = useState([]);
-
-  useEffect(() => {
-    (async () => {
-      const log = (s)=>setDiscoveryLog(x=>[...x, s]);
-
-      const fromQP = { api: Q.get("api"), dc: Q.get("dc") };
-      if (fromQP.api || fromQP.dc) {
-        log("Using query params for endpoints");
-        const ok = await probePair(fromQP.api, fromQP.dc, log);
-        if (ok) { setApiUrl(fromQP.api||""); setDcUrl(fromQP.dc||""); setSourceNote("query params"); return; }
-      }
-
-      // 2) Well-known config
-      try {
-        const res = await fetch("/.well-known/noir-admin.json", { cache: "no-store" });
-        if (res.ok) {
-          const j = await res.json().catch(()=>null);
-          if (j?.api || j?.dc) {
-            log("Using /.well-known/noir-admin.json");
-            const ok = await probePair(j.api, j.dc, log);
-            if (ok) { setApiUrl(j.api||""); setDcUrl(j.dc||""); setSourceNote("well-known"); return; }
-          }
-        } else {
-          log("No well-known config (optional)");
-        }
-      } catch { log("Well-known fetch failed (optional)"); }
-
-      // 3) Build-time envs
-      if (envApi || envDc) {
-        log("Trying build-time VITE_* envs");
-        const ok = await probePair(envApi, envDc, log);
-        if (ok) { setApiUrl(envApi||""); setDcUrl(envDc||""); setSourceNote("build envs"); return; }
-      } else {
-        log("No VITE_* envs detected in bundle");
-      }
-
-      // 4) Last-good cache (only if we ever validated them before)
-      const last = recall("adm.lastGood", null);
-      if (last?.api || last?.dc) {
-        log("Falling back to last-good endpoints");
-        const ok = await probePair(last.api, last.dc, log);
-        if (ok) { setApiUrl(last.api||""); setDcUrl(last.dc||""); setSourceNote("last-good"); return; }
-      }
-
-      // Nothing worked. Leave empty; setup panel will show.
-      log("No usable endpoints discovered.");
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function probePair(api, dc, log=()=>{}) {
-    const allowFetch = (url) => typeof url === "string" && /^https?:\/\//i.test(url);
-    let ok = false;
-
-    async function probeOne(url, label){
-      if (!allowFetch(url)) { log(`Skip probe: ${label} missing/invalid`); return false; }
-      try {
-        // HEAD probe (fast), fallback GET if HEAD not allowed by GAS
-        let r = await fetch(url, { method: "HEAD", cache: "no-store" }).catch(()=>null);
-        if (!r || !r.ok) {
-          r = await fetch(url + (url.includes("?") ? "&" : "?") + "ping=1", { method: "GET", cache: "no-store" }).catch(()=>null);
-        }
-        if (r && r.ok) { log(`Probe OK: ${label}`); return true; }
-        log(`Probe FAIL: ${label} (HTTP ${r?.status||0})`);
-        return false;
-      } catch (e) { log(`Probe error: ${label}`); return false; }
-    }
-
-    const a = await probeOne(api, "DAPrivate");
-    const d = await probeOne(dc, "DelCount");
-    ok = a || d; // we allow partial: you can still load one while fixing the other
-    if (ok) persist("adm.lastGood", { api, dc, at: Date.now() });
-    return ok;
-  }
+  const [apiUrl, setApiUrl] = useState(Q.get("api") || envApi);
+  const [dcUrl,  setDcUrl ] = useState(Q.get("dc")  || envDc);
 
   /* ================== State / data ================== */
   const [loading, setLoading] = useState(true);
@@ -282,21 +223,17 @@ export default function Adminv1() {
   const [cols, setCols] = useState({ email:true, phone:true, committee:true, portfolio:true, status:true });
   const [sourcePref, setSourcePref] = useState("totals");
   const [toast, setToast] = useState([]);
-  const [health, setHealth] = useState({ da: null, dc: null, mismatched: false, paid: {grid:null, totals:null}, unpaid: {grid:null, totals:null}, spark: [] });
+  const [compact, setCompact] = useState(true);
   const [lastDa, setLastDa] = useState(null);
-  const [compact, setCompact] = useState(true); // mobile-first compact cards
-  const tokens = useMemo(() => S(qDeb).replace(/\s+/g, " ").split(" ").filter(Boolean), [qDeb]);
-  const debugMode = (Q.get("debug") === "1");
+  const [health, setHealth] = useState({ da: null, dc: null, mismatched: false, paid: {grid:null, totals:null}, unpaid: {grid:null, totals:null} });
 
-  /* KPI compute */
+  /* ===== KPI compute (unchanged) ===== */
   const computeKPI = useCallback((dcJson) => {
     const grid = Array.isArray(dcJson?.grid) ? dcJson.grid : null;
     const B = (row1) => numify(grid?.[row1-1]?.[1]);
     let g = { total:null, paid:null, unpaid:null };
     if (grid) {
-      g.total  = B(6);
-      g.paid   = B(7);
-      g.unpaid = B(8);
+      g.total  = B(6); g.paid = B(7); g.unpaid = B(8);
       if (!g.total && (g.paid!=null || g.unpaid!=null)) g.total = (g.paid||0) + (g.unpaid||0);
     }
     const t = {
@@ -317,7 +254,7 @@ export default function Adminv1() {
     return next;
   }, [sourcePref]);
 
-  /* Robust fetch with backoff + jitter + tolerant JSON */
+  /* Robust fetch + tolerant JSON */
   async function fetchWithBackoff(url, opts, tries=[450,1000,2000]) {
     const t0 = performance.now();
     try {
@@ -325,128 +262,92 @@ export default function Adminv1() {
       const r = await fetch(u, { cache:"no-store", ...opts });
       const ms = Math.round(performance.now()-t0);
       const txt = await r.text();
-      let json = null; try{ json = JSON.parse(txt); }catch{ json = tryParseLoose(txt); }
+      let json = null; try{ json = JSON.parse(txt); }catch{}
       return { ok:r.ok && !!json, ms, json, status:r.status, raw: txt };
-    } catch (e) {
-      if (tries.length) {
-        await new Promise(res=>setTimeout(res, jitter(tries[0])));
-        return fetchWithBackoff(url, opts, tries.slice(1));
-      }
-      return { ok:false, ms: Math.round(performance.now()-t0), json:null, status:0, raw: null };
+    } catch {
+      if (tries.length) { await new Promise(res=>setTimeout(res, tries[0])); return fetchWithBackoff(url, opts, tries.slice(1)); }
+      return { ok:false, ms:0, json:null, status:0, raw:null };
     }
-  }
-  function tryParseLoose(txt) {
-    // Apps Script sometimes returns TSV/CSV or wrapped JSON — try some heuristics
-    try { return JSON.parse((txt||"").replace(/\uFEFF/g,"").trim()); } catch {}
-    if (/^\s*<html/i.test(txt||"")) return null; // an error page
-    if ((txt||"").includes("{") && (txt||"").includes("}")) {
-      const m = (txt||"").match(/\{[\s\S]*\}$/); if (m) { try { return JSON.parse(m[0]); } catch {} }
-    }
-    return null;
   }
 
-  /* Normalizers */
+  /* Normalizers (NEW: build folded index + digits) */
   const normalizeRows = useCallback((arr) => {
     const norm = (arr || [])
-      .filter(r =>
-        r && (
-          r.full_name || r.name || r.email ||
-          r.phone || r["phone no."] || r["phone no"] || r["phone_no"]
-        )
-      )
+      .filter(r => r && (r.full_name || r.name || r.email || r.phone || r["phone no."] || r["phone no"] || r["phone_no"]))
       .map((r, i) => {
-        const paidRaw = String(
-          r.paid ?? r["paid?"] ?? r.payment_status ?? r.status ?? ""
-        ).toLowerCase();
+        const paidRaw = String(r.paid ?? r["paid?"] ?? r.payment_status ?? r.status ?? "").toLowerCase();
         const canonical =
           paidRaw.includes("cancel") || paidRaw === "cancelled" ? "rejected" :
           paidRaw.includes("paid")   || paidRaw === "yes"       ? "paid"     :
           OUT_TO_UI(paidRaw);
-
         const out = {
-          id: Number(r.id || r.sno || r["s.no"] || r["s_no"] || r["S No"] || i + 1),
-          full_name: r.full_name || r.name || r["full name"] || r["Full Name"] || "",
-          email: r.email || r["Email"] || "",
-          phone: r.phone || r["phone no."] || r["phone no"] || r["phone_no"] || r["Contact"] || "",
-          alt_phone: r.alt_phone || r.alternate || r["alternate phone"] || r["Alt Contact"] || "",
-          committee_pref1: r.committee_pref1 || r.committee || r["committee 1"] || r["Committee Preference 1"] || "",
-          portfolio_pref1: r.portfolio_pref1 || r.portfolio || r["portfolio 1"] || r["Portfolio Preference 1"] || "",
-          mail_sent: r.mail_sent || r["mail sent"] || r["mail_sent"] || r["Mail Sent"] || "",
+          id: Number(r.id || r.sno || r["s.no"] || r["s_no"] || i + 1),
+          full_name: r.full_name || r.name || r["full name"] || "",
+          email: r.email || "",
+          phone: r.phone || r["phone no."] || r["phone no"] || r["phone_no"] || "",
+          alt_phone: r.alt_phone || r.alternate || r["alternate phone"] || "",
+          committee_pref1: r.committee_pref1 || r.committee || r["committee 1"] || "",
+          portfolio_pref1: r.portfolio_pref1 || r.portfolio || r["portfolio 1"] || "",
+          mail_sent: r.mail_sent || r["mail sent"] || r["mail_sent"] || "",
           payment_status: canonical || "unpaid",
         };
-        out._slab = S([out.full_name,out.email,out.phone,out.committee_pref1,out.portfolio_pref1].join(" "));
+        const textIndex = [out.full_name,out.email,out.phone,out.committee_pref1,out.portfolio_pref1].filter(Boolean).join(" ");
+        out._slab = fold(textIndex);
+        out._digits = digits(out.phone);
         return out;
       });
 
     const setC = new Set(); norm.forEach((r) => r.committee_pref1 && setC.add(r.committee_pref1));
-    setCommittees(Array.from(setC).sort((a,b)=>S(a).localeCompare(S(b))));
+    setCommittees(Array.from(setC).sort((a,b)=>fold(a).localeCompare(fold(b))));
     return norm;
   }, []);
 
   /* Fetchers */
   async function fetchAll({ silent=false } = {}) {
-    if (!apiUrl && !dcUrl) return; // setup panel will show
     if (!silent) setLoading(true);
     setKpiStale(false);
 
     const allow = (u)=>typeof u==="string" && /^https?:\/\//i.test(u);
 
-    // ---- DAPrivate rows ----
+    // rows
     let da = { ok:false, ms:0, json:null, status:0 };
     if (allow(apiUrl)) {
       da = await fetchWithBackoff(apiUrl, { method:"GET" });
-      setHealth(h=>({ ...h, da, spark:[...(h.spark||[]), { t: Date.now(), da: da.ok?da.ms:null, dc: h?.dc?.ms??null }].slice(-30) }));
-      if (!da.ok) {
-        const cached = recall("adm.cache.da", null);
-        if (cached?.json) {
-          setLastDa(cached.json);
-          const rowsIn =
-            Array.isArray(cached.json.rows)  ? cached.json.rows  :
-            Array.isArray(cached.json.data)  ? cached.json.data  :
-            Array.isArray(cached.json.items) ? cached.json.items :
-            Array.isArray(cached.json?.result?.rows) ? cached.json.result.rows :
-            [];
-          setRows(normalizeRows(rowsIn));
-          addToast("Using cached registrations (stale)", "warn", 4000);
-        } else {
-          setRows([]); setLastDa({ ok:false, error:"DAPrivate fetch failed & no cache", status: da.status });
-        }
-      } else {
-        persist("adm.cache.da", { json: da.json, at: Date.now() });
+      setHealth(h=>({ ...h, da }));
+      if (da.ok) {
         setLastDa(da.json);
         const rowsIn =
           Array.isArray(da.json.rows)  ? da.json.rows  :
           Array.isArray(da.json.data)  ? da.json.data  :
           Array.isArray(da.json.items) ? da.json.items :
-          Array.isArray(da.json?.result?.rows) ? da.json.result.rows :
-          [];
+          Array.isArray(da.json?.result?.rows) ? da.json.result.rows : [];
         setRows(normalizeRows(rowsIn));
       }
     } else {
       setHealth(h=>({ ...h, da:{ ok:false, ms:0, status:0 }}));
-      setRows([]);
-      setLastDa({ ok:false, error:"DAPrivate URL missing" });
+      setRows([]); setLastDa({ ok:false, error:"DAPrivate URL missing" });
     }
 
-    // ---- DelCount KPIs ----
+    // KPIs
     let dc = { ok:false, ms:0, json:null, status:0 };
     if (allow(dcUrl)) {
       dc = await fetchWithBackoff(dcUrl, { method:"GET" });
-      setHealth(h=>({ ...h, dc, spark:[...(h.spark||[]), { t: Date.now(), da: h?.da?.ms??null, dc: dc.ok?dc.ms:null }].slice(-30) }));
-      if (!dc.ok) {
-        const cached = recall("adm.cache.dc", null);
-        if (cached?.json) {
-          setKpi(computeKPI(cached.json));
-          buildCommitteeBreakdown(cached.json);
-          setKpiStale(true);
-          addToast("Using cached KPIs (stale)", "warn", 4000);
-        } else {
-          setKpiStale(true);
-        }
-      } else {
-        persist("adm.cache.dc", { json: dc.json, at: Date.now() });
+      setHealth(h=>({ ...h, dc }));
+      if (dc.ok) {
         setKpi(computeKPI(dc.json));
-        buildCommitteeBreakdown(dc.json);
+        const committeesJson = dc.json?.committees || {};
+        const entries = Array.isArray(committeesJson)
+          ? committeesJson
+          : Object.keys(committeesJson).map((name) => ({ name, ...committeesJson[name] }));
+        const bd = (entries || []).map((c)=>({
+          name: c.name || c.committee || "",
+          total: Number(c.total)||0,
+          paid: Number(c.paid)||0,
+          unpaid: Number(c.unpaid)||0,
+        })).sort((a,b)=>b.total-a.total);
+        setBreakdown(bd);
+      } else {
+        setKpiStale(true);
       }
     } else {
       setHealth(h=>({ ...h, dc:{ ok:false, ms:0, status:0 }}));
@@ -456,35 +357,48 @@ export default function Adminv1() {
     setLastSynced(nowISO());
     if (!silent) setLoading(false);
   }
-
-  function buildCommitteeBreakdown(payload) {
-    const committeesJson = payload?.committees || {};
-    const entries = Array.isArray(committeesJson)
-      ? committeesJson
-      : Object.keys(committeesJson).map((name) => ({ name, ...committeesJson[name] }));
-    const bd = (entries || []).map((c)=>({
-      name: c.name || c.committee || "",
-      total: Number(c.total)||0,
-      paid: Number(c.paid)||0,
-      unpaid: Number(c.unpaid)||0,
-    })).sort((a,b)=>b.total-a.total);
-    setBreakdown(bd);
-  }
-
   useEffect(()=>{ fetchAll(); /* eslint-disable-next-line */},[apiUrl,dcUrl]);
   useEffect(()=>{ if (!live) return; const t=setInterval(()=>fetchAll({silent:true}),25000); return ()=>clearInterval(t); }, [live, apiUrl, dcUrl]);
+  useEffect(()=>{ setPage(1); }, [qDeb, status, committee]);
 
-  /* Derived lists / pagination */
+  /* ===== SEARCH FIX: folded, phrase-aware, digit-aware ===== */
+  const qFolded = fold(qDeb);
+  const query = useMemo(() => parseQuery(qFolded), [qFolded]);
+
   const visible = useMemo(() => {
-    const tks = S(qDeb).split(" ").filter(Boolean);
-    const pass=(r)=>{
-      const s = status==="all" ? true : S(r.payment_status)===status;
-      const c = committee==="all" ? true : S(r.committee_pref1)===S(committee);
-      const hit = tks.length===0 || tks.every(t=>r._slab.includes(t));
-      return s && c && hit;
+    const must = query.must, not = query.not, phrases = query.phrases;
+    const hasAny = Boolean(must.length || not.length || phrases.length);
+    const pass = (r) => {
+      const statusOk = status==="all" ? true : S(r.payment_status)===status;
+      const commOk = committee==="all" ? true : fold(r.committee_pref1)===fold(committee);
+      if (!statusOk || !commOk) return false;
+
+      if (!hasAny) return true;
+
+      // require every must term in text OR digits if numeric
+      for (const t of must) {
+        const isNum = /\d/.test(t);
+        if (isNum) {
+          const td = t.replace(/\D/g,"");
+          if (!td) continue;
+          if (!r._digits.includes(td)) return false;
+        } else {
+          if (!r._slab.includes(t)) return false;
+        }
+      }
+      // block negatives
+      for (const t of not) {
+        if (r._slab.includes(t)) return false;
+      }
+      // phrases must appear as-is in folded text
+      for (const p of phrases) {
+        if (!r._slab.includes(p)) return false;
+      }
+      return true;
     };
     return rows.filter(pass);
-  }, [rows,qDeb,status,committee]);
+  }, [rows, query, status, committee]);
+
   const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
   const pageClamped = Math.min(Math.max(1,page), totalPages);
   const start = (pageClamped-1)*pageSize;
@@ -506,7 +420,9 @@ export default function Adminv1() {
     if (patch.email!=null && patch.email!==row.email && patch.email && !emailOk(patch.email)) return addToast("Invalid email","error");
     if (patch.phone!=null && patch.phone!==row.phone && patch.phone && !phoneOk(patch.phone)) return addToast("Invalid phone","error");
 
-    const next={...row,...patch}; next._slab=S([next.full_name,next.email,next.phone,next.committee_pref1,next.portfolio_pref1].join(" "));
+    const next={...row,...patch};
+    next._slab = fold([next.full_name,next.email,next.phone,next.committee_pref1,next.portfolio_pref1].join(" "));
+    next._digits = digits(next.phone);
     setRows(rs=>rs.map(x=>x.id===row.id?next:x)); // optimistic
 
     try{
@@ -567,7 +483,6 @@ export default function Adminv1() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Tag title={`Loaded from: ${sourceNote||"—"}`}>{sourceNote || "no source"}</Tag>
             <Tag title="Last synced">{lastSynced ? <><CheckCircle2 size={14}/> {lastSynced}</> : "—"}</Tag>
             {kpiStale && <Tag tone="warn" title="DelCount unavailable; showing cached KPIs"><ShieldAlert size={14}/> stale</Tag>}
             {health.mismatched && <Tag tone="error" title={`grid≠totals (paid ${health.paid.grid} vs ${health.paid.totals}, unpaid ${health.unpaid.grid} vs ${health.unpaid.totals})`}><TriangleAlert size={14}/> KPI mismatch</Tag>}
@@ -596,10 +511,6 @@ export default function Adminv1() {
         <main className="mx-auto max-w-3xl px-4 py-6">
           <div className="rounded-2xl border border-yellow-400/30 bg-yellow-500/10 p-5 space-y-3">
             <div className="font-semibold flex items-center gap-2"><Globe size={16}/> Connect to Apps Script</div>
-            <div className="text-xs opacity-80">
-              Discovery log:
-              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap">{discoveryLog.join("\n")}</pre>
-            </div>
             <div className="grid gap-3">
               <label className="text-sm">
                 DAPrivate (Rows) URL
@@ -613,10 +524,6 @@ export default function Adminv1() {
               </label>
               <div className="flex gap-2">
                 <button onClick={()=>fetchAll()} className="px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/25 text-sm inline-flex items-center gap-2"><CheckCircle2 size={16}/> Save & Load</button>
-              </div>
-              <div className="text-xs opacity-80">
-                Tip: Add `/.well-known/noir-admin.json` to skip manual pasting.  
-                Or pass once via <code>?api=...&dc=...</code>; the app will remember validated endpoints.
               </div>
             </div>
           </div>
@@ -671,7 +578,7 @@ export default function Adminv1() {
             <div className="relative">
               <Search className="absolute left-3 top-2.5 opacity-80" size={18} />
               <input value={q} onChange={(e)=>setQ(e.target.value)}
-                placeholder="Search name, email, phone, committee, portfolio"
+                placeholder='Search: name, email, phone, committee, portfolio (quotes "", -minus, numbers OK)'
                 className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/10 outline-none placeholder:text-white/60"/>
             </div>
             <div className="flex gap-2">
@@ -721,7 +628,7 @@ export default function Adminv1() {
               toggleRowSel={toggleRowSel}
               canEdit={canEdit}
               piiMask={piiMask}
-              tokens={tokens}
+              highlightTokens={[...query.must, ...query.phrases]}
               saveRow={saveRow}
             />
           ) : (
@@ -735,19 +642,16 @@ export default function Adminv1() {
               togglePageSel={togglePageSel}
               canEdit={canEdit}
               piiMask={piiMask}
-              tokens={tokens}
+              highlightTokens={[...query.must, ...query.phrases]}
               saveRow={saveRow}
             />
           )}
 
-          {/* Debug panel (auto if no rows OR ?debug=1) */}
-          {(!loading && (rows.length === 0 || debugMode)) && (
+          {/* Debug if no rows */}
+          {!loading && rows.length === 0 && (
             <div className="mt-4 rounded-xl border border-yellow-400/30 bg-yellow-500/10 p-3 text-xs">
               <div className="font-semibold mb-1">Debug · DAPrivate response snapshot</div>
               <pre className="overflow-auto max-h-64">{JSON.stringify(lastDa, null, 2)}</pre>
-              <div className="opacity-80 mt-2">
-                Tip: Frontend accepts <code>rows</code>, <code>data</code>, <code>items</code>, or <code>result.rows</code>.
-              </div>
             </div>
           )}
 
@@ -795,7 +699,7 @@ export default function Adminv1() {
         </main>
       )}
 
-      {/* Health */}
+      {/* Health (trimmed but kept) */}
       {!needSetup && tab==="health" && (
         <main className="mx-auto max-w-7xl px-4 py-6">
           <div className="grid md:grid-cols-2 gap-4">
@@ -805,18 +709,6 @@ export default function Adminv1() {
                 <HealthRow label="Registrations (DAPrivate)" obj={health.da}/>
                 <HealthRow label="DelCount (KPIs)" obj={health.dc}/>
               </div>
-
-              {/* Latency mini "sparkline" */}
-              <div className="mt-4">
-                <div className="font-semibold mb-2 flex items-center gap-2"><Wand2 size={16}/> Live Latency</div>
-                <div className="flex items-end gap-1 h-16">
-                  {health.spark?.map((p,i)=>(
-                    <div key={i} className="w-2 rounded bg-white/20" style={{height: `${Math.min(60, (p.da||p.dc||0)/8)}px`}} title={`t+${i} • DA:${p.da||"-"}ms DC:${p.dc||"-"}ms`}/>
-                  ))}
-                </div>
-                <div className="text-xs opacity-70 mt-1">Last {health.spark?.length||0} polls</div>
-              </div>
-
               <div className="mt-4">
                 <div className="font-semibold mb-2 flex items-center gap-2"><Wand2 size={16}/> KPI Source of Truth</div>
                 <div className="flex items-center gap-2">
@@ -828,19 +720,14 @@ export default function Adminv1() {
                     title="Read from totals.paid / totals.unpaid">Totals</button>
                   {health.mismatched && <Tag tone="error"><TriangleAlert size={14}/> grid≠totals</Tag>}
                 </div>
-
-                {/* Quick override of endpoints inside Health */}
                 <div className="mt-4">
                   <div className="font-semibold mb-2 flex items-center gap-2"><Globe size={16}/> Endpoints</div>
                   <div className="grid gap-2 text-xs">
-                    <input value={apiUrl} onChange={(e)=>setApiUrl(e.target.value)} placeholder="DAPrivate URL"
-                      className="px-2 py-1 rounded-lg bg-white/10 outline-none"/>
-                    <input value={dcUrl} onChange={(e)=>setDcUrl(e.target.value)} placeholder="DelCount URL"
-                      className="px-2 py-1 rounded-lg bg-white/10 outline-none"/>
+                    <input value={apiUrl} onChange={(e)=>setApiUrl(e.target.value)} placeholder="DAPrivate URL" className="px-2 py-1 rounded-lg bg-white/10 outline-none"/>
+                    <input value={dcUrl} onChange={(e)=>setDcUrl(e.target.value)} placeholder="DelCount URL" className="px-2 py-1 rounded-lg bg-white/10 outline-none"/>
                     <div className="flex gap-2">
                       <button onClick={()=>fetchAll()} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><RefreshCw size={14}/> Reload</button>
                     </div>
-                    <div className="opacity-70">Sources tried: {sourceNote||"—"}. Add <code>/.well-known/noir-admin.json</code> to auto-wire in prod.</div>
                   </div>
                 </div>
               </div>
@@ -859,12 +746,6 @@ export default function Adminv1() {
               <div className="flex items-center gap-2 text-sm">
                 <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={piiMask} onChange={()=>setPiiMask(m=>!m)} /> Mask email & phone</label>
               </div>
-              <div className="font-semibold mt-4 mb-2 flex items-center gap-2"><Settings size={16}/> Tips</div>
-              <ul className="list-disc pl-5 text-xs opacity-80 space-y-1">
-                <li>Use <code>?api=…&dc=…</code> once to override quickly; validated endpoints are remembered.</li>
-                <li>Make sure both Apps Scripts return JSON and allow CORS (<code>Access-Control-Allow-Origin: *</code>).</li>
-                <li>Env vars must start with <b>VITE_</b> to reach the browser, and require a redeploy.</li>
-              </ul>
             </div>
           </div>
         </main>
@@ -884,7 +765,7 @@ export default function Adminv1() {
 }
 
 /* ===== Desktop table ===== */
-function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggleRowSel,togglePageSel,canEdit,piiMask,tokens,saveRow}) {
+function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggleRowSel,togglePageSel,canEdit,piiMask,highlightTokens,saveRow}) {
   return (
     <div className="hidden md:block overflow-x-auto rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
       <table className="w-full text-sm table-fixed">
@@ -924,7 +805,7 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
               {cols.email && (
                 <Td className="truncate" title={r.email}>
                   <div className="flex items-center gap-2">
-                    <span className={piiMask ? "blur-[2px] hover:blur-0 transition" : ""}><Highlighter text={r.email} tokens={tokens}/></span>
+                    <span className={piiMask ? "blur-[2px] hover:blur-0 transition" : ""}><Highlighter text={r.email} tokens={highlightTokens}/></span>
                     {!!r.email && (<>
                       <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={`mailto:${r.email}`}>mail</a>
                       <button title="Copy email" className="opacity-60 hover:opacity-100" onClick={()=>navigator.clipboard?.writeText(r.email)}><Copy size={14}/></button>
@@ -935,7 +816,7 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
               {cols.phone && (
                 <Td className="truncate" title={r.phone}>
                   <div className="flex items-center gap-2">
-                    <span className={piiMask ? "blur-[2px] hover:blur-0 transition" : ""}><Highlighter text={r.phone} tokens={tokens}/></span>
+                    <span className={piiMask ? "blur-[2px] hover:blur-0 transition" : ""}>{r.phone}</span>
                     {!!r.phone && (<>
                       <a className="opacity-70 hover:opacity-100 underline decoration-dotted" href={`https://wa.me/${r.phone.replace(/\D/g,"")}`} target="_blank" rel="noreferrer">wa</a>
                       <button title="Copy phone" className="opacity-60 hover:opacity-100" onClick={()=>navigator.clipboard?.writeText(r.phone)}><Copy size={14}/></button>
@@ -943,8 +824,8 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
                   </div>
                 </Td>
               )}
-              {cols.committee && (<Td className="truncate" title={r.committee_pref1}><Highlighter text={r.committee_pref1} tokens={tokens}/></Td>)}
-              {cols.portfolio && (<Td className="truncate" title={r.portfolio_pref1}><Highlighter text={r.portfolio_pref1} tokens={tokens}/></Td>)}
+              {cols.committee && (<Td className="truncate" title={r.committee_pref1}><Highlighter text={r.committee_pref1} tokens={highlightTokens}/></Td>)}
+              {cols.portfolio && (<Td className="truncate" title={r.portfolio_pref1}><Highlighter text={r.portfolio_pref1} tokens={highlightTokens}/></Td>)}
               {cols.status && (
                 <Td>
                   <div className="flex items-center gap-2">
@@ -965,7 +846,7 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
 }
 
 /* ===== Mobile cards ===== */
-function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, piiMask, tokens, saveRow }) {
+function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, piiMask, highlightTokens, saveRow }) {
   if (loading) return <div className="grid gap-2">{Array.from({length:6}).map((_,i)=><div key={i} className="h-20 rounded-xl bg-white/10 animate-pulse"/>)}</div>;
   if (!pageRows.length) return <div className="p-8 text-center opacity-70">No results match your filters.</div>;
   return (
@@ -976,14 +857,14 @@ function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, pi
             <div className="min-w-0">
               <div className="text-sm font-semibold truncate">{r.full_name || "—"}</div>
               <div className="text-xs opacity-80 truncate">
-                {piiMask ? <span className="blur-[2px] hover:blur-0 transition">{r.email}</span> : r.email}
+                {piiMask ? <span className="blur-[2px] hover:blur-0 transition"><Highlighter text={r.email} tokens={highlightTokens}/></span> : <Highlighter text={r.email} tokens={highlightTokens}/>}
               </div>
               <div className="text-xs opacity-80 truncate">
                 {piiMask ? <span className="blur-[2px] hover:blur-0 transition">{r.phone}</span> : r.phone}
               </div>
               <div className="text-xs mt-1">
-                <span className="opacity-70">{r.committee_pref1 || "—"}</span>
-                {!!r.portfolio_pref1 && <span className="opacity-50"> • {r.portfolio_pref1}</span>}
+                <span className="opacity-70"><Highlighter text={r.committee_pref1 || "—"} tokens={highlightTokens}/></span>
+                {!!r.portfolio_pref1 && <span className="opacity-50"> • <Highlighter text={r.portfolio_pref1} tokens={highlightTokens}/></span>}
               </div>
             </div>
             <div className="flex flex-col items-end gap-2">
