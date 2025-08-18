@@ -1,20 +1,3 @@
-// src/pages/Adminv1.jsx
-// ===================================================================================
-// FINAL: Direct-to-AppsScript Admin Dashboard (no Vercel serverless needed)
-// - Calls your Google Apps Script web apps **directly from the browser**.
-// - Accepts ANY of these env names for resilience:
-//     VITE_DAPRIVATE_API_URL   (prefer)   | VITE_DAPRIVATE_JSON_URL
-//     VITE_DELCOUNT_JSON_URL   (prefer)   | VITE_DELCOUNT_API_URL
-// - You can also override via URL params (helpful for hot fixes without a deploy):
-//     /adminv1?api=https://script.google.com/.../exec&dc=https://script.google.com/.../exec
-// - Self-healing features:
-//     • Retries with exponential backoff
-//     • Falls back to last-good cache in localStorage (shown as "stale")
-//     • Extremely tolerant JSON parsing & field name mapping
-//     • Built-in "Setup" panel (if envs missing) that persists to localStorage
-//     • Inline debug snapshot (toggle with ?debug=1)
-// - Clean, safe front-end only. The two Apps Script you shared already set CORS:*.
-// ===================================================================================
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
@@ -23,7 +6,7 @@ import {
   History as HistoryIcon, Edit3, Wifi, WifiOff, ShieldAlert, CheckCircle2,
   Copy, ChevronLeft, ChevronRight, Eye, EyeOff, Columns, Settings, TriangleAlert,
   Users, CheckSquare, Square, Wand2, ChartNoAxesGantt, Filter, SlidersHorizontal,
-  Globe
+  Globe, Smartphone, MonitorSmartphone, ArrowRight, Trash2, Undo2
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { LOGO_URL } from "../shared/constants";
@@ -40,9 +23,12 @@ const OUT_TO_UI = (out) => (String(out||"").toLowerCase()==="verified" ? "paid"
 const UI_TO_OUT = (ui) => ui === "paid" ? "verified" : ui === "rejected" ? "rejected" : "pending";
 const nowISO = () => new Date().toISOString().replace(/\.\d+Z$/,"Z");
 function useDebounced(v, d=180){ const [x,setX]=useState(v); useEffect(()=>{const t=setTimeout(()=>setX(v),d); return()=>clearTimeout(t)},[v,d]); return x; }
-const persist = (k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
-const recall = (k,f)=>{try{const v=localStorage.getItem(k); return v?JSON.parse(v):f}catch{return f}};
 const qp = () => { try{ return new URLSearchParams(window.location.search); }catch{ return new URLSearchParams(); } };
+const jitter = (ms) => ms + Math.floor(Math.random()*Math.min(300, ms*0.25));
+
+/* Cache helpers (write only after validation) */
+const persist = (k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} };
+const recall = (k,f)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):f; }catch{ return f } };
 
 /* ================= Background ornament ================= */
 function RomanLayer() {
@@ -55,28 +41,28 @@ function RomanLayer() {
   const IMG_CENTER = "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png";
   return (
     <>
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-20 opacity-[.18]"
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-20 opacity-[.14]"
         style={{backgroundImage:"radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))"}}/>
-      <div className="pointer-events-none fixed inset-0 -z-20">
+      <div className="pointer-events-none fixed inset-0 -z-20 hidden md:block">
         <motion.div style={{ y: yBust }} className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl" />
         <motion.div style={{ y: yColumn }} className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl" />
       </div>
       <motion.img src={IMG_LEFT} alt="" loading="lazy" decoding="async"
-        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[240px] md:w-[320px] opacity-[.55] md:opacity-[.75] mix-blend-screen select-none -z-20"
+        className="pointer-events-none hidden md:block fixed left-[-26px] top-[16vh] w-[320px] opacity-[.72] mix-blend-screen select-none -z-20"
         style={{ y: yBust, filter: "grayscale(60%) contrast(110%) blur(0.2px)" }}/>
       <motion.img src={IMG_RIGHT} alt="" loading="lazy" decoding="async"
-        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[230px] md:w-[310px] opacity-[.50] md:opacity-[.72] mix-blend-screen select-none -z-20"
+        className="pointer-events-none hidden md:block fixed right-[-10px] top-[30vh] w-[310px] opacity-[.68] mix-blend-screen select-none -z-20"
         style={{ y: yColumn, filter: "grayscale(60%) contrast(112%) blur(0.2px)" }}/>
       <motion.img src={IMG_CENTER} alt="" loading="lazy" decoding="async"
-        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-20"
+        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[92vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-20"
         style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}/>
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-20 opacity-[.07] mix-blend-overlay"
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-20 opacity-[.06] mix-blend-overlay"
         style={{backgroundImage:"url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")"}}/>
     </>
   );
 }
 
-/* ================== Small UI bits ================== */
+/* ================= Tiny UI bits ================= */
 function PortalDropdown({ anchorRef, open, onClose, width, children }) {
   const [box, setBox] = useState({ top: 0, left: 0, width: 200 });
   useEffect(() => {
@@ -187,95 +173,128 @@ export default function Adminv1() {
   const adminList = useMemo(() => (import.meta.env.VITE_ADMIN_EMAILS || "").toLowerCase().split(",").map(s => s.trim()).filter(Boolean), []);
   const canEdit = !!me.id && (adminList.length ? adminList.includes((me.email||"").toLowerCase()) : true);
 
-  /* Envs & overrides */
+  /* ========= Smart endpoint discovery (the “brain”) =========
+     Priority:
+     1) Query params ?api=…&dc=…
+     2) /.well-known/noir-admin.json   (optional file in public/)
+     3) Build-time envs (VITE_*)
+     4) Last-good (only after probe success)
+  */
   const Q = qp();
   const envApi = (import.meta.env.VITE_DAPRIVATE_API_URL || import.meta.env.VITE_DAPRIVATE_JSON_URL || "").trim();
   const envDc  = (import.meta.env.VITE_DELCOUNT_JSON_URL || import.meta.env.VITE_DELCOUNT_API_URL || "").trim();
-  const [apiUrl, setApiUrl] = useState(() => Q.get("api") || recall("adm.apiUrl", envApi));
-  const [dcUrl,  setDcUrl ] = useState(() => Q.get("dc")  || recall("adm.dcUrl",  envDc));
-  useEffect(()=>persist("adm.apiUrl", apiUrl),[apiUrl]);
-  useEffect(()=>persist("adm.dcUrl",  dcUrl ),[dcUrl ]);
+  const [apiUrl, setApiUrl] = useState("");
+  const [dcUrl,  setDcUrl ] = useState("");
+  const [sourceNote, setSourceNote] = useState(""); // shows where we loaded endpoints from
+  const [discoveryLog, setDiscoveryLog] = useState([]);
 
-  /* State */
+  useEffect(() => {
+    (async () => {
+      const log = (s)=>setDiscoveryLog(x=>[...x, s]);
+
+      const fromQP = { api: Q.get("api"), dc: Q.get("dc") };
+      if (fromQP.api || fromQP.dc) {
+        log("Using query params for endpoints");
+        const ok = await probePair(fromQP.api, fromQP.dc, log);
+        if (ok) { setApiUrl(fromQP.api||""); setDcUrl(fromQP.dc||""); setSourceNote("query params"); return; }
+      }
+
+      // 2) Well-known config
+      try {
+        const res = await fetch("/.well-known/noir-admin.json", { cache: "no-store" });
+        if (res.ok) {
+          const j = await res.json().catch(()=>null);
+          if (j?.api || j?.dc) {
+            log("Using /.well-known/noir-admin.json");
+            const ok = await probePair(j.api, j.dc, log);
+            if (ok) { setApiUrl(j.api||""); setDcUrl(j.dc||""); setSourceNote("well-known"); return; }
+          }
+        } else {
+          log("No well-known config (optional)");
+        }
+      } catch { log("Well-known fetch failed (optional)"); }
+
+      // 3) Build-time envs
+      if (envApi || envDc) {
+        log("Trying build-time VITE_* envs");
+        const ok = await probePair(envApi, envDc, log);
+        if (ok) { setApiUrl(envApi||""); setDcUrl(envDc||""); setSourceNote("build envs"); return; }
+      } else {
+        log("No VITE_* envs detected in bundle");
+      }
+
+      // 4) Last-good cache (only if we ever validated them before)
+      const last = recall("adm.lastGood", null);
+      if (last?.api || last?.dc) {
+        log("Falling back to last-good endpoints");
+        const ok = await probePair(last.api, last.dc, log);
+        if (ok) { setApiUrl(last.api||""); setDcUrl(last.dc||""); setSourceNote("last-good"); return; }
+      }
+
+      // Nothing worked. Leave empty; setup panel will show.
+      log("No usable endpoints discovered.");
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function probePair(api, dc, log=()=>{}) {
+    const allowFetch = (url) => typeof url === "string" && /^https?:\/\//i.test(url);
+    let ok = false;
+
+    async function probeOne(url, label){
+      if (!allowFetch(url)) { log(`Skip probe: ${label} missing/invalid`); return false; }
+      try {
+        // HEAD probe (fast), fallback GET if HEAD not allowed by GAS
+        let r = await fetch(url, { method: "HEAD", cache: "no-store" }).catch(()=>null);
+        if (!r || !r.ok) {
+          r = await fetch(url + (url.includes("?") ? "&" : "?") + "ping=1", { method: "GET", cache: "no-store" }).catch(()=>null);
+        }
+        if (r && r.ok) { log(`Probe OK: ${label}`); return true; }
+        log(`Probe FAIL: ${label} (HTTP ${r?.status||0})`);
+        return false;
+      } catch (e) { log(`Probe error: ${label}`); return false; }
+    }
+
+    const a = await probeOne(api, "DAPrivate");
+    const d = await probeOne(dc, "DelCount");
+    ok = a || d; // we allow partial: you can still load one while fixing the other
+    if (ok) persist("adm.lastGood", { api, dc, at: Date.now() });
+    return ok;
+  }
+
+  /* ================== State / data ================== */
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [breakdown, setBreakdown] = useState([]);
   const [committees, setCommittees] = useState([]);
-  const [q, setQ] = useState(recall("adm.q","")); const qDeb = useDebounced(q, 160);
-  const [status, setStatus] = useState(recall("adm.status","all"));
-  const [committee, setCommittee] = useState(recall("adm.committee","all"));
+  const [q, setQ] = useState(""); const qDeb = useDebounced(q, 160);
+  const [status, setStatus] = useState("all");
+  const [committee, setCommittee] = useState("all");
   const [tab, setTab] = useState("delegates");
-  const [live, setLive] = useState(recall("adm.live", true));
+  const [live, setLive] = useState(true);
   const [logs, setLogs] = useState([]); const [logsLoading, setLogsLoading] = useState(false);
   const [kpi, setKpi] = useState({ total: 0, paid: 0, unpaid: 0, rejected: 0 });
   const [kpiStale, setKpiStale] = useState(false);
   const [lastSynced, setLastSynced] = useState("");
-  const [piiMask, setPiiMask] = useState(recall("adm.piiMask", true));
-  const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(recall("adm.pageSize", 50));
+  const [piiMask, setPiiMask] = useState(true);
+  const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(50);
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [cols, setCols] = useState(recall("adm.cols", { email:true, phone:true, committee:true, portfolio:true, status:true }));
-  const [sourcePref, setSourcePref] = useState(recall("adm.kpiSource","totals")); // safer default
+  const [cols, setCols] = useState({ email:true, phone:true, committee:true, portfolio:true, status:true });
+  const [sourcePref, setSourcePref] = useState("totals");
   const [toast, setToast] = useState([]);
-  const [health, setHealth] = useState({ da: null, dc: null, mismatched: false, paid: {grid:null, totals:null}, unpaid: {grid:null, totals:null} });
-  const [lastDa, setLastDa] = useState(null); // debug snapshot for upstream
-
+  const [health, setHealth] = useState({ da: null, dc: null, mismatched: false, paid: {grid:null, totals:null}, unpaid: {grid:null, totals:null}, spark: [] });
+  const [lastDa, setLastDa] = useState(null);
+  const [compact, setCompact] = useState(true); // mobile-first compact cards
   const tokens = useMemo(() => S(qDeb).replace(/\s+/g, " ").split(" ").filter(Boolean), [qDeb]);
-  useEffect(() => persist("adm.q", q), [q]);
-  useEffect(() => persist("adm.status", status), [status]);
-  useEffect(() => persist("adm.committee", committee), [committee]);
-  useEffect(() => persist("adm.live", live), [live]);
-  useEffect(() => persist("adm.pageSize", pageSize), [pageSize]);
-  useEffect(() => persist("adm.cols", cols), [cols]);
-  useEffect(() => persist("adm.kpiSource", sourcePref), [sourcePref]);
-  useEffect(() => { setPage(1); }, [qDeb, status, committee]);
-
   const debugMode = (Q.get("debug") === "1");
 
-  /* Normalizers */
-  const normalizeRows = useCallback((arr) => {
-    const norm = (arr || [])
-      .filter(r =>
-        r && (
-          r.full_name || r.name || r.email ||
-          r.phone || r["phone no."] || r["phone no"] || r["phone_no"]
-        )
-      )
-      .map((r, i) => {
-        const paidRaw = String(
-          r.paid ?? r["paid?"] ?? r.payment_status ?? r.status ?? ""
-        ).toLowerCase();
-        const canonical =
-          paidRaw.includes("cancel") || paidRaw === "cancelled" ? "rejected" :
-          paidRaw.includes("paid")   || paidRaw === "yes"       ? "paid"     :
-          OUT_TO_UI(paidRaw); // fallback mapping
-
-        const out = {
-          id: Number(r.id || r.sno || r["s.no"] || r["s_no"] || i + 1),
-          full_name: r.full_name || r.name || r["full name"] || "",
-          email: r.email || "",
-          phone: r.phone || r["phone no."] || r["phone no"] || r["phone_no"] || "",
-          alt_phone: r.alt_phone || r.alternate || r["alternate phone"] || "",
-          committee_pref1: r.committee_pref1 || r.committee || r["committee 1"] || "",
-          portfolio_pref1: r.portfolio_pref1 || r.portfolio || r["portfolio 1"] || "",
-          mail_sent: r.mail_sent || r["mail sent"] || r["mail_sent"] || "",
-          payment_status: canonical || "unpaid",
-        };
-        out._slab = S([out.full_name,out.email,out.phone,out.committee_pref1,out.portfolio_pref1].join(" "));
-        return out;
-      });
-
-    const setC = new Set(); norm.forEach((r) => r.committee_pref1 && setC.add(r.committee_pref1));
-    setCommittees(Array.from(setC).sort());
-    return norm;
-  }, []);
-
-  /* KPI compute (supports both grid & totals structures) */
+  /* KPI compute */
   const computeKPI = useCallback((dcJson) => {
     const grid = Array.isArray(dcJson?.grid) ? dcJson.grid : null;
     const B = (row1) => numify(grid?.[row1-1]?.[1]);
     let g = { total:null, paid:null, unpaid:null };
     if (grid) {
-      g.total  = B(6); // rows 6..8, col B
+      g.total  = B(6);
       g.paid   = B(7);
       g.unpaid = B(8);
       if (!g.total && (g.paid!=null || g.unpaid!=null)) g.total = (g.paid||0) + (g.unpaid||0);
@@ -298,36 +317,86 @@ export default function Adminv1() {
     return next;
   }, [sourcePref]);
 
-  /* Backoff fetcher + caching */
-  async function fetchWithBackoff(url, opts, tries=[400,900,1800]) {
+  /* Robust fetch with backoff + jitter + tolerant JSON */
+  async function fetchWithBackoff(url, opts, tries=[450,1000,2000]) {
     const t0 = performance.now();
     try {
-      const r = await fetch(`${url}${url.includes("?")?"&":"?"}t=${Date.now()}`, { cache:"no-store", ...opts });
+      const u = `${url}${url.includes("?")?"&":"?"}t=${Date.now()}`;
+      const r = await fetch(u, { cache:"no-store", ...opts });
       const ms = Math.round(performance.now()-t0);
       const txt = await r.text();
-      let json = null; try{ json = JSON.parse(txt); }catch{ json = null; }
+      let json = null; try{ json = JSON.parse(txt); }catch{ json = tryParseLoose(txt); }
       return { ok:r.ok && !!json, ms, json, status:r.status, raw: txt };
     } catch (e) {
-      // retry
-      if (tries.length) { await new Promise(res=>setTimeout(res, tries[0])); return fetchWithBackoff(url, opts, tries.slice(1)); }
+      if (tries.length) {
+        await new Promise(res=>setTimeout(res, jitter(tries[0])));
+        return fetchWithBackoff(url, opts, tries.slice(1));
+      }
       return { ok:false, ms: Math.round(performance.now()-t0), json:null, status:0, raw: null };
     }
   }
+  function tryParseLoose(txt) {
+    // Apps Script sometimes returns TSV/CSV or wrapped JSON — try some heuristics
+    try { return JSON.parse((txt||"").replace(/\uFEFF/g,"").trim()); } catch {}
+    if (/^\s*<html/i.test(txt||"")) return null; // an error page
+    if ((txt||"").includes("{") && (txt||"").includes("}")) {
+      const m = (txt||"").match(/\{[\s\S]*\}$/); if (m) { try { return JSON.parse(m[0]); } catch {} }
+    }
+    return null;
+  }
+
+  /* Normalizers */
+  const normalizeRows = useCallback((arr) => {
+    const norm = (arr || [])
+      .filter(r =>
+        r && (
+          r.full_name || r.name || r.email ||
+          r.phone || r["phone no."] || r["phone no"] || r["phone_no"]
+        )
+      )
+      .map((r, i) => {
+        const paidRaw = String(
+          r.paid ?? r["paid?"] ?? r.payment_status ?? r.status ?? ""
+        ).toLowerCase();
+        const canonical =
+          paidRaw.includes("cancel") || paidRaw === "cancelled" ? "rejected" :
+          paidRaw.includes("paid")   || paidRaw === "yes"       ? "paid"     :
+          OUT_TO_UI(paidRaw);
+
+        const out = {
+          id: Number(r.id || r.sno || r["s.no"] || r["s_no"] || r["S No"] || i + 1),
+          full_name: r.full_name || r.name || r["full name"] || r["Full Name"] || "",
+          email: r.email || r["Email"] || "",
+          phone: r.phone || r["phone no."] || r["phone no"] || r["phone_no"] || r["Contact"] || "",
+          alt_phone: r.alt_phone || r.alternate || r["alternate phone"] || r["Alt Contact"] || "",
+          committee_pref1: r.committee_pref1 || r.committee || r["committee 1"] || r["Committee Preference 1"] || "",
+          portfolio_pref1: r.portfolio_pref1 || r.portfolio || r["portfolio 1"] || r["Portfolio Preference 1"] || "",
+          mail_sent: r.mail_sent || r["mail sent"] || r["mail_sent"] || r["Mail Sent"] || "",
+          payment_status: canonical || "unpaid",
+        };
+        out._slab = S([out.full_name,out.email,out.phone,out.committee_pref1,out.portfolio_pref1].join(" "));
+        return out;
+      });
+
+    const setC = new Set(); norm.forEach((r) => r.committee_pref1 && setC.add(r.committee_pref1));
+    setCommittees(Array.from(setC).sort((a,b)=>S(a).localeCompare(S(b))));
+    return norm;
+  }, []);
 
   /* Fetchers */
   async function fetchAll({ silent=false } = {}) {
+    if (!apiUrl && !dcUrl) return; // setup panel will show
     if (!silent) setLoading(true);
     setKpiStale(false);
 
-    const allowFetch = (url) => typeof url === "string" && /^https?:\/\//i.test(url);
+    const allow = (u)=>typeof u==="string" && /^https?:\/\//i.test(u);
 
-    // ---- DAPrivate rows (direct to AppsScript) ----
+    // ---- DAPrivate rows ----
     let da = { ok:false, ms:0, json:null, status:0 };
-    if (allowFetch(apiUrl)) {
+    if (allow(apiUrl)) {
       da = await fetchWithBackoff(apiUrl, { method:"GET" });
-      setHealth(h=>({ ...h, da }));
+      setHealth(h=>({ ...h, da, spark:[...(h.spark||[]), { t: Date.now(), da: da.ok?da.ms:null, dc: h?.dc?.ms??null }].slice(-30) }));
       if (!da.ok) {
-        // Fall back to cached last-good
         const cached = recall("adm.cache.da", null);
         if (cached?.json) {
           setLastDa(cached.json);
@@ -359,26 +428,16 @@ export default function Adminv1() {
       setLastDa({ ok:false, error:"DAPrivate URL missing" });
     }
 
-    // ---- DelCount KPIs (direct to AppsScript) ----
+    // ---- DelCount KPIs ----
     let dc = { ok:false, ms:0, json:null, status:0 };
-    if (allowFetch(dcUrl)) {
+    if (allow(dcUrl)) {
       dc = await fetchWithBackoff(dcUrl, { method:"GET" });
-      setHealth(h=>({ ...h, dc }));
+      setHealth(h=>({ ...h, dc, spark:[...(h.spark||[]), { t: Date.now(), da: h?.da?.ms??null, dc: dc.ok?dc.ms:null }].slice(-30) }));
       if (!dc.ok) {
         const cached = recall("adm.cache.dc", null);
         if (cached?.json) {
           setKpi(computeKPI(cached.json));
-          const committeesJson = cached.json?.committees || {};
-          const entries = Array.isArray(committeesJson)
-            ? committeesJson
-            : Object.keys(committeesJson).map((name) => ({ name, ...committeesJson[name] }));
-          const bd = (entries || []).map((c)=>({
-            name: c.name || c.committee || "",
-            total: Number(c.total)||0,
-            paid: Number(c.paid)||0,
-            unpaid: Number(c.unpaid)||0,
-          })).sort((a,b)=>b.total-a.total);
-          setBreakdown(bd);
+          buildCommitteeBreakdown(cached.json);
           setKpiStale(true);
           addToast("Using cached KPIs (stale)", "warn", 4000);
         } else {
@@ -387,17 +446,7 @@ export default function Adminv1() {
       } else {
         persist("adm.cache.dc", { json: dc.json, at: Date.now() });
         setKpi(computeKPI(dc.json));
-        const committeesJson = dc.json?.committees || {};
-        const entries = Array.isArray(committeesJson)
-          ? committeesJson
-          : Object.keys(committeesJson).map((name) => ({ name, ...committeesJson[name] }));
-        const bd = (entries || []).map((c)=>({
-          name: c.name || c.committee || "",
-          total: Number(c.total)||0,
-          paid: Number(c.paid)||0,
-          unpaid: Number(c.unpaid)||0,
-        })).sort((a,b)=>b.total-a.total);
-        setBreakdown(bd);
+        buildCommitteeBreakdown(dc.json);
       }
     } else {
       setHealth(h=>({ ...h, dc:{ ok:false, ms:0, status:0 }}));
@@ -407,7 +456,22 @@ export default function Adminv1() {
     setLastSynced(nowISO());
     if (!silent) setLoading(false);
   }
-  useEffect(()=>{ fetchAll(); /* eslint-disable-next-line */},[]);
+
+  function buildCommitteeBreakdown(payload) {
+    const committeesJson = payload?.committees || {};
+    const entries = Array.isArray(committeesJson)
+      ? committeesJson
+      : Object.keys(committeesJson).map((name) => ({ name, ...committeesJson[name] }));
+    const bd = (entries || []).map((c)=>({
+      name: c.name || c.committee || "",
+      total: Number(c.total)||0,
+      paid: Number(c.paid)||0,
+      unpaid: Number(c.unpaid)||0,
+    })).sort((a,b)=>b.total-a.total);
+    setBreakdown(bd);
+  }
+
+  useEffect(()=>{ fetchAll(); /* eslint-disable-next-line */},[apiUrl,dcUrl]);
   useEffect(()=>{ if (!live) return; const t=setInterval(()=>fetchAll({silent:true}),25000); return ()=>clearInterval(t); }, [live, apiUrl, dcUrl]);
 
   /* Derived lists / pagination */
@@ -426,7 +490,7 @@ export default function Adminv1() {
   const start = (pageClamped-1)*pageSize;
   const pageRows = visible.slice(start, start+pageSize);
 
-  /* Bulk selection */
+  /* Selection */
   const allOnPageSelected = pageRows.length>0 && pageRows.every(r=>selectedIds.has(r.id));
   const toggleRowSel = (id) => setSelectedIds(s => { const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
   const togglePageSel = () => setSelectedIds(s => { const n=new Set(s); if (allOnPageSelected) pageRows.forEach(r=>n.delete(r.id)); else pageRows.forEach(r=>n.add(r.id)); return n; });
@@ -436,7 +500,7 @@ export default function Adminv1() {
   const undoQ=useRef([]); const queueUndo=(rowId,prev)=>{const timer=setTimeout(()=>{undoQ.current=undoQ.current.filter(x=>x.rowId!==rowId)},10000); undoQ.current.push({rowId,prev,timer}); addToast(<span>Saved. <button className="underline" onClick={()=>doUndo(rowId)}>Undo</button></span>,"ok",10000);};
   async function doUndo(rowId){const i=undoQ.current.findIndex(x=>x.rowId===rowId); if(i<0) return; const {prev,timer}=undoQ.current[i]; clearTimeout(timer); undoQ.current.splice(i,1); await saveRow(prev, prev, true);}
 
-  /* Save (inline) + bulk (direct POST to AppsScript) */
+  /* Save (inline) + bulk  */
   async function saveRow(row, patch, isUndo=false){
     if (!apiUrl){ addToast("DAPrivate URL missing","error"); return; }
     if (patch.email!=null && patch.email!==row.email && patch.email && !emailOk(patch.email)) return addToast("Invalid email","error");
@@ -477,22 +541,16 @@ export default function Adminv1() {
     addToast("Bulk update complete","ok");
   }
 
-  /* Logs & health */
+  /* Logs */
   async function loadLogs(){ setLogsLoading(true); try{
     const { data } = await supabase.from("admin_edit_logs").select("*").order("created_at",{ascending:false}).limit(300);
     setLogs(data||[]);
   } finally { setLogsLoading(false); } }
   useEffect(()=>{ if(tab==="history") loadLogs(); },[tab]);
 
-  const searchRef = useRef(null);
-  useEffect(()=>{ const onKey=(e)=>{ if(e.key==="/"&&!e.metaKey&&!e.ctrlKey){e.preventDefault(); searchRef.current?.focus();}
-    if(e.key.toLowerCase()==="r"&&!e.metaKey&&!e.ctrlKey){e.preventDefault(); fetchAll();}
-    if(e.key.toLowerCase()==="l"&&!e.metaKey&&!e.ctrlKey){e.preventDefault(); setLive(v=>!v);} };
-    window.addEventListener("keydown",onKey); return()=>window.removeEventListener("keydown",onKey);},[]);
-
   /* ======================= Render ======================= */
   const logo = LOGO_URL || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='100%' height='100%' rx='12' fill='%23fff'/><text x='50%' y='56%' text-anchor='middle' font-family='sans-serif' font-size='28' fill='%23000'>N</text></svg>";
-  const needSetup = !apiUrl || !dcUrl;
+  const needSetup = !apiUrl && !dcUrl;
 
   return (
     <div className="relative min-h-[100dvh] text-white">
@@ -509,6 +567,7 @@ export default function Adminv1() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Tag title={`Loaded from: ${sourceNote||"—"}`}>{sourceNote || "no source"}</Tag>
             <Tag title="Last synced">{lastSynced ? <><CheckCircle2 size={14}/> {lastSynced}</> : "—"}</Tag>
             {kpiStale && <Tag tone="warn" title="DelCount unavailable; showing cached KPIs"><ShieldAlert size={14}/> stale</Tag>}
             {health.mismatched && <Tag tone="error" title={`grid≠totals (paid ${health.paid.grid} vs ${health.paid.totals}, unpaid ${health.unpaid.grid} vs ${health.unpaid.totals})`}><TriangleAlert size={14}/> KPI mismatch</Tag>}
@@ -525,15 +584,22 @@ export default function Adminv1() {
               {live ? <Wifi size={16}/> : <WifiOff size={16}/> } Live
             </button>
             <button onClick={()=>setTab(t=>t==="health"?"delegates":"health")} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2" title="Data health"><ChartNoAxesGantt size={16}/> Health</button>
+            <button onClick={()=>setCompact(c=>!c)} className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2" title="Toggle layout">
+              {compact ? <MonitorSmartphone size={16}/> : <Smartphone size={16}/>}{compact ? "Cards" : "Table"}
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Setup panel if envs missing or user wants to override */}
+      {/* Setup panel */}
       {needSetup && (
         <main className="mx-auto max-w-3xl px-4 py-6">
-          <div className="rounded-2xl border border-yellow-400/30 bg-yellow-500/10 p-5">
-            <div className="font-semibold mb-3 flex items-center gap-2"><Globe size={16}/> Connect to Apps Script</div>
+          <div className="rounded-2xl border border-yellow-400/30 bg-yellow-500/10 p-5 space-y-3">
+            <div className="font-semibold flex items-center gap-2"><Globe size={16}/> Connect to Apps Script</div>
+            <div className="text-xs opacity-80">
+              Discovery log:
+              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap">{discoveryLog.join("\n")}</pre>
+            </div>
             <div className="grid gap-3">
               <label className="text-sm">
                 DAPrivate (Rows) URL
@@ -548,7 +614,10 @@ export default function Adminv1() {
               <div className="flex gap-2">
                 <button onClick={()=>fetchAll()} className="px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/25 text-sm inline-flex items-center gap-2"><CheckCircle2 size={16}/> Save & Load</button>
               </div>
-              <div className="text-xs opacity-80">Tip: You can also pass them via query params once: <code>?api=...&dc=...</code>. They’ll be saved to localStorage.</div>
+              <div className="text-xs opacity-80">
+                Tip: Add `/.well-known/noir-admin.json` to skip manual pasting.  
+                Or pass once via <code>?api=...&dc=...</code>; the app will remember validated endpoints.
+              </div>
             </div>
           </div>
         </main>
@@ -565,6 +634,7 @@ export default function Adminv1() {
         </div>
       )}
 
+      {/* Delegates */}
       {!needSetup && tab==="delegates" && (
         <main className="mx-auto max-w-7xl px-4 py-4">
           {/* KPIs */}
@@ -600,8 +670,8 @@ export default function Adminv1() {
           <div className="mb-3 grid grid-cols-1 lg:grid-cols-3 gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-2.5 opacity-80" size={18} />
-              <input ref={searchRef} value={q} onChange={(e)=>setQ(e.target.value)}
-                placeholder="Search name, email, phone, committee, portfolio (press / to focus)"
+              <input value={q} onChange={(e)=>setQ(e.target.value)}
+                placeholder="Search name, email, phone, committee, portfolio"
                 className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/10 outline-none placeholder:text-white/60"/>
             </div>
             <div className="flex gap-2">
@@ -621,17 +691,6 @@ export default function Adminv1() {
                 className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2">{piiMask?<EyeOff size={16}/>:<Eye size={16}/>}{piiMask?"Mask":"Unmask"}</button>
             </div>
           </div>
-
-          {/* Debug panel (auto if no rows OR ?debug=1) */}
-          {(!loading && (rows.length === 0 || debugMode)) && (
-            <div className="mb-4 rounded-xl border border-yellow-400/30 bg-yellow-500/10 p-3 text-xs">
-              <div className="font-semibold mb-1">Debug · DAPrivate response snapshot</div>
-              <pre className="overflow-auto max-h-64">{JSON.stringify(lastDa, null, 2)}</pre>
-              <div className="opacity-80 mt-2">
-                Tip: Frontend accepts <code>rows</code>, <code>data</code>, <code>items</code>, or <code>result.rows</code>.
-              </div>
-            </div>
-          )}
 
           {/* Bulk actions */}
           <div className="mb-3 flex flex-wrap gap-2 items-center">
@@ -653,20 +712,44 @@ export default function Adminv1() {
             </div>
           </div>
 
-          {/* Table (desktop) */}
-          <TableDesktop
-            loading={loading}
-            pageRows={pageRows}
-            cols={cols}
-            selectedIds={selectedIds}
-            allOnPageSelected={allOnPageSelected}
-            toggleRowSel={toggleRowSel}
-            togglePageSel={togglePageSel}
-            canEdit={canEdit}
-            piiMask={piiMask}
-            tokens={tokens}
-            saveRow={saveRow}
-          />
+          {/* Data view */}
+          {compact ? (
+            <CardsMobile
+              loading={loading}
+              pageRows={pageRows}
+              selectedIds={selectedIds}
+              toggleRowSel={toggleRowSel}
+              canEdit={canEdit}
+              piiMask={piiMask}
+              tokens={tokens}
+              saveRow={saveRow}
+            />
+          ) : (
+            <TableDesktop
+              loading={loading}
+              pageRows={pageRows}
+              cols={cols}
+              selectedIds={selectedIds}
+              allOnPageSelected={allOnPageSelected}
+              toggleRowSel={toggleRowSel}
+              togglePageSel={togglePageSel}
+              canEdit={canEdit}
+              piiMask={piiMask}
+              tokens={tokens}
+              saveRow={saveRow}
+            />
+          )}
+
+          {/* Debug panel (auto if no rows OR ?debug=1) */}
+          {(!loading && (rows.length === 0 || debugMode)) && (
+            <div className="mt-4 rounded-xl border border-yellow-400/30 bg-yellow-500/10 p-3 text-xs">
+              <div className="font-semibold mb-1">Debug · DAPrivate response snapshot</div>
+              <pre className="overflow-auto max-h-64">{JSON.stringify(lastDa, null, 2)}</pre>
+              <div className="opacity-80 mt-2">
+                Tip: Frontend accepts <code>rows</code>, <code>data</code>, <code>items</code>, or <code>result.rows</code>.
+              </div>
+            </div>
+          )}
 
           {/* Pagination */}
           <div className="mt-3 flex items-center justify-between">
@@ -682,6 +765,7 @@ export default function Adminv1() {
         </main>
       )}
 
+      {/* History */}
       {!needSetup && tab==="history" && (
         <main className="mx-auto max-w-7xl px-4 py-6">
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
@@ -711,29 +795,28 @@ export default function Adminv1() {
         </main>
       )}
 
+      {/* Health */}
       {!needSetup && tab==="health" && (
         <main className="mx-auto max-w-7xl px-4 py-6">
           <div className="grid md:grid-cols-2 gap-4">
             <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
               <div className="font-semibold mb-3 flex items-center gap-2"><Settings size={16}/> Data Sources</div>
               <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span>Registrations (DAPrivate)</span>
-                  <span className="flex items-center gap-2">
-                    {health.da?.ok ? <Tag tone="ok"><CheckCircle2 size={14}/> OK</Tag> : <Tag tone="error"><ShieldAlert size={14}/> FAIL</Tag>}
-                    <Tag>{health.da?.ms ?? "—"} ms</Tag>
-                    <Tag>HTTP {health.da?.status ?? "—"}</Tag>
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>DelCount (KPIs)</span>
-                  <span className="flex items-center gap-2">
-                    {health.dc?.ok ? <Tag tone="ok"><CheckCircle2 size={14}/> OK</Tag> : <Tag tone="error"><ShieldAlert size={14}/> FAIL</Tag>}
-                    <Tag>{health.dc?.ms ?? "—"} ms</Tag>
-                    <Tag>HTTP {health.dc?.status ?? "—"}</Tag>
-                  </span>
-                </div>
+                <HealthRow label="Registrations (DAPrivate)" obj={health.da}/>
+                <HealthRow label="DelCount (KPIs)" obj={health.dc}/>
               </div>
+
+              {/* Latency mini "sparkline" */}
+              <div className="mt-4">
+                <div className="font-semibold mb-2 flex items-center gap-2"><Wand2 size={16}/> Live Latency</div>
+                <div className="flex items-end gap-1 h-16">
+                  {health.spark?.map((p,i)=>(
+                    <div key={i} className="w-2 rounded bg-white/20" style={{height: `${Math.min(60, (p.da||p.dc||0)/8)}px`}} title={`t+${i} • DA:${p.da||"-"}ms DC:${p.dc||"-"}ms`}/>
+                  ))}
+                </div>
+                <div className="text-xs opacity-70 mt-1">Last {health.spark?.length||0} polls</div>
+              </div>
+
               <div className="mt-4">
                 <div className="font-semibold mb-2 flex items-center gap-2"><Wand2 size={16}/> KPI Source of Truth</div>
                 <div className="flex items-center gap-2">
@@ -757,14 +840,14 @@ export default function Adminv1() {
                     <div className="flex gap-2">
                       <button onClick={()=>fetchAll()} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-sm inline-flex items-center gap-2"><RefreshCw size={14}/> Reload</button>
                     </div>
-                    <div className="opacity-70">These are saved locally. Add <code>?debug=1</code> to see payload snapshots.</div>
+                    <div className="opacity-70">Sources tried: {sourceNote||"—"}. Add <code>/.well-known/noir-admin.json</code> to auto-wire in prod.</div>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
-              <div className="font-semibold mb-3 flex items-center gap-2"><Columns size={16}/> Columns</div>
+              <div className="font-semibold mb-3 flex items-center gap-2"><Columns size={16}/> Columns & Privacy</div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {["email","phone","committee","portfolio","status"].map(k=>(
                   <label key={k} className="flex items-center gap-2 cursor-pointer">
@@ -776,6 +859,12 @@ export default function Adminv1() {
               <div className="flex items-center gap-2 text-sm">
                 <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={piiMask} onChange={()=>setPiiMask(m=>!m)} /> Mask email & phone</label>
               </div>
+              <div className="font-semibold mt-4 mb-2 flex items-center gap-2"><Settings size={16}/> Tips</div>
+              <ul className="list-disc pl-5 text-xs opacity-80 space-y-1">
+                <li>Use <code>?api=…&dc=…</code> once to override quickly; validated endpoints are remembered.</li>
+                <li>Make sure both Apps Scripts return JSON and allow CORS (<code>Access-Control-Allow-Origin: *</code>).</li>
+                <li>Env vars must start with <b>VITE_</b> to reach the browser, and require a redeploy.</li>
+              </ul>
             </div>
           </div>
         </main>
@@ -794,7 +883,7 @@ export default function Adminv1() {
   );
 }
 
-/* ===== Desktop table as a component for readability ===== */
+/* ===== Desktop table ===== */
 function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggleRowSel,togglePageSel,canEdit,piiMask,tokens,saveRow}) {
   return (
     <div className="hidden md:block overflow-x-auto rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
@@ -875,6 +964,49 @@ function TableDesktop({loading,pageRows,cols,selectedIds,allOnPageSelected,toggl
   );
 }
 
+/* ===== Mobile cards ===== */
+function CardsMobile({ loading, pageRows, selectedIds, toggleRowSel, canEdit, piiMask, tokens, saveRow }) {
+  if (loading) return <div className="grid gap-2">{Array.from({length:6}).map((_,i)=><div key={i} className="h-20 rounded-xl bg-white/10 animate-pulse"/>)}</div>;
+  if (!pageRows.length) return <div className="p-8 text-center opacity-70">No results match your filters.</div>;
+  return (
+    <div className="grid gap-2">
+      {pageRows.map(r=>(
+        <div key={r.id} className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold truncate">{r.full_name || "—"}</div>
+              <div className="text-xs opacity-80 truncate">
+                {piiMask ? <span className="blur-[2px] hover:blur-0 transition">{r.email}</span> : r.email}
+              </div>
+              <div className="text-xs opacity-80 truncate">
+                {piiMask ? <span className="blur-[2px] hover:blur-0 transition">{r.phone}</span> : r.phone}
+              </div>
+              <div className="text-xs mt-1">
+                <span className="opacity-70">{r.committee_pref1 || "—"}</span>
+                {!!r.portfolio_pref1 && <span className="opacity-50"> • {r.portfolio_pref1}</span>}
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <StatusPill s={r.payment_status}/>
+              <button className="text-xs px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 inline-flex items-center gap-1" onClick={()=>toggleRowSel(r.id)}>
+                {selectedIds.has(r.id) ? <><CheckSquare size={14}/> Selected</> : <><Square size={14}/> Select</>}
+              </button>
+            </div>
+          </div>
+          {canEdit && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button className="px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/25 text-xs inline-flex items-center gap-1" onClick={()=>saveRow(r,{payment_status:"paid"})}><BadgeCheck size={14}/> Paid</button>
+              <button className="px-2 py-1 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/25 text-xs inline-flex items-center gap-1" onClick={()=>saveRow(r,{payment_status:"unpaid"})}><Clock3 size={14}/> Unpaid</button>
+              <button className="px-2 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/25 text-xs inline-flex items-center gap-1" onClick={()=>saveRow(r,{payment_status:"rejected"})}><Trash2 size={14}/> Reject</button>
+              <button className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-xs inline-flex items-center gap-1" onClick={()=>navigator.clipboard?.writeText([r.full_name,r.email,r.phone].filter(Boolean).join(" • "))}><Copy size={14}/> Copy</button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ======================= Bits ======================= */
 function TabButton({ active, onClick, children, icon }) {
   return <button onClick={onClick} className={cls("px-3 py-2 rounded-xl text-sm inline-flex items-center gap-2", active?"bg-white/15":"bg-white/10 hover:bg-white/15")}>{icon} {children}</button>;
@@ -898,4 +1030,17 @@ function SkeletonRows({ cols=7 }){
   return (<>{Array.from({length:8}).map((_,i)=>(
     <tr key={i} className="border-t border-white/5">{Array.from({length:cols}).map((__,j)=>(
       <td key={j} className="px-3 py-3"><div className="h-4 rounded bg-white/10 animate-pulse"/></td>))}</tr>))}</>);
+}
+function HealthRow({ label, obj }) {
+  const ok = !!obj?.ok;
+  return (
+    <div className="flex items-center justify-between">
+      <span>{label}</span>
+      <span className="flex items-center gap-2">
+        {ok ? <Tag tone="ok"><CheckCircle2 size={14}/> OK</Tag> : <Tag tone="error"><ShieldAlert size={14}/> FAIL</Tag>}
+        <Tag>{obj?.ms ?? "—"} ms</Tag>
+        <Tag>HTTP {obj?.status ?? "—"}</Tag>
+      </span>
+    </div>
+  );
 }
