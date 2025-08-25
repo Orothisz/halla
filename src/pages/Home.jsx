@@ -167,7 +167,7 @@ const RomanLayer = React.memo(() => {
             const img = new Image();
             img.src = src;
             img.onload = resolve;
-            img.onerror = resolve; // Resolve even on error to not block rendering
+            img.onerror = resolve;
         });
     });
     Promise.all(imagePromises).then(() => setImagesLoaded(true));
@@ -186,6 +186,7 @@ const RomanLayer = React.memo(() => {
         <motion.img src={IMG_CENTER} alt="" className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10" style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }} />
       </motion.div>
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay" style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")" }} />
+      <div aria-hidden className="fog-layer pointer-events-none fixed inset-0 -z-10" />
     </>
   );
 });
@@ -297,8 +298,8 @@ const Prologue = React.memo(() => {
         return () => clearInterval(interval);
     }, []);
     const ref = useRef(null);
-    const mouseX = useMotionValue(0);
-    const mouseY = useMotionValue(0);
+    const mouseX = useMotionValue(0.5);
+    const mouseY = useMotionValue(0.5);
     const springConfig = { damping: 20, stiffness: 100, mass: 0.5 };
     const rotateX = useSpring(useTransform(mouseY, [0, 1], [-8, 8]), springConfig);
     const rotateY = useSpring(useTransform(mouseX, [0, 1], [8, -8]), springConfig);
@@ -312,7 +313,7 @@ const Prologue = React.memo(() => {
     const handleMouseLeave = () => { mouseX.set(0.5); mouseY.set(0.5); };
 
     return (
-        <motion.section ref={ref} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} style={{ rotateX, rotateY, transformStyle: "preserve-3d" }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }} className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
+        <motion.section ref={ref} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} style={{ rotateX, rotateY, transformStyle: "preserve-3d" }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.25, 1, 0.5, 1] }} className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
             <div style={{ transform: "translateZ(-50px)" }} className="absolute inset-0">
                 <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
                 <div className="pointer-events-none absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-white/10 blur-3xl rounded-full" />
@@ -340,19 +341,20 @@ const Prologue = React.memo(() => {
 });
 
 const Chapter = React.memo(({ kicker, title, children, icon }) => (
-  <motion.section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ duration: 0.6, ease: "easeOut" }}>
+  <motion.section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ duration: 0.8, ease: [0.25, 1, 0.5, 1] }}>
     <div className="text-white/60 text-xs tracking-[0.35em] uppercase">{kicker}</div>
     <div className="mt-2 flex items-center gap-3">{icon}<h2 className="text-2xl md:text-3xl font-extrabold">{title}</h2></div>
     <div className="mt-4 text-white/80 leading-relaxed">{children}</div>
   </motion.section>
 ));
 
-const FlipNumber = ({ number }) => {
+const DialNumber = ({ number }) => {
+    const numStr = String(number).padStart(2, '0');
     return (
-        <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-white/8 border border-white/15 grid place-items-center text-4xl md:text-5xl font-black overflow-hidden" style={{ perspective: "1000px" }}>
-            <AnimatePresence mode="wait">
-                <motion.div key={number} className="relative w-full h-full" initial={{ rotateX: -90, opacity: 0 }} animate={{ rotateX: 0, opacity: 1 }} exit={{ rotateX: 90, opacity: 0 }} transition={{ duration: 0.5, ease: 'easeInOut' }}>
-                    <div className="absolute inset-0 grid place-items-center">{String(number).padStart(2, '0')}</div>
+        <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-white/8 border border-white/15 grid place-items-center text-4xl md:text-5xl font-black overflow-hidden">
+            <AnimatePresence mode="popLayout">
+                <motion.div key={number} initial={{ y: '100%' }} animate={{ y: '0%' }} exit={{ y: '-100%' }} transition={{ ease: [0.22, 1, 0.36, 1], duration: 0.6 }}>
+                    {numStr}
                 </motion.div>
             </AnimatePresence>
         </div>
@@ -360,15 +362,15 @@ const FlipNumber = ({ number }) => {
 };
 const CountdownBlock = React.memo(({ label, value }) => (
     <div className="flex flex-col items-center">
-        <FlipNumber number={value} />
+        <DialNumber number={value} />
         <div className="mt-2 text-[10px] uppercase tracking-[0.25em] text-white/70">{label}</div>
     </div>
 ));
 
 const PosterCard = ({ committee, onOpen }) => {
   const ref = useRef(null);
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
+  const mouseX = useMotionValue(0.5);
+  const mouseY = useMotionValue(0.5);
   const springConfig = { damping: 20, stiffness: 100, mass: 0.5 };
   const rotateX = useSpring(useTransform(mouseY, [0, 1], [-10, 10]), springConfig);
   const rotateY = useSpring(useTransform(mouseX, [0, 1], [10, -10]), springConfig);
@@ -541,6 +543,16 @@ export default function Home() {
         .menu-item--primary { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.24); }
         .click-safe { position:relative; z-index:30; pointer-events:auto; }
         .perspective-1000 { perspective: 1000px; }
+        .fog-layer {
+            background: linear-gradient(175deg, transparent 30%, rgba(0, 0, 38, 0.4) 60%, rgba(0, 0, 38, 0.7) 80%, transparent 100%);
+            animation: drift 60s linear infinite alternate;
+            opacity: 0.3;
+        }
+        @keyframes drift {
+            from { transform: translateX(-20%); }
+            to { transform: translateX(20%); }
+        }
+        ::selection { background: rgba(214, 192, 137, 0.3); }
       `}</style>
     </div>
   );
