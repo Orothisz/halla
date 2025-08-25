@@ -1,6 +1,6 @@
 // src/pages/Home.jsx
 import React, { useState, useEffect, useRef, Suspense } from "react";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
   Calendar, ChevronRight, X, Send, MessageCircle, Menu, Quote, Shield, Landmark, Crown, Columns, Users
@@ -163,11 +163,11 @@ const RomanLayer = React.memo(() => {
 
   useEffect(() => {
     const imagePromises = [IMG_LEFT, IMG_RIGHT, IMG_CENTER].map(src => {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const img = new Image();
             img.src = src;
             img.onload = resolve;
-            img.onerror = reject;
+            img.onerror = resolve; // Resolve even on error to not block rendering
         });
     });
     Promise.all(imagePromises).then(() => setImagesLoaded(true));
@@ -180,9 +180,11 @@ const RomanLayer = React.memo(() => {
         <motion.div style={{ y: yBust }} className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl" />
         <motion.div style={{ y: yColumn }} className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl" />
       </div>
-      <motion.img initial={{opacity: 0}} animate={{opacity: imagesLoaded ? 1 : 0}} transition={{duration: 1}} src={IMG_LEFT} alt="" className="pointer-events-none fixed left-[-26px] top-[16vh] w-[240px] md:w-[320px] opacity-[.55] md:opacity-[.75] mix-blend-screen select-none -z-10" style={{ y: yBust, filter: "grayscale(60%) contrast(110%) blur(0.2px)" }} />
-      <motion.img initial={{opacity: 0}} animate={{opacity: imagesLoaded ? 1 : 0}} transition={{duration: 1, delay: 0.2}} src={IMG_RIGHT} alt="" className="pointer-events-none fixed right-[-10px] top-[30vh] w-[230px] md:w-[310px] opacity-[.50] md:opacity-[.72] mix-blend-screen select-none -z-10" style={{ y: yColumn, filter: "grayscale(60%) contrast(112%) blur(0.2px)" }} />
-      <motion.img initial={{opacity: 0}} animate={{opacity: imagesLoaded ? 1 : 0}} transition={{duration: 1, delay: 0.4}} src={IMG_CENTER} alt="" className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10" style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }} />
+      <motion.div initial={{opacity: 0}} animate={{opacity: imagesLoaded ? 1 : 0}} transition={{duration: 1.5, ease: "easeOut"}}>
+        <motion.img src={IMG_LEFT} alt="" className="pointer-events-none fixed left-[-26px] top-[16vh] w-[240px] md:w-[320px] opacity-[.55] md:opacity-[.75] mix-blend-screen select-none -z-10" style={{ y: yBust, filter: "grayscale(60%) contrast(110%) blur(0.2px)" }} />
+        <motion.img src={IMG_RIGHT} alt="" className="pointer-events-none fixed right-[-10px] top-[30vh] w-[230px] md:w-[310px] opacity-[.50] md:opacity-[.72] mix-blend-screen select-none -z-10" style={{ y: yColumn, filter: "grayscale(60%) contrast(112%) blur(0.2px)" }} />
+        <motion.img src={IMG_CENTER} alt="" className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10" style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }} />
+      </motion.div>
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay" style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")" }} />
     </>
   );
@@ -214,42 +216,25 @@ const AppHeader = React.memo(({ onMenuOpen }) => (
 const MobileMenu = React.memo(({ onMenuClose }) => {
     const menuRef = useRef(null);
     useEffect(() => {
-        const handleKeyDown = (event) => {
-            if (event.key === 'Escape') onMenuClose();
-        };
+        const handleKeyDown = (event) => { if (event.key === 'Escape') onMenuClose(); };
         const trapFocus = (event) => {
-            if (event.key !== 'Tab') return;
+            if (event.key !== 'Tab' || !menuRef.current) return;
             const focusableElements = menuRef.current.querySelectorAll('a, button');
             const firstElement = focusableElements[0];
             const lastElement = focusableElements[focusableElements.length - 1];
-            if (event.shiftKey) {
-                if (document.activeElement === firstElement) {
-                    lastElement.focus();
-                    event.preventDefault();
-                }
-            } else {
-                if (document.activeElement === lastElement) {
-                    firstElement.focus();
-                    event.preventDefault();
-                }
-            }
+            if (event.shiftKey) { if (document.activeElement === firstElement) { lastElement.focus(); event.preventDefault(); } } 
+            else { if (document.activeElement === lastElement) { firstElement.focus(); event.preventDefault(); } }
         };
         document.addEventListener('keydown', handleKeyDown);
         document.addEventListener('keydown', trapFocus);
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown);
-            document.removeEventListener('keydown', trapFocus);
-        };
+        return () => { document.removeEventListener('keydown', handleKeyDown); document.removeEventListener('keydown', trapFocus); };
     }, [onMenuClose]);
 
     return (
         <>
             <motion.div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onMenuClose} />
             <motion.div ref={menuRef} id="mobile-menu" className="fixed top-0 left-0 right-0 z-50 rounded-b-2xl border-b border-white/15 bg-[#07071a]/95" initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} transition={{ type: "spring", stiffness: 260, damping: 24 }}>
-                <div className="px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2"><img src={LOGO_URL} alt="Noir" className="h-8 w-8 object-contain" /><span className="font-semibold">Noir MUN</span></div>
-                    <button className="p-2 rounded-lg border border-white/15" onClick={onMenuClose}><X size={18} /></button>
-                </div>
+                <div className="px-4 py-3 flex items-center justify-between"><div className="flex items-center gap-2"><img src={LOGO_URL} alt="Noir" className="h-8 w-8 object-contain" /><span className="font-semibold">Noir MUN</span></div><button className="p-2 rounded-lg border border-white/15" onClick={onMenuClose}><X size={18} /></button></div>
                 <div className="px-4 pb-4 grid gap-2">
                     <a onClick={onMenuClose} href={REGISTER_HREF} target="_blank" rel="noreferrer" className="menu-item menu-item--primary">Register <ChevronRight size={16} className="inline-block ml-1" /></a>
                     <Link onClick={onMenuClose} to="/login" className="menu-item">Login</Link>
@@ -308,23 +293,35 @@ const BriefModal = React.memo(({ idx, onClose }) => {
 const Prologue = React.memo(() => {
     const [delegateCount, setDelegateCount] = useState(147);
     useEffect(() => {
-        const interval = setInterval(() => {
-            setDelegateCount(prev => prev + (Math.random() > 0.8 ? 1 : 0));
-        }, 2500);
+        const interval = setInterval(() => { setDelegateCount(prev => prev + (Math.random() > 0.8 ? 1 : 0)); }, 2500);
         return () => clearInterval(interval);
     }, []);
+    const ref = useRef(null);
+    const mouseX = useMotionValue(0);
+    const mouseY = useMotionValue(0);
+    const springConfig = { damping: 20, stiffness: 100, mass: 0.5 };
+    const rotateX = useSpring(useTransform(mouseY, [0, 1], [-8, 8]), springConfig);
+    const rotateY = useSpring(useTransform(mouseX, [0, 1], [8, -8]), springConfig);
+
+    const handleMouseMove = (e) => {
+        if (!ref.current) return;
+        const rect = ref.current.getBoundingClientRect();
+        mouseX.set((e.clientX - rect.left) / rect.width);
+        mouseY.set((e.clientY - rect.top) / rect.height);
+    };
+    const handleMouseLeave = () => { mouseX.set(0.5); mouseY.set(0.5); };
 
     return (
-        <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }} className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
-            <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
-            <div className="pointer-events-none absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-white/10 blur-3xl rounded-full" />
-            <div className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
+        <motion.section ref={ref} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} style={{ rotateX, rotateY, transformStyle: "preserve-3d" }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }} className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
+            <div style={{ transform: "translateZ(-50px)" }} className="absolute inset-0">
+                <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
+                <div className="pointer-events-none absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-white/10 blur-3xl rounded-full" />
+            </div>
+            <div style={{ transform: "translateZ(20px)" }} className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-3 py-1 text-sm text-white/80 mb-4">
                     <motion.div className="w-2 h-2 rounded-full bg-emerald-400" animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} />
                     <Users size={14} /> 
-                    <AnimatePresence mode="popLayout">
-                        <motion.span key={delegateCount} initial={{y:10, opacity:0}} animate={{y:0, opacity:1}} exit={{y:-10, opacity:0}}>{delegateCount}</motion.span>
-                    </AnimatePresence>
+                    <AnimatePresence mode="popLayout"><motion.span key={delegateCount} initial={{y:10, opacity:0}} animate={{y:0, opacity:1}} exit={{y:-10, opacity:0}}>{delegateCount}</motion.span></AnimatePresence>
                      Delegates Registered
                 </div>
                 <motion.img src={LOGO_URL} alt="Noir" className="h-20 w-20 mx-auto object-contain drop-shadow" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2, type: "spring", stiffness: 150 }} />
@@ -351,16 +348,13 @@ const Chapter = React.memo(({ kicker, title, children, icon }) => (
 ));
 
 const FlipNumber = ({ number }) => {
-    const numStr = String(number).padStart(2, '0');
     return (
-        <div className="flex flex-col items-center">
-            <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-white/8 border border-white/15 grid place-items-center text-4xl md:text-5xl font-black overflow-hidden perspective-1000">
-                <AnimatePresence mode="wait">
-                    <motion.div key={numStr} className="relative w-full h-full" initial={{ rotateX: -90 }} animate={{ rotateX: 0 }} exit={{ rotateX: 90 }} transition={{ duration: 0.4, ease: 'easeInOut' }}>
-                        <div className="absolute inset-0 grid place-items-center">{numStr}</div>
-                    </motion.div>
-                </AnimatePresence>
-            </div>
+        <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-white/8 border border-white/15 grid place-items-center text-4xl md:text-5xl font-black overflow-hidden" style={{ perspective: "1000px" }}>
+            <AnimatePresence mode="wait">
+                <motion.div key={number} className="relative w-full h-full" initial={{ rotateX: -90, opacity: 0 }} animate={{ rotateX: 0, opacity: 1 }} exit={{ rotateX: 90, opacity: 0 }} transition={{ duration: 0.5, ease: 'easeInOut' }}>
+                    <div className="absolute inset-0 grid place-items-center">{String(number).padStart(2, '0')}</div>
+                </motion.div>
+            </AnimatePresence>
         </div>
     );
 };
@@ -373,15 +367,26 @@ const CountdownBlock = React.memo(({ label, value }) => (
 
 const PosterCard = ({ committee, onOpen }) => {
   const ref = useRef(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], [-30, 30]);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const springConfig = { damping: 20, stiffness: 100, mass: 0.5 };
+  const rotateX = useSpring(useTransform(mouseY, [0, 1], [-10, 10]), springConfig);
+  const rotateY = useSpring(useTransform(mouseX, [0, 1], [10, -10]), springConfig);
+
+  const handleMouseMove = (e) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    mouseX.set((e.clientX - rect.left) / rect.width);
+    mouseY.set((e.clientY - rect.top) / rect.height);
+  };
+  const handleMouseLeave = () => { mouseX.set(0.5); mouseY.set(0.5); };
 
   return (
-    <motion.button ref={ref} onClick={onOpen} className="group relative rounded-[26px] overflow-hidden border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.025] text-left focus:outline-none focus:ring-2 focus:ring-yellow-100/20" whileHover={{ y: -5, scale: 1.03 }} transition={{ type: "spring", stiffness: 200, damping: 15 }}>
-      <motion.div style={{ y }} className="aspect-[16/10] md:aspect-[16/9] w-full grid place-items-center px-6 text-center">
+    <motion.button ref={ref} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} onClick={onOpen} style={{ rotateX, rotateY, transformStyle: "preserve-3d" }} className="group relative rounded-[26px] overflow-hidden border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.025] text-left focus:outline-none focus:ring-2 focus:ring-yellow-100/20" whileHover={{ y: -5, scale: 1.03 }} transition={{ type: "spring", stiffness: 200, damping: 15 }}>
+      <div style={{ transform: "translateZ(20px)" }} className="aspect-[16/10] md:aspect-[16/9] w-full grid place-items-center px-6 text-center">
         <div className="mx-auto mt-2 shrink-0 rounded-full border border-yellow-100/20 bg-white/[0.06] w-16 h-16 md:w-20 md:h-20 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.04)_inset]"><img src={committee.logo} alt={`${committee.name} logo`} className="w-[72%] h-[72%] object-contain" onError={(e) => { e.currentTarget.style.opacity = 0.35; }} /></div>
         <div className="mt-4"><div className="font-semibold text-lg leading-tight">{committee.name}</div><div className="text-xs text-white/70 line-clamp-3 mt-2">{committee.agenda}</div></div>
-      </motion.div>
+      </div>
       <div className="absolute inset-0 pointer-events-none"><div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ boxShadow: "inset 0 0 140px rgba(255,255,255,.09)" }} /><div className="absolute inset-0 rounded-[26px] border border-yellow-200/0 group-hover:border-yellow-100/25 transition-colors" /></div>
     </motion.button>
   );
