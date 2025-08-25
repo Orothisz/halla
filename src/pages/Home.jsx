@@ -109,7 +109,7 @@ const useImagePreloader = (imageUrls) => {
    ======================================================================== */
 
 const Gilded = React.memo(({ children }) => (
-  <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(90deg, #FFF7C4 0%, #F8E08E 15%, #E6C769 35%, #F2DA97 50%, #CDAE57 65%, #F5E6B9 85%, #E9D27F 100%)" }}>
+  <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(90deg, #D4AF37 0%, #F8E08E 40%, #D4AF37 100%)" }}>
     {children}
   </span>
 ));
@@ -121,8 +121,8 @@ const LaurelDivider = React.memo(() => (
 ));
 
 const QuoteCard = React.memo(({ children }) => (
-  <div className="mt-6 rounded-2xl border border-white/15 bg-white/[0.05] p-4 text-white/80 backdrop-blur-sm">
-    <div className="flex items-start gap-3"><Quote className="mt-1 shrink-0" size={18} /><p className="leading-relaxed">{children}</p></div>
+  <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-white/80 backdrop-blur-sm">
+    <div className="flex items-start gap-3"><Quote className="mt-1 shrink-0 text-white/50" size={18} /><p className="leading-relaxed">{children}</p></div>
   </div>
 ));
 
@@ -135,9 +135,9 @@ const Atmosphere = React.memo(() => {
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d");
     let w = (canvas.width = window.innerWidth); let h = (canvas.height = window.innerHeight);
-    const particles = Array.from({ length: 120 }, () => ({ x: Math.random() * w, y: Math.random() * h, v: Math.random() * 0.35 + 0.1 }));
+    const particles = Array.from({ length: 80 }, () => ({ x: Math.random() * w, y: Math.random() * h, v: Math.random() * 0.2 + 0.05 }));
     let frameId; const draw = () => {
-      ctx.clearRect(0, 0, w, h); ctx.fillStyle = "rgba(255,255,255,.4)";
+      ctx.clearRect(0, 0, w, h); ctx.fillStyle = "rgba(255,255,255,.3)";
       particles.forEach((p) => { p.y += p.v; if (p.y > h) p.y = 0; ctx.fillRect(p.x, p.y, 1, 1); });
       frameId = requestAnimationFrame(draw);
     };
@@ -175,7 +175,7 @@ const RomanLayer = React.memo(() => {
 
   return (
     <>
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]" style={{ backgroundImage: "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), transparent), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), transparent)" }} />
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]" style={{ backgroundImage: "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.12), transparent), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.09), transparent)" }} />
       <div className="pointer-events-none fixed inset-0 -z-10">
         <motion.div style={{ y: yBust }} className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl" />
         <motion.div style={{ y: yColumn }} className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl" />
@@ -292,11 +292,7 @@ const BriefModal = React.memo(({ idx, onClose }) => {
    ======================================================================== */
 
 const Prologue = React.memo(() => {
-    const [delegateCount, setDelegateCount] = useState(147);
-    useEffect(() => {
-        const interval = setInterval(() => { setDelegateCount(prev => prev + (Math.random() > 0.8 ? 1 : 0)); }, 2500);
-        return () => clearInterval(interval);
-    }, []);
+    const [delegateCount] = useState(147);
     const ref = useRef(null);
     const mouseX = useMotionValue(0.5);
     const mouseY = useMotionValue(0.5);
@@ -319,12 +315,10 @@ const Prologue = React.memo(() => {
                 <div className="pointer-events-none absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-white/10 blur-3xl rounded-full" />
             </div>
             <div style={{ transform: "translateZ(20px)" }} className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-3 py-1 text-sm text-white/80 mb-4">
-                    <motion.div className="w-2 h-2 rounded-full bg-emerald-400" animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} />
+                <motion.div initial={{opacity: 0}} animate={{opacity: 1}} transition={{delay: 0.5}} className="inline-flex items-center gap-2 rounded-full bg-black/20 border border-white/15 px-3 py-1 text-sm text-white/80 mb-4">
                     <Users size={14} /> 
-                    <AnimatePresence mode="popLayout"><motion.span key={delegateCount} initial={{y:10, opacity:0}} animate={{y:0, opacity:1}} exit={{y:-10, opacity:0}}>{delegateCount}</motion.span></AnimatePresence>
-                     Delegates Registered
-                </div>
+                    <span><Gilded>{delegateCount}</Gilded> Curated Delegates</span>
+                </motion.div>
                 <motion.img src={LOGO_URL} alt="Noir" className="h-20 w-20 mx-auto object-contain drop-shadow" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2, type: "spring", stiffness: 150 }} />
                 <h1 className="mt-6 text-[40px] md:text-[68px] leading-none font-black tracking-tight">NOIR&nbsp;MUN&nbsp;2025</h1>
                 <div className="mt-3 inline-flex items-center gap-2 text-white/80"><Calendar size={16} /> {DATES_TEXT} • Faridabad, India</div>
@@ -349,12 +343,11 @@ const Chapter = React.memo(({ kicker, title, children, icon }) => (
 ));
 
 const DialNumber = ({ number }) => {
-    const numStr = String(number).padStart(2, '0');
     return (
-        <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-white/8 border border-white/15 grid place-items-center text-4xl md:text-5xl font-black overflow-hidden">
+        <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-black/20 border border-white/10 grid place-items-center text-4xl md:text-5xl font-black overflow-hidden" style={{boxShadow: "inset 0 2px 10px rgba(0,0,0,0.5)"}}>
             <AnimatePresence mode="popLayout">
-                <motion.div key={number} initial={{ y: '100%' }} animate={{ y: '0%' }} exit={{ y: '-100%' }} transition={{ ease: [0.22, 1, 0.36, 1], duration: 0.6 }}>
-                    {numStr}
+                <motion.div key={number} initial={{ y: '100%' }} animate={{ y: '0%' }} exit={{ y: '-100%' }} transition={{ ease: [0.22, 1, 0.36, 1], duration: 0.8 }}>
+                    {String(number).padStart(2, '0')}
                 </motion.div>
             </AnimatePresence>
         </div>
