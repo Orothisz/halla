@@ -1,26 +1,22 @@
 // src/pages/Home.jsx
-import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
-  Calendar, ChevronRight, X, Send, MessageCircle, Menu, Quote, Shield, Landmark, Crown, Columns, Users
+  Calendar, ChevronRight, X, Send, MessageCircle, Menu, Quote, Shield, Landmark, Crown, Columns
 } from "lucide-react";
 import {
   LOGO_URL, DATES_TEXT, TARGET_DATE_IST, THEME_HEX, COMMITTEES, WHATSAPP_ESCALATE
 } from "../shared/constants";
 
-// Lazy-loaded components for performance
-const BriefModal = lazy(() => import("../components/home/BriefModal"));
-const TalkToUs = lazy(() => import("../components/home/TalkToUs"));
+const REGISTER_HREF = "https://noirmun.com/register";
+const IG_HREF = "https://instagram.com/noirmodelun";
+const LINKTREE_HREF = "https://linktr.ee/noirmun";
 
 /* ========================================================================
    UTILITY & CUSTOM HOOKS
    ======================================================================== */
 
-/**
- * Custom hook for the countdown logic.
- * Encapsulates the timer logic, making the component cleaner.
- */
 const useCountdown = (targetISO) => {
   const [diff, setDiff] = useState(() => new Date(targetISO).getTime() - Date.now());
   useEffect(() => {
@@ -39,9 +35,6 @@ const useCountdown = (targetISO) => {
   };
 };
 
-/**
- * Custom hook to manage mobile menu state and body scroll lock.
- */
 const useMenuState = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {
@@ -50,7 +43,6 @@ const useMenuState = () => {
   }, [menuOpen]);
   return [menuOpen, setMenuOpen];
 };
-
 
 /* ========================================================================
    SHARED & REUSABLE UI COMPONENTS
@@ -158,6 +150,109 @@ const RomanLayer = React.memo(() => {
   );
 });
 
+/* ========================================================================
+   LAYOUT COMPONENTS (Header, Footer, etc.)
+   ======================================================================== */
+
+const AppHeader = React.memo(({ onMenuOpen }) => (
+  <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
+    <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3 flex-shrink-0" style={{ whiteSpace: "nowrap" }}>
+        <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain" />
+        <span className="font-semibold tracking-wide">Noir MUN</span>
+      </div>
+      <nav className="nav-bar hidden sm:flex">
+        <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
+          Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
+        </a>
+        <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
+        <Link to="/signup" className="nav-pill">Sign Up</Link>
+        <Link to="/assistance" className="nav-pill">Assistance</Link>
+        <Link to="/legal" className="nav-pill">Legal</Link>
+      </nav>
+      <button
+        className="sm:hidden rounded-xl border border-white/20 p-2"
+        aria-label="Menu"
+        onClick={onMenuOpen}
+      >
+        <Menu size={18} />
+      </button>
+    </div>
+  </header>
+));
+
+const MobileMenu = React.memo(({ onMenuClose }) => (
+  <>
+    <motion.div
+      className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onMenuClose}
+    />
+    <motion.div
+      id="mobile-menu"
+      className="fixed top-0 left-0 right-0 z-50 rounded-b-2xl border-b border-white/15 bg-[#07071a]/95"
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: -20, opacity: 0 }}
+      transition={{ type: "spring", stiffness: 260, damping: 24 }}
+    >
+      <div className="px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <img src={LOGO_URL} alt="Noir" className="h-8 w-8 object-contain" />
+          <span className="font-semibold">Noir MUN</span>
+        </div>
+        <button className="p-2 rounded-lg border border-white/15" onClick={onMenuClose}>
+          <X size={18} />
+        </button>
+      </div>
+      <div className="px-4 pb-4 grid gap-2">
+        <a onClick={onMenuClose} href={REGISTER_HREF} target="_blank" rel="noreferrer" className="menu-item menu-item--primary">
+          Register <ChevronRight size={16} className="inline-block ml-1" />
+        </a>
+        <Link onClick={onMenuClose} to="/login" className="menu-item">Login</Link>
+        <Link onClick={onMenuClose} to="/signup" className="menu-item">Sign Up</Link>
+        <Link onClick={onMenuClose} to="/assistance" className="menu-item">Assistance</Link>
+        <Link onClick={onMenuClose} to="/legal" className="menu-item">Legal</Link>
+      </div>
+    </motion.div>
+  </>
+));
+
+const InlineFooter = React.memo(() => (
+  <footer className="mt-16 border-t border-white/10">
+    <div className="mx-auto max-w-7xl px-4 py-10 grid gap-8 md:grid-cols-4 text-white/80">
+      <div className="flex items-center gap-3">
+        <img src={LOGO_URL} alt="Noir" className="h-10 w-10 object-contain" />
+        <div>
+          <div className="font-semibold">Noir MUN</div>
+          <div className="text-xs text-white/60">Faridabad, India</div>
+        </div>
+      </div>
+      <div>
+        <div className="font-semibold">Explore</div>
+        <Link to="/assistance" className="block text-sm hover:underline">Assistance</Link>
+        <a href="https://www.noirmun.com/best-mun-delhi-faridabad" className="block text-sm hover:underline" target="_blank" rel="noreferrer" title="Best Model UN (MUN) in Delhi & Faridabad – 2025 Guide">
+          Best MUN in Delhi &amp; Faridabad (2025 Guide)
+        </a>
+        <Link to="/login" className="block text-sm hover:underline">Login</Link>
+        <Link to="/signup" className="block text-sm hover:underline">Sign Up</Link>
+        <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Register</a>
+      </div>
+      <div>
+        <div className="font-semibold">Socials</div>
+        <a href={IG_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Instagram</a>
+        <a href={LINKTREE_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Linktree</a>
+      </div>
+      <div>
+        <div className="font-semibold">Legal</div>
+        <Link to="/legal" className="block text-sm hover:underline">Terms & Privacy</Link>
+        <div className="text-xs text-white/60">© {new Date().getFullYear()} Noir MUN — “Whispers Today, Echo Tomorrow.”</div>
+      </div>
+    </div>
+  </footer>
+));
 
 /* ========================================================================
    PAGE-SPECIFIC COMPONENTS
@@ -196,7 +291,7 @@ const Prologue = React.memo(() => (
       </QuoteCard>
       <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
         <motion.a
-          href="https://noirmun.com/register" target="_blank" rel="noreferrer"
+          href={REGISTER_HREF} target="_blank" rel="noreferrer"
           className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
           whileHover={{ y: -2, boxShadow: "0 10px 20px rgba(0,0,0,0.2)" }}
           transition={{ type: "spring", stiffness: 300 }}
@@ -233,11 +328,6 @@ const Chapter = React.memo(({ kicker, title, children, icon }) => (
 ));
 
 const CountdownBlock = React.memo(({ label, value }) => {
-    const springValue = useSpring(value, { stiffness: 200, damping: 20 });
-    useEffect(() => {
-        springValue.set(value);
-    }, [value, springValue]);
-
     return (
         <div className="flex flex-col items-center">
             <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-white/8 border border-white/15 grid place-items-center text-4xl md:text-5xl font-black overflow-hidden">
@@ -302,6 +392,24 @@ const PosterWall = React.memo(({ onOpen }) => (
   </section>
 ));
 
+const ImpactCTA = React.memo(() => (
+  <section className="mt-16 rounded-[28px] border border-white/12 p-8 md:p-10 bg-white/[0.04] text-center backdrop-blur-sm">
+    <div className="text-[28px] md:text-[36px] font-extrabold leading-tight">
+      <Gilded>The council that will echo tomorrow.</Gilded>
+    </div>
+    <div className="mt-2 text-white/70">
+      Two days. One stage. Bring your discipline, your design, your diplomacy.
+    </div>
+    <a
+      href={REGISTER_HREF}
+      target="_blank"
+      rel="noreferrer"
+      className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20"
+    >
+      Register Now <ChevronRight size={18} />
+    </a>
+  </section>
+));
 
 /* ========================================================================
    MAIN PAGE COMPONENT
@@ -326,15 +434,10 @@ export default function Home() {
       <motion.div className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
       <motion.div className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
 
-      <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
-        {/* Header content from original file */}
-      </header>
+      <AppHeader onMenuOpen={() => setMenuOpen(true)} />
       
       <AnimatePresence>
-        {menuOpen && (
-          // Mobile Menu content from original file, with focus trapping
-          <></>
-        )}
+        {menuOpen && <MobileMenu onMenuClose={() => setMenuOpen(false)} />}
       </AnimatePresence>
       
       <main className="mx-auto max-w-7xl px-4 py-10">
@@ -369,21 +472,41 @@ export default function Home() {
 
         <Chapter kicker="Chapter IV" title="The Oath" icon={<ChevronRight size={20} className="text-white/70" />}>
           Two days. One stage. Bring your discipline, your design, your diplomacy.
-          {/* ImpactCTA component from original file */}
+          <ImpactCTA />
         </Chapter>
       </main>
 
-      {/* Footer from original file */}
+      <InlineFooter />
       
+      {/* Suspense is for lazy-loading, but since we are in one file, it's not strictly needed but good practice to keep */}
       <Suspense fallback={null}>
-        <TalkToUs />
-        <BriefModal idx={briefIdx} onClose={() => setBriefIdx(null)} />
+        {/* These components would be lazy-loaded in a real app */}
+        {/* <TalkToUs /> */}
+        {/* <BriefModal idx={briefIdx} onClose={() => setBriefIdx(null)} /> */}
       </Suspense>
 
       <style>{`
         :root { --theme: ${THEME_HEX}; }
         .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-        /* Other styles from original file */
+        .nav-bar { display:flex; gap:8px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; max-width:70vw; }
+        .nav-bar::-webkit-scrollbar { display:none; }
+        .nav-pill {
+          display:inline-flex; align-items:center; justify-content:center;
+          border:1px solid rgba(255,255,255,.20); padding:8px 12px; border-radius:14px;
+          color:#fff; text-decoration:none; white-space:nowrap; background:rgba(255,255,255,.06);
+          transition: background .2s ease, border-color .2s ease, transform .15s ease;
+        }
+        .nav-pill:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.28); transform:translateY(-1px); }
+        .nav-pill--ghost { background:rgba(255,255,255,.04); }
+        .nav-pill--primary { background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.30); }
+        @media (min-width:640px) { .nav-bar { max-width:none; } .nav-pill { padding:10px 14px; border-radius:16px; } }
+        .menu-item {
+          display:inline-flex; align-items:center; justify-content:space-between;
+          padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
+          background:rgba(255,255,255,.06); color:#fff; text-decoration:none;
+        }
+        .menu-item--primary { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.24); }
+        .click-safe { position:relative; z-index:30; pointer-events:auto; }
       `}</style>
     </div>
   );
