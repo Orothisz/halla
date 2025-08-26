@@ -830,7 +830,7 @@ export default function Register() {
             <Gilded>Tribute</Gilded>
           </h2>
           <p className="mt-2 text-sm text-white/80">
-            Early Bird: <b>₹2,000</b> per delegate (IPL: <b>₹2,000</b>). Payment & proof are required.
+            Early Bird: <b>₹2,100</b> per delegate (IPL: <b>₹2,100</b>). Payment & proof are required.
           </p>
 
           <div className="grid lg:grid-cols-[1fr_300px] gap-6 mt-4">
