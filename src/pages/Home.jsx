@@ -50,6 +50,7 @@ const STAFF = {
 };
 
 const REGISTER_HREF = "https://noirmun.com/register";
+const EB_APPLY_HREF = "https://docs.google.com/forms/d/e/1FAIpQLSckm785lhMOj09BOBpaFWxbBzxp6cO5UjJulhbzZQz__lFtxw/viewform";
 const IG_HREF = "https://instagram.com/noirmodelun";
 const LINKTREE_HREF = "https://linktr.ee/noirmun";
 
@@ -348,6 +349,7 @@ function Prologue() {
           a modern pantheon where words shape order.
         </QuoteCard>
 
+        {/* CTA row */}
         <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
             href={REGISTER_HREF}
@@ -357,6 +359,18 @@ function Prologue() {
           >
             Secure your seat <ChevronRight size={18} />
           </a>
+
+          {/* EB Applications (new) */}
+          <a
+            href={EB_APPLY_HREF}
+            target="_blank"
+            rel="noreferrer"
+            className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
+            title="Apply for the Executive Board"
+          >
+            EB Applications <ChevronRight size={18} />
+          </a>
+
           <Link
             to="/signup"
             className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
@@ -762,10 +776,13 @@ export default function Home() {
             <span className="font-semibold tracking-wide">Noir MUN</span>
           </div>
 
-          {/* Desktop nav — Register first, Assistance & Legal last */}
+          {/* Desktop nav — Register first, EB Applications next, Assistance & Legal last */}
           <nav className="nav-bar hidden sm:flex">
             <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
               Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
+            </a>
+            <a href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="nav-pill" title="Apply for the Executive Board">
+              EB Applications <ChevronRight size={16} style={{ marginLeft: 6 }} />
             </a>
             <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
             <Link to="/signup" className="nav-pill">Sign Up</Link>
@@ -785,7 +802,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Mobile Menu Sheet — Register first, Assistance & Legal last */}
+      {/* Mobile Menu Sheet — Register first, EB Applications next, Assistance & Legal last */}
       <AnimatePresence>
         {menuOpen && (
           <>
@@ -817,6 +834,9 @@ export default function Home() {
               <div className="px-4 pb-4 grid gap-2">
                 <a onClick={() => setMenuOpen(false)} href={REGISTER_HREF} target="_blank" rel="noreferrer" className="menu-item menu-item--primary">
                   Register <ChevronRight size={16} className="inline-block ml-1" />
+                </a>
+                <a onClick={() => setMenuOpen(false)} href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="menu-item" title="Apply for the Executive Board">
+                  EB Applications <ChevronRight size={16} className="inline-block ml-1" />
                 </a>
                 <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">Login</Link>
                 <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">Sign Up</Link>
