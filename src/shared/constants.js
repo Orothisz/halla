@@ -2,10 +2,10 @@
 // Pure JS — no JSX here.
 
 export const EVENT_NAME = "Noir Model United Nations";
-export const DATES_TEXT = "11–12 October, 2025";
-export const TARGET_DATE_IST = "2025-10-11T09:00:00+05:30"; // IST
+export const DATES_TEXT = "31 October - 1 November, 2025";
+export const TARGET_DATE_IST = "2025-10-31T09:00:00+05:30"; // IST
 export const THEME_HEX = "#000026";
-export const REGISTER_URL = "https://linktr.ee/noirmun";
+export const REGISTER_URL = "https://noirmun.com";
 export const LOGO_URL = "https://i.postimg.cc/MZhZ9Nsm/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45.png";
 export const WHATSAPP_ESCALATE = "https://wa.me/918595511056";
 
