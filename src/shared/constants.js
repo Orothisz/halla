@@ -139,3 +139,10 @@ How Noir Committees Work:
 // Optional helpers for older components that expect these:
 export const POSTERS = COMMITTEES.map((c) => c.logo);
 export const BRIEFS = COMMITTEES.map((c) => `${c.name}: ${c.agenda}`);
+
+// Venue details
+export const VENUE = {
+  name: "Delite Sarovar Portico, Faridabad",
+  image: "https://i.postimg.cc/vBsFB36D/Hotel-Facade-xfqdhj.avif",
+  location: "https://www.google.com/maps?sca_esv=e85bf51f2ebe9d69&output=search&q=delite+sarovar+portico+fbd&source=lnms&fbs=AIIjpHxU7SXXniUZfeShr2fp4giZ1Y6MJ25_tmWITc7uy4KIeuYzzFkfneXafNx6OMdA4MRT57TpI4o2tavIRfF1e7-xTLfbOlRZsi_SKi4JeEBY7pnUnsYZ2YolLXlDdpWd5X8Dl3ww1kgiAU4MTvhlsxynlXYG66bQ0LfJUkXjx90u6LziqyMljOah4l7FbuzQ5ppUaZOESIdhGWk6sqjHiMsayGn74Q&entry=mc&ved=1t:200715&ictx=111",
+};
