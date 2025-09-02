@@ -13,7 +13,10 @@ import {
   Shield,
   Landmark,
   Crown,
-  Columns
+  Columns,
+  MapPin,
+  ExternalLink,
+  Navigation,
 } from "lucide-react";
 
 import {
@@ -24,7 +27,18 @@ import {
   THEME_HEX,
   COMMITTEES,
   WHATSAPP_ESCALATE,
+  VENUE,
 } from "../shared/constants";
+
+/* --------------------------------------------------
+ * Local constants
+ * -------------------------------------------------- */
+const REGISTER_HREF = "https://noirmun.com/register";
+const EB_APPLY_HREF = "https://docs.google.com/forms/d/e/1FAIpQLSckm785lhMOj09BOBpaFWxbBzxp6cO5UjJulhbzZQz__lFtxw/viewform";
+const IG_HREF = "https://instagram.com/noirmodelun";
+const LINKTREE_HREF = "https://linktr.ee/noirmun";
+// Official hotel page (as requested)
+const VENUE_HOTEL_URL = "https://www.sarovarhotels.com/delite-sarovar-portico-faridabad/";
 
 /* --------------------------------------------------
  * Staff Directory (for WILT Mini lookups)
@@ -49,12 +63,9 @@ const STAFF = {
   "shreyas kalra": "Chef D Cabinet",
 };
 
-const REGISTER_HREF = "https://noirmun.com/register";
-const EB_APPLY_HREF = "https://docs.google.com/forms/d/e/1FAIpQLSckm785lhMOj09BOBpaFWxbBzxp6cO5UjJulhbzZQz__lFtxw/viewform";
-const IG_HREF = "https://instagram.com/noirmodelun";
-const LINKTREE_HREF = "https://linktr.ee/noirmun";
-
-// helpers
+/* --------------------------------------------------
+ * Helpers
+ * -------------------------------------------------- */
 function norm(s = "") {
   return s.toLowerCase().replace(/\s+/g, " ").trim();
 }
@@ -142,12 +153,9 @@ function RomanLayer() {
   const yColumn = useTransform(scrollYProgress, [0, 1], [0, -160]);
   const yLaurel = useTransform(scrollYProgress, [0, 1], [0, -60]);
 
-  const IMG_LEFT =
-    "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png";
-  const IMG_RIGHT =
-    "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png";
-  const IMG_CENTER =
-    "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png";
+  const IMG_LEFT = "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png";
+  const IMG_RIGHT = "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png";
+  const IMG_CENTER = "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png";
 
   return (
     <>
@@ -325,6 +333,114 @@ function Gilded({ children }) {
   );
 }
 
+/* ---------- Venue Pill (Hero inline) ---------- */
+function VenuePill() {
+  const [hover, setHover] = useState(false);
+  return (
+    <div className="relative inline-block">
+      <a
+        href={VENUE_HOTEL_URL}
+        target="_blank"
+        rel="noreferrer"
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onFocus={() => setHover(true)}
+        onBlur={() => setHover(false)}
+        className="inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs sm:text-sm border border-white/20 transition"
+        aria-label="Open venue website"
+        title={VENUE.name}
+      >
+        <MapPin size={14} />
+        <span className="truncate max-w-[62vw] sm:max-w-none">
+          Venue: {VENUE.name}
+        </span>
+        <ExternalLink size={14} className="opacity-80" />
+      </a>
+
+      {/* Hover / focus card (desktop) */}
+      <AnimatePresence>
+        {hover && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            className="absolute left-1/2 -translate-x-1/2 mt-2 w-[280px] rounded-2xl border border-white/15 bg-[#0a0a1a]/95 backdrop-blur p-3 shadow-xl z-20 hidden md:block"
+          >
+            <div
+              className="h-28 w-full rounded-xl bg-cover bg-center opacity-90"
+              style={{ backgroundImage: `url(${VENUE.image})` }}
+              aria-hidden
+            />
+            <div className="mt-3 text-sm font-medium">{VENUE.name}</div>
+            <div className="mt-2 flex gap-2">
+              <a
+                href={VENUE_HOTEL_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 border border-white/15 text-xs"
+              >
+                <ExternalLink size={14} /> Explore Hotel
+              </a>
+              <a
+                href={VENUE.location}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 border border-white/15 text-xs"
+              >
+                <Navigation size={14} /> Open in Maps
+              </a>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ---------- Venue Banner (optional; below CTAs) ---------- */
+function VenueBanner() {
+  return (
+    <div className="mt-6 relative isolate overflow-hidden rounded-[20px] border border-white/12 bg-white/[0.04] p-4 text-white">
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10 opacity-20"
+        style={{
+          backgroundImage: `url(${VENUE.image})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          filter: "blur(2px)",
+        }}
+      />
+      <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3 justify-between">
+        <div className="flex items-center gap-2">
+          <MapPin size={16} className="opacity-90" />
+          <div className="text-sm sm:text-base">
+            Hosted at <span className="font-semibold">{VENUE.name}</span>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <a
+            href={VENUE_HOTEL_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-2 text-sm border border-white/15"
+          >
+            <ExternalLink size={16} /> Explore Hotel
+          </a>
+          <a
+            href={VENUE.location}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-2 text-sm border border-white/15"
+          >
+            <Navigation size={16} /> Open in Maps
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Prologue (Hero) ---------- */
 function Prologue() {
   return (
@@ -340,6 +456,12 @@ function Prologue() {
         <div className="mt-3 inline-flex items-center gap-2 text-white/80">
           <Calendar size={16} /> {DATES_TEXT} • Faridabad
         </div>
+
+        {/* Venue pill directly under the date line */}
+        <div className="mt-3">
+          <VenuePill />
+        </div>
+
         <div className="mt-5 text-xl md:text-2xl font-semibold">
           <Gilded>Whispers Today, Echo Tomorrow</Gilded>
         </div>
@@ -384,6 +506,9 @@ function Prologue() {
             MUN Assistance
           </Link>
         </div>
+
+        {/* Optional, elegant venue banner under CTAs */}
+        <VenueBanner />
 
         <div className="mt-2 text-white/70 text-sm">
           Already have an account?{" "}
@@ -551,7 +676,7 @@ function TalkToUs() {
   const listCommittees = () => {
     const names = COMMITTEES.map((c) => c.name).join(", ");
     return `Councils: ${names}.\nOpen Assistance for full briefs → /assistance`;
-    };
+  };
 
   const send = () => {
     if (!input.trim()) return;
@@ -573,7 +698,11 @@ function TalkToUs() {
 
     // Venue
     if (/\b(venue|where|location|address)\b/.test(q)) {
-      return add({ from: "bot", text: "Venue: TBA — want WhatsApp updates when we announce?" });
+      try { window.open(VENUE_HOTEL_URL, "_blank"); } catch {}
+      return add({
+        from: "bot",
+        text: `Venue: ${VENUE.name}.\nHotel page → ${VENUE_HOTEL_URL}\nMaps → ${VENUE.location}`,
+      });
     }
 
     // Register
@@ -776,13 +905,31 @@ export default function Home() {
             <span className="font-semibold tracking-wide">Noir MUN</span>
           </div>
 
-          {/* Desktop nav — Register first, EB Applications next, Assistance & Legal last */}
+          {/* Desktop nav — Register first, EB Applications next, Assistance & Legal last; Venue inserted */}
           <nav className="nav-bar hidden sm:flex">
             <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
               Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
             </a>
             <a href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="nav-pill" title="Apply for the Executive Board">
               EB Applications <ChevronRight size={16} style={{ marginLeft: 6 }} />
+            </a>
+            <a
+              href={VENUE_HOTEL_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="nav-pill"
+              title={`Conference Venue — ${VENUE.name}`}
+            >
+              Venue <ExternalLink size={14} style={{ marginLeft: 6 }} />
+            </a>
+            <a
+              href={VENUE.location}
+              target="_blank"
+              rel="noreferrer"
+              className="nav-pill nav-pill--ghost"
+              title="Open in Google Maps"
+            >
+              Maps <Navigation size={14} style={{ marginLeft: 6 }} />
             </a>
             <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
             <Link to="/signup" className="nav-pill">Sign Up</Link>
@@ -802,7 +949,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Mobile Menu Sheet — Register first, EB Applications next, Assistance & Legal last */}
+      {/* Mobile Menu Sheet — Register first, EB Applications next; Venue + Maps added */}
       <AnimatePresence>
         {menuOpen && (
           <>
@@ -838,6 +985,15 @@ export default function Home() {
                 <a onClick={() => setMenuOpen(false)} href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="menu-item" title="Apply for the Executive Board">
                   EB Applications <ChevronRight size={16} className="inline-block ml-1" />
                 </a>
+
+                {/* Venue entries */}
+                <a onClick={() => setMenuOpen(false)} href={VENUE_HOTEL_URL} target="_blank" rel="noreferrer" className="menu-item">
+                  Venue <ExternalLink size={16} className="inline-block ml-1" />
+                </a>
+                <a onClick={() => setMenuOpen(false)} href={VENUE.location} target="_blank" rel="noreferrer" className="menu-item">
+                  Open in Maps <Navigation size={16} className="inline-block ml-1" />
+                </a>
+
                 <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">Login</Link>
                 <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">Sign Up</Link>
                 <Link onClick={() => setMenuOpen(false)} to="/assistance" className="menu-item">Assistance</Link>
