@@ -30,17 +30,18 @@ import {
   WHATSAPP_ESCALATE,
   VENUE,
   PARTNERS, // partners pulled from constants.js
-  ITINERARY, // <<< added
 } from "../shared/constants";
 
 /* --------------------------------------------------
  * Local constants
  * -------------------------------------------------- */
 const REGISTER_HREF = "https://noirmun.com/register";
-const EB_APPLY_HREF = "https://docs.google.com/forms/d/e/1FAIpQLSckm785lhMOj09BOBpaFWxbBzxp6cO5UjJulhbzZQz__lFtxw/viewform";
+const EB_APPLY_HREF =
+  "https://docs.google.com/forms/d/e/1FAIpQLSckm785lhMOj09BOBpaFWxbBzxp6cO5UjJulhbzZQz__lFtxw/viewform";
 const IG_HREF = "https://instagram.com/noirmodelun";
 const LINKTREE_HREF = "https://linktr.ee/noirmun";
-const VENUE_HOTEL_URL = "https://www.sarovarhotels.com/delite-sarovar-portico-faridabad/";
+const VENUE_HOTEL_URL =
+  "https://www.sarovarhotels.com/delite-sarovar-portico-faridabad/";
 
 /* --------------------------------------------------
  * Staff Directory (for WILT Mini lookups)
@@ -98,7 +99,7 @@ const ROLE_SYNONYMS = {
   "junior advisor": "junior advisor",
   "chief advisor": "chief advisor",
   "charge d affaires": "charge d'affaires",
-  "charge d' affairs": "charge d'affaires",
+  "charge d' affaires": "charge d'affaires",
   "charge d'affaires": "charge d'affaires",
   "chef d cabinet": "chef d cabinet",
   "conference director": "conference director",
@@ -109,7 +110,8 @@ const ROLE_SYNONYMS = {
 function specialEDIntercept(q) {
   const isWho = /\bwho(\s+is|'?s)?\b/.test(q);
   const mentionsED = /(\bthe\s+)?\bed\b|executive\s+director/.test(q);
-  if (isWho && mentionsED) return "Nimay Gupta — Deputy Executive Director (ED)";
+  if (isWho && mentionsED)
+    return "Nimay Gupta — Deputy Executive Director (ED)";
   return null;
 }
 
@@ -170,8 +172,14 @@ function RomanLayer() {
         }}
       />
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <motion.div style={{ y: yBust }} className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl" />
-        <motion.div style={{ y: yColumn }} className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl" />
+        <motion.div
+          style={{ y: yBust }}
+          className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+        />
+        <motion.div
+          style={{ y: yColumn }}
+          className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl"
+        />
       </div>
       <motion.img
         src={IMG_LEFT}
@@ -187,7 +195,10 @@ function RomanLayer() {
         loading="lazy"
         decoding="async"
         className="pointer-events-none fixed right-[-10px] top-[30vh] w-[230px] md:w-[310px] opacity-[.50] md:opacity-[.72] mix-blend-screen select-none -z-10"
-        style={{ y: yColumn, filter: "grayscale(60%) contrast(112%) blur(0.2px)" }}
+        style={{
+          y: yColumn,
+          filter: "grayscale(60%) contrast(112%) blur(0.2px)",
+        }}
       />
       <motion.img
         src={IMG_CENTER}
@@ -211,9 +222,14 @@ function RomanLayer() {
 
 /* ---------- Countdown ---------- */
 function useCountdown(targetISO) {
-  const [diff, setDiff] = useState(() => new Date(targetISO).getTime() - Date.now());
+  const [diff, setDiff] = useState(
+    () => new Date(targetISO).getTime() - Date.now()
+  );
   useEffect(() => {
-    const t = setInterval(() => setDiff(new Date(targetISO).getTime() - Date.now()), 1000);
+    const t = setInterval(
+      () => setDiff(new Date(targetISO).getTime() - Date.now()),
+      1000
+    );
     return () => clearInterval(t);
   }, [targetISO]);
   const past = diff <= 0;
@@ -229,44 +245,14 @@ const BigBlock = ({ label, value }) => (
     <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-white/8 border border-white/15 grid place-items-center text-4xl md:text-5xl font-black">
       {String(value).padStart(2, "0")}
     </div>
-    <div className="mt-2 text-[10px] uppercase tracking-[0.25em] text-white/70">{label}</div>
-  </div>
-);
-
-/* ---------- Visual Bits ---------- */
-const LaurelDivider = () => (
-  <div className="my-8 flex items-center justify-center gap-3 text-white/40">
-    <div className="h-px w-12 bg-white/20" />
-    <span className="tracking-[0.35em] text-xs uppercase">Laurels</span>
-    <div className="h-px w-12 bg-white/20" />
-  </div>
-);
-
-const QuoteCard = ({ children }) => (
-  <div className="mt-6 rounded-2xl border border-white/15 bg-white/[0.05] p-4 text-white/80 backdrop-blur-sm">
-    <div className="flex items-start gap-3">
-      <Quote className="mt-1" size={18} />
-      <p className="leading-relaxed">{children}</p>
+    <div className="mt-2 text-[10px] uppercase tracking-[0.25em] text-white/70">
+      {label}
     </div>
   </div>
 );
 
-function Gilded({ children }) {
-  return (
-    <span
-      className="bg-clip-text text-transparent"
-      style={{
-        backgroundImage:
-          "linear-gradient(90deg, #FFF7C4 0%, #F8E08E 15%, #E6C769 35%, #F2DA97 50%, #CDAE57 65%, #F5E6B9 85%, #E9D27F 100%)",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-/* ---------- Partner filtering (UPDATED to include new roles) ---------- */
-function useShowcasePartners() {
+/* ---------- Partner filtering ---------- */
+function useCorePartners() {
   return useMemo(() => {
     if (!Array.isArray(PARTNERS)) return [];
     return PARTNERS.filter((p) => {
@@ -276,11 +262,77 @@ function useShowcasePartners() {
         role.includes("gaming partner") ||
         role.includes("rewards partner") ||
         role.includes("kitchen partner") ||
-        role.includes("venue & catering partner")
+        role.includes("venue & catering partner") ||
+        role.includes("brand association partner") // show Royal Bliss
       );
     });
   }, []);
 }
+
+/* ---------- Partner components ---------- */
+// ... [rest of your file remains unchanged except below PartnersSection]
+
+function PartnersSection() {
+  const FEATURED = useMemo(() => {
+    const roles = [
+      "venue & catering partner",
+      "rewards partner",
+      "kitchen partner",
+      "brand association partner", // show Royal Bliss here too
+    ];
+    return (PARTNERS || []).filter((p) =>
+      roles.includes((p.role || "").toLowerCase())
+    );
+  }, []);
+
+  if (FEATURED.length === 0) return null;
+  return (
+    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
+      <div className="mb-6">
+        <div className="text-white/60 text-xs tracking-[0.35em] uppercase">
+          Chapter III½
+        </div>
+        <div className="mt-2 flex items-center gap-3">
+          <Crown size={20} className="text-white/70" />
+          <h2 className="text-2xl md:text-3xl font-extrabold">
+            Allies & Partners
+          </h2>
+        </div>
+      </div>
+      <p className="text-white/80 leading-relaxed">
+        Institutions that stand with Noir — strengthening access, study, and
+        community.
+      </p>
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {FEATURED.map((p) => (
+          <div
+            key={`${p.role}-${p.name}`}
+            className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden"
+          >
+            <div className="flex items-center gap-3">
+              <div className="shrink-0 rounded-xl border border-white/15 bg-white/5 w-14 h-14 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.05)_inset]">
+                <img
+                  src={p.logo}
+                  alt={`${p.name} logo`}
+                  className="w-10 h-10 object-contain"
+                  onError={(e) => (e.currentTarget.style.opacity = 0.35)}
+                />
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-[0.24em] text-white/60">
+                  {p.role}
+                </div>
+                <div className="text-sm font-semibold">{p.name}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Rest of your Home.jsx unchanged (Prologue, Chapters, CTA, Footer, TalkToUs, etc.) ---------- */
 
 /* ---------- Partner Showcases ---------- */
 function PartnerMedallion({ role, name, logo }) {
