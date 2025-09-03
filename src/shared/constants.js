@@ -195,6 +195,29 @@ export const ITINERARY = [
  * ------------------------- */
 export const PARTNERS = [
   {
+    role: "Venue & Catering Partner",
+    name: "Delite Sarovar Portico, Faridabad",
+    logo: "https://i.postimg.cc/vBsFB36D/Hotel-Facade-xfqdhj.avif", // using VENUE.image
+  },
+  {
+    role: "Rewards Partner",
+    name: "Benefitzz",
+    logo:
+      "https://i.postimg.cc/52qbMT6n/Whats-App-Image-2025-09-04-at-00-04-12-bbcede37.jpg",
+  },
+  {
+    role: "Kitchen Partner",
+    name: "SettoGo Kiitchen & Consulting",
+    logo:
+      "https://i.postimg.cc/7ZYwwX04/Whats-App-Image-2025-09-04-at-00-04-14-d07da825.jpg",
+  },
+  {
+    role: "Brand Association Partner",
+    name: "Royal Bliss",
+    logo:
+      "https://i.postimg.cc/Mpv37rQd/Whats-App-Image-2025-09-04-at-00-42-53-1764d3f9.jpg",
+  },
+  {
     role: "Institutional Partner",
     name: "DPS Ballabgarh",
     logo: "https://i.postimg.cc/43GPYWjq/Untitled-design-12.png",
@@ -202,12 +225,14 @@ export const PARTNERS = [
   {
     role: "Study Partner",
     name: "Study Anchor",
-    logo: "https://i.postimg.cc/Bvwt9Hnw/Whats-App-Image-2025-09-03-at-17-26-52-ed8e1170.jpg",
+    logo:
+      "https://i.postimg.cc/Bvwt9Hnw/Whats-App-Image-2025-09-03-at-17-26-52-ed8e1170.jpg",
   },
   {
     role: "Study Partner",
     name: "Sam Institute of English Language and Personality Development",
-    logo: "https://i.postimg.cc/RhSY76c4/sam-institute-of-english-language-personality-development-logo-1.jpg",
+    logo:
+      "https://i.postimg.cc/RhSY76c4/sam-institute-of-english-language-personality-development-logo-1.jpg",
   },
   {
     role: "Gaming Partner",
