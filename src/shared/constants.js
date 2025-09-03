@@ -209,7 +209,7 @@ export const PARTNERS = [
     role: "Kitchen Partner",
     name: "SettoGo Kiitchen & Consulting",
     logo:
-      "https://i.postimg.cc/7ZYwwX04/Whats-App-Image-2025-09-04-at-00-04-14-d07da825.jpg",
+      "https://i.postimg.cc/BnTJ2g1L/Whats-App-Image-2025-09-04-at-01-15-58-5f06bbb5.jpg",
   },
   {
     role: "Brand Association Partner",
