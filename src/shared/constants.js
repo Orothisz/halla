@@ -6,14 +6,19 @@ export const DATES_TEXT = "31 October - 1 November, 2025";
 export const TARGET_DATE_IST = "2025-10-31T09:00:00+05:30"; // IST
 export const THEME_HEX = "#000026";
 export const REGISTER_URL = "https://noirmun.com";
-export const LOGO_URL = "https://i.postimg.cc/MZhZ9Nsm/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45.png";
+export const LOGO_URL =
+  "https://i.postimg.cc/MZhZ9Nsm/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45.png";
 export const WHATSAPP_ESCALATE = "https://wa.me/918595511056";
 
 // Committee logos
-const LOGO_UN = "https://i.postimg.cc/htVHK31g/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45-5.png"; // UNGA & UNCSW
-const LOGO_AIPPM = "https://i.postimg.cc/4xZTHgdn/AIPPM-removebg-preview-pmv7kqpcqpe18txaiaahkwoafmvqa378hd5tcs7x8g.png";
-const LOGO_IPL = "https://i.postimg.cc/JnYFTwM3/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45-7.png";
-const LOGO_IP = "https://i.postimg.cc/PJ8S2P6h/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45-8.png"; // International Press
+const LOGO_UN =
+  "https://i.postimg.cc/htVHK31g/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45-5.png"; // UNGA & UNCSW
+const LOGO_AIPPM =
+  "https://i.postimg.cc/4xZTHgdn/AIPPM-removebg-preview-pmv7kqpcqpe18txaiaahkwoafmvqa378hd5tcs7x8g.png";
+const LOGO_IPL =
+  "https://i.postimg.cc/JnYFTwM3/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45-7.png";
+const LOGO_IP =
+  "https://i.postimg.cc/PJ8S2P6h/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45-8.png"; // International Press
 
 // Committees (used by Home + Brief modal)
 export const COMMITTEES = [
@@ -166,5 +171,15 @@ export const PARTNERS = [
     role: "Study Partner",
     name: "Sam Institute of English Language and Personality Development",
     logo: "https://i.postimg.cc/6Qh0ndX3/Untitled-design-11.png",
+  },
+  {
+    role: "Gaming Partner",
+    name: "Galaxy Laser Tag",
+    logo: "https://i.postimg.cc/j2hwkhMw/Untitled-design-13.png",
+  },
+  {
+    role: "Food Partner",
+    name: "Bistro 57",
+    logo: "https://i.postimg.cc/wMFMkjBD/Untitled-design-14.png",
   },
 ];
