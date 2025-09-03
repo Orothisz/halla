@@ -146,3 +146,17 @@ export const VENUE = {
   image: "https://i.postimg.cc/vBsFB36D/Hotel-Facade-xfqdhj.avif",
   location: "https://www.google.com/maps?sca_esv=e85bf51f2ebe9d69&output=search&q=delite+sarovar+portico+fbd&source=lnms&fbs=AIIjpHxU7SXXniUZfeShr2fp4giZ1Y6MJ25_tmWITc7uy4KIeuYzzFkfneXafNx6OMdA4MRT57TpI4o2tavIRfF1e7-xTLfbOlRZsi_SKi4JeEBY7pnUnsYZ2YolLXlDdpWd5X8Dl3ww1kgiAU4MTvhlsxynlXYG66bQ0LfJUkXjx90u6LziqyMljOah4l7FbuzQ5ppUaZOESIdhGWk6sqjHiMsayGn74Q&entry=mc&ved=1t:200715&ictx=111",
 };
+
+// Partners
+export const PARTNERS = [
+  {
+    role: "Institutional Partner",
+    name: "Dynasty International School, Faridabad",
+    logo: "https://i.postimg.cc/hGDWbtVD/Untitled-design-10.png",
+  },
+  {
+    role: "Study Partner",
+    name: "Study Anchor",
+    logo: "https://i.postimg.cc/yxSwYgCP/Untitled-design-9.png",
+  },
+];
