@@ -44,6 +44,12 @@ const LINKTREE_HREF = "https://linktr.ee/noirmun";
 const VENUE_HOTEL_URL =
   "https://www.sarovarhotels.com/delite-sarovar-portico-faridabad/";
 
+const ROMAN_URLS = {
+  left: "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png",
+  center: "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png",
+  right: "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png",
+};
+
 /* --------------------------------------------------
  * Staff Directory (for WILT Mini lookups)
  * -------------------------------------------------- */
@@ -449,13 +455,51 @@ function PartnersSection() {
   );
 }
 
+/* ---------- Roman Triad Overlays ---------- */
+function RomanTriad() {
+  // Parallax with scroll progress; subtle opacity on small screens
+  const { scrollYProgress } = useScroll();
+  const yLeft = useTransform(scrollYProgress, [0, 1], [0, 30]);
+  const yCenter = useTransform(scrollYProgress, [0, 1], [0, 20]);
+  const yRight = useTransform(scrollYProgress, [0, 1], [0, 36]);
+
+  return (
+    <>
+      <motion.img
+        src={ROMAN_URLS.left}
+        alt="Roman statue left"
+        className="pointer-events-none select-none hidden sm:block absolute -left-10 md:-left-16 bottom-0 h-[52%] md:h-[60%] opacity-70"
+        style={{ y: yLeft, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
+        draggable={false}
+      />
+      <motion.img
+        src={ROMAN_URLS.center}
+        alt="Roman statue center"
+        className="pointer-events-none select-none hidden sm:block absolute left-1/2 -translate-x-1/2 bottom-0 h-[62%] md:h-[72%] opacity-60"
+        style={{ y: yCenter, filter: "grayscale(100%) contrast(1.05) brightness(0.98)" }}
+        draggable={false}
+      />
+      <motion.img
+        src={ROMAN_URLS.right}
+        alt="Roman statue right"
+        className="pointer-events-none select-none hidden sm:block absolute -right-10 md:-right-16 bottom-0 h-[52%] md:h-[60%] opacity-70"
+        style={{ y: yRight, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
+        draggable={false}
+      />
+    </>
+  );
+}
+
 /* ---------- Prologue (Hero) ---------- */
 function Prologue() {
-  const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
   return (
     <section className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
+      {/* soft glows */}
       <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-white/10 blur-3xl rounded-full" />
+
+      {/* Roman statues */}
+      <RomanTriad />
 
       <div className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
         <img src={LOGO_URL} alt="Noir" className="h-20 w-20 mx-auto object-contain drop-shadow" />
@@ -492,18 +536,31 @@ function Prologue() {
             MUN Assistance
           </Link>
         </div>
-
-        {!past ? (
-          <div className="mt-6 flex gap-5 flex-wrap justify-center">
-            <BigBlock label="Days" value={d} />
-            <BigBlock label="Hours" value={h} />
-            <BigBlock label="Mins" value={m} />
-            <BigBlock label="Secs" value={s} />
-          </div>
-        ) : (
-          <div className="mt-6 text-center text-white/80">See you at Noir MUN — thank you!</div>
-        )}
       </div>
+    </section>
+  );
+}
+
+/* ---------- Separate Countdown Section ---------- */
+function CountdownSection() {
+  const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
+  return (
+    <section className="mt-8 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5 text-center">
+      <SectionHeading
+        kicker="Chapter 0"
+        title="Countdown to Noir"
+        icon={<Sparkles size={20} className="text-white/70" />}
+      />
+      {!past ? (
+        <div className="mt-4 flex gap-5 flex-wrap justify-center">
+          <BigBlock label="Days" value={d} />
+          <BigBlock label="Hours" value={h} />
+          <BigBlock label="Mins" value={m} />
+          <BigBlock label="Secs" value={s} />
+        </div>
+      ) : (
+        <div className="mt-4 text-white/80">See you at Noir MUN — thank you!</div>
+      )}
     </section>
   );
 }
@@ -560,7 +617,6 @@ function PosterWall({ onOpen }) {
 
 /* ---------- Itinerary Section ---------- */
 function DressIcon({ type }) {
-  // simple silhouettes via inline SVG — Indian Ethnic & Western Formals
   if (type.toLowerCase().includes("indian")) {
     return (
       <svg viewBox="0 0 64 64" className="w-5 h-5">
@@ -1040,6 +1096,7 @@ export default function Home() {
       {/* Main Narrative */}
       <main className="mx-auto max-w-7xl px-4 py-10">
         <Prologue />
+        <CountdownSection />
 
         <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
           <SectionHeading kicker="Chapter I" title="The Origin" icon={<Shield size={20} className="text-white/70" />} />
