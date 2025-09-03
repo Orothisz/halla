@@ -203,7 +203,7 @@ export const PARTNERS = [
     role: "Rewards Partner",
     name: "Benefitzz",
     logo:
-      "https://i.postimg.cc/52qbMT6n/Whats-App-Image-2025-09-04-at-00-04-12-bbcede37.jpg",
+      "https://i.postimg.cc/qqNknH84/Whats-App-Image-2025-09-04-at-01-15-57-971acd46.jpg",
   },
   {
     role: "Kitchen Partner",
