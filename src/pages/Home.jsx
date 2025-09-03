@@ -22,14 +22,14 @@ import {
 
 import {
   LOGO_URL,
-  // REGISTER_URL, // removed: we hardwire noirmun.com/register everywhere on this page
   DATES_TEXT,
   TARGET_DATE_IST,
   THEME_HEX,
   COMMITTEES,
   WHATSAPP_ESCALATE,
   VENUE,
-  PARTNERS, // partners pulled from constants.js
+  PARTNERS,
+  ITINERARY,
 } from "../shared/constants";
 
 /* --------------------------------------------------
@@ -99,7 +99,7 @@ const ROLE_SYNONYMS = {
   "junior advisor": "junior advisor",
   "chief advisor": "chief advisor",
   "charge d affaires": "charge d'affaires",
-  "charge d' affaires": "charge d'affaires",
+  "charge d' affairs": "charge d'affaires",
   "charge d'affaires": "charge d'affaires",
   "chef d cabinet": "chef d cabinet",
   "conference director": "conference director",
@@ -150,7 +150,7 @@ function Atmosphere() {
   return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
 }
 
-/* ---------- Roman Layer (statues, parallax) ---------- */
+/* ---------- Roman Layer (parallax accents) ---------- */
 function RomanLayer() {
   const { scrollYProgress } = useScroll();
   const yBust = useTransform(scrollYProgress, [0, 1], [0, -100]);
@@ -186,7 +186,7 @@ function RomanLayer() {
         alt=""
         loading="lazy"
         decoding="async"
-        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[240px] md:w-[320px] opacity-[.55] md:opacity-[.75] mix-blend-screen select-none -z-10"
+        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[220px] md:w-[320px] opacity-[.55] md:opacity-[.75] mix-blend-screen select-none -z-10"
         style={{ y: yBust, filter: "grayscale(60%) contrast(110%) blur(0.2px)" }}
       />
       <motion.img
@@ -194,7 +194,7 @@ function RomanLayer() {
         alt=""
         loading="lazy"
         decoding="async"
-        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[230px] md:w-[310px] opacity-[.50] md:opacity-[.72] mix-blend-screen select-none -z-10"
+        className="pointer-events-none fixed right-[-10px] top-[32vh] w-[210px] md:w-[310px] opacity-[.48] md:opacity-[.72] mix-blend-screen select-none -z-10"
         style={{
           y: yColumn,
           filter: "grayscale(60%) contrast(112%) blur(0.2px)",
@@ -205,16 +205,8 @@ function RomanLayer() {
         alt=""
         loading="lazy"
         decoding="async"
-        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
+        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[520px] max-w-[92vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
         style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")",
-        }}
       />
     </>
   );
@@ -251,8 +243,40 @@ const BigBlock = ({ label, value }) => (
   </div>
 );
 
-/* ---------- Partner filtering ---------- */
-function useCorePartners() {
+/* ---------- Visual Bits ---------- */
+const LaurelDivider = () => (
+  <div className="my-8 flex items-center justify-center gap-3 text-white/40">
+    <div className="h-px w-12 bg-white/20" />
+    <span className="tracking-[0.35em] text-xs uppercase">Laurels</span>
+    <div className="h-px w-12 bg-white/20" />
+  </div>
+);
+
+const QuoteCard = ({ children }) => (
+  <div className="mt-6 rounded-2xl border border-white/15 bg-white/[0.05] p-4 text-white/80 backdrop-blur-sm">
+    <div className="flex items-start gap-3">
+      <Quote className="mt-1" size={18} />
+      <p className="leading-relaxed">{children}</p>
+    </div>
+  </div>
+);
+
+function Gilded({ children }) {
+  return (
+    <span
+      className="bg-clip-text text-transparent"
+      style={{
+        backgroundImage:
+          "linear-gradient(90deg, #FFF7C4 0%, #F8E08E 15%, #E6C769 35%, #F2DA97 50%, #CDAE57 65%, #F5E6B9 85%, #E9D27F 100%)",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/* ---------- Partner filtering (ONE SOURCE OF TRUTH) ---------- */
+function useShowcasePartners() {
   return useMemo(() => {
     if (!Array.isArray(PARTNERS)) return [];
     return PARTNERS.filter((p) => {
@@ -263,81 +287,16 @@ function useCorePartners() {
         role.includes("rewards partner") ||
         role.includes("kitchen partner") ||
         role.includes("venue & catering partner") ||
-        role.includes("brand association partner") // show Royal Bliss
+        role.includes("brand association partner") // Royal Bliss
       );
     });
   }, []);
 }
 
-/* ---------- Partner components ---------- */
-// ... [rest of your file remains unchanged except below PartnersSection]
-
-function PartnersSection() {
-  const FEATURED = useMemo(() => {
-    const roles = [
-      "venue & catering partner",
-      "rewards partner",
-      "kitchen partner",
-      "brand association partner", // show Royal Bliss here too
-    ];
-    return (PARTNERS || []).filter((p) =>
-      roles.includes((p.role || "").toLowerCase())
-    );
-  }, []);
-
-  if (FEATURED.length === 0) return null;
+/* ---------- Partner UI ---------- */
+function PartnerPill({ role, name, logo }) {
   return (
-    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
-      <div className="mb-6">
-        <div className="text-white/60 text-xs tracking-[0.35em] uppercase">
-          Chapter III½
-        </div>
-        <div className="mt-2 flex items-center gap-3">
-          <Crown size={20} className="text-white/70" />
-          <h2 className="text-2xl md:text-3xl font-extrabold">
-            Allies & Partners
-          </h2>
-        </div>
-      </div>
-      <p className="text-white/80 leading-relaxed">
-        Institutions that stand with Noir — strengthening access, study, and
-        community.
-      </p>
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {FEATURED.map((p) => (
-          <div
-            key={`${p.role}-${p.name}`}
-            className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden"
-          >
-            <div className="flex items-center gap-3">
-              <div className="shrink-0 rounded-xl border border-white/15 bg-white/5 w-14 h-14 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.05)_inset]">
-                <img
-                  src={p.logo}
-                  alt={`${p.name} logo`}
-                  className="w-10 h-10 object-contain"
-                  onError={(e) => (e.currentTarget.style.opacity = 0.35)}
-                />
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-[0.24em] text-white/60">
-                  {p.role}
-                </div>
-                <div className="text-sm font-semibold">{p.name}</div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ---------- Rest of your Home.jsx unchanged (Prologue, Chapters, CTA, Footer, TalkToUs, etc.) ---------- */
-
-/* ---------- Partner Showcases ---------- */
-function PartnerMedallion({ role, name, logo }) {
-  return (
-    <div className="group flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/12 bg-white/[0.06] hover:bg-white/[0.1] transition backdrop-blur-sm">
+    <div className="group flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/12 bg-white/[0.06] hover:bg-white/[0.12] transition backdrop-blur-sm">
       <div className="shrink-0 w-12 h-12 rounded-xl border border-white/12 bg-white/5 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.06)_inset]">
         <img
           src={logo}
@@ -347,14 +306,16 @@ function PartnerMedallion({ role, name, logo }) {
         />
       </div>
       <div className="leading-tight">
-        <div className="text-[10px] uppercase tracking-[0.28em] text-white/60">{role}</div>
+        <div className="text-[10px] uppercase tracking-[0.28em] text-white/60">
+          {role}
+        </div>
         <div className="text-sm font-semibold">{name}</div>
       </div>
     </div>
   );
 }
 
-/* Premium partner chip (bigger, single) */
+/* Premium partner display (Venue) */
 function PremiumPartner() {
   const venuePartner = useMemo(
     () =>
@@ -366,7 +327,7 @@ function PremiumPartner() {
   if (!venuePartner) return null;
   return (
     <div className="mt-6 flex items-center justify-center">
-      <div className="inline-flex items-center gap-4 rounded-3xl border border-white/12 bg-white/[0.07] px-5 py-4 backdrop-blur-md">
+      <div className="inline-flex items-center gap-4 rounded-3xl border border-white/12 bg-white/[0.08] px-5 py-4 backdrop-blur-md">
         <div className="w-14 h-14 rounded-2xl border border-white/12 bg-white/5 grid place-items-center">
           <img
             src={venuePartner.logo}
@@ -393,31 +354,41 @@ function PremiumPartner() {
   );
 }
 
-/* Hero ribbon with partner presence (updated filter) */
+/* Hero ribbon (pills + premium) */
 function HeroPartnersRibbon() {
-  const CORE = useShowcasePartners();
-  const others = CORE.filter(
+  const ALL = useShowcasePartners();
+  const others = ALL.filter(
     (p) => !(p.role || "").toLowerCase().includes("venue & catering partner")
   );
-  if (others.length === 0) return <PremiumPartner />;
+  if (ALL.length === 0) return null;
 
   return (
     <div className="mt-6">
       <PremiumPartner />
-      <div className="mt-5 text-xs uppercase tracking-[0.35em] text-white/60 mb-3 flex items-center justify-center gap-2">
-        <Star size={14} className="opacity-80" /> <span>In Proud Association</span>{" "}
-        <Star size={14} className="opacity-80" />
-      </div>
-      <div className="flex flex-wrap items-stretch justify-center gap-3">
-        {others.map((p) => (
-          <PartnerMedallion key={`hero-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
-        ))}
-      </div>
+      {others.length > 0 && (
+        <>
+          <div className="mt-5 text-xs uppercase tracking-[0.35em] text-white/60 mb-3 flex items-center justify-center gap-2">
+            <Star size={14} className="opacity-80" />{" "}
+            <span>In Proud Association</span>{" "}
+            <Star size={14} className="opacity-80" />
+          </div>
+          <div className="flex flex-wrap items-stretch justify-center gap-3">
+            {others.map((p) => (
+              <PartnerPill
+                key={`hero-${p.role}-${p.name}`}
+                role={p.role}
+                name={p.name}
+                logo={p.logo}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-/* Super-smooth, constant-speed marquee (updated filter) */
+/* Smooth marquee under header */
 function PartnerTicker() {
   const CORE = useShowcasePartners();
   const railRef = useRef(null);
@@ -479,11 +450,18 @@ function PartnerTicker() {
         <div
           ref={trackRef}
           className="flex items-center gap-8 py-2"
-          style={{ willChange: "transform", backfaceVisibility: "hidden", transform: "translate3d(0,0,0)" }}
+          style={{
+            willChange: "transform",
+            backfaceVisibility: "hidden",
+            transform: "translate3d(0,0,0)",
+          }}
         >
           <div className="flex items-center gap-8" data-chunk="base">
             {CORE.map((p, i) => (
-              <div key={`ticker-${p.name}-${i}`} className="flex items-center gap-2 text-white/70">
+              <div
+                key={`ticker-${p.name}-${i}`}
+                className="flex items-center gap-2 text-white/70"
+              >
                 <img
                   src={p.logo}
                   alt={`${p.name} logo`}
@@ -505,7 +483,7 @@ function PartnerTicker() {
   );
 }
 
-/* ---------- Venue Pill ---------- */
+/* ---------- Venue Bits ---------- */
 function VenuePill() {
   const [hover, setHover] = useState(false);
   return (
@@ -523,7 +501,9 @@ function VenuePill() {
         title={VENUE.name}
       >
         <MapPin size={14} />
-        <span className="truncate max-w-[62vw] sm:max-w-none">Venue: {VENUE.name}</span>
+        <span className="truncate max-w-[62vw] sm:max-w-none">
+          Venue: {VENUE.name}
+        </span>
         <ExternalLink size={14} className="opacity-80" />
       </a>
 
@@ -566,7 +546,6 @@ function VenuePill() {
   );
 }
 
-/* ---------- Venue Banner ---------- */
 function VenueBanner() {
   return (
     <div className="mt-6 relative isolate overflow-hidden rounded-[24px] border border-white/12 bg-white/[0.04] p-4 text-white">
@@ -615,7 +594,9 @@ function SectionHeading({ kicker, title, icon, aside }) {
   return (
     <div className="mb-6 flex items-end justify-between gap-3">
       <div>
-        <div className="text-white/60 text-xs tracking-[0.35em] uppercase">{kicker}</div>
+        <div className="text-white/60 text-xs tracking-[0.35em] uppercase">
+          {kicker}
+        </div>
         <div className="mt-2 flex items-center gap-3">
           {icon}
           <h2 className="text-2xl md:text-3xl font-extrabold">{title}</h2>
@@ -626,51 +607,85 @@ function SectionHeading({ kicker, title, icon, aside }) {
   );
 }
 
-/* ---------- Partners Section (mid-page; FEATURED only) ---------- */
-function PartnerBadge({ role, name, logo }) {
-  return (
-    <div className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden">
-      <div
-        aria-hidden
-        className="absolute -top-8 -right-10 h-24 w-24 rounded-full bg-white/10 blur-2xl opacity-40 group-hover:opacity-70 transition"
-      />
-      <div className="flex items-center gap-3">
-        <div className="shrink-0 rounded-xl border border-white/15 bg-white/5 w-14 h-14 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.05)_inset]">
-          <img
-            src={logo}
-            alt={`${name} logo`}
-            className="w-10 h-10 object-contain"
-            onError={(e) => (e.currentTarget.style.opacity = 0.35)}
-          />
-        </div>
-        <div>
-          <div className="text-xs uppercase tracking-[0.24em] text-white/60">{role}</div>
-          <div className="text-sm font-semibold">{name}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-function PartnersSection() {
+/* ---------- Partners Showcase (mobile carousel + desktop grid) ---------- */
+function PartnersShowcase() {
   const FEATURED = useMemo(() => {
-    const roles = ["venue & catering partner", "rewards partner", "kitchen partner"];
-    return (PARTNERS || []).filter((p) => roles.includes((p.role || "").toLowerCase()));
+    const roles = [
+      "venue & catering partner",
+      "rewards partner",
+      "kitchen partner",
+      "brand association partner", // Royal Bliss
+      "study partner",
+      "gaming partner",
+    ];
+    return (PARTNERS || []).filter((p) =>
+      roles.includes((p.role || "").toLowerCase())
+    );
   }, []);
+
   if (FEATURED.length === 0) return null;
+
   return (
     <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
       <SectionHeading
         kicker="Chapter III½"
         title="Allies & Partners"
         icon={<Crown size={20} className="text-white/70" />}
-        aside={<div className="text-xs text-white/60">Handpicked sponsors</div>}
+        aside={<div className="text-xs text-white/60">In association</div>}
       />
-      <p className="text-white/80 leading-relaxed">
-        Institutions that stand with Noir — strengthening access, study, and community.
-      </p>
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Mobile: horizontal carousel */}
+      <div className="sm:hidden -mx-2 overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch]">
+        <div className="flex gap-3 px-2 min-w-max">
+          {FEATURED.map((p) => (
+            <div
+              key={`m-${p.role}-${p.name}`}
+              className="w-[84vw] rounded-2xl border border-white/12 bg-white/[0.06] backdrop-blur p-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-xl border border-white/12 bg-white/5 grid place-items-center">
+                  <img
+                    src={p.logo}
+                    alt={`${p.name} logo`}
+                    className="w-10 h-10 object-contain"
+                    onError={(e) => (e.currentTarget.style.opacity = 0.35)}
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-white/60">
+                    {p.role}
+                  </div>
+                  <div className="text-sm font-semibold">{p.name}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Desktop: elegant grid */}
+      <div className="hidden sm:grid mt-4 grid-cols-2 lg:grid-cols-3 gap-4">
         {FEATURED.map((p) => (
-          <PartnerBadge key={`${p.role}-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
+          <div
+            key={`d-${p.role}-${p.name}`}
+            className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden"
+          >
+            <div className="absolute -top-10 -right-10 h-24 w-24 rounded-full bg-white/10 blur-2xl opacity-40 group-hover:opacity-70 transition" />
+            <div className="flex items-center gap-3">
+              <div className="shrink-0 rounded-xl border border-white/15 bg-white/5 w-14 h-14 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.05)_inset]">
+                <img
+                  src={p.logo}
+                  alt={`${p.name} logo`}
+                  className="w-10 h-10 object-contain"
+                  onError={(e) => (e.currentTarget.style.opacity = 0.35)}
+                />
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-[0.24em] text-white/60">
+                  {p.role}
+                </div>
+                <div className="text-sm font-semibold">{p.name}</div>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
     </section>
@@ -727,13 +742,17 @@ function ItinerarySection() {
             className="rounded-2xl border border-white/12 bg-white/[0.05] p-5 backdrop-blur-sm"
           >
             <div className="flex items-center justify-between gap-3">
-              <div className="text-lg font-semibold">Day {d.day} — {d.dateText}</div>
+              <div className="text-lg font-semibold">
+                Day {d.day} — {d.dateText}
+              </div>
               <DressCodeChip text={d.dressCode} />
             </div>
             <div className="mt-4 space-y-2">
               {d.events.map((ev, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <div className="w-28 shrink-0 text-white/70 text-sm">{ev.time}</div>
+                  <div className="w-28 shrink-0 text-white/70 text-sm">
+                    {ev.time}
+                  </div>
                   <div className="h-px w-6 bg-white/10" />
                   <div className="text-sm">{ev.title}</div>
                 </div>
@@ -749,13 +768,17 @@ function ItinerarySection() {
 /* ---------- Prologue (Hero) ---------- */
 function Prologue() {
   return (
-    <section className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
+    <section className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.08] to-white/[0.02] backdrop-blur">
       <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-white/10 blur-3xl rounded-full" />
 
-      <div className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
-        <img src={LOGO_URL} alt="Noir" className="h-20 w-20 mx-auto object-contain drop-shadow" />
-        <h1 className="mt-6 text-[40px] md:text-[68px] leading-none font-black tracking-tight">
+      <div className="relative z-10 px-5 md:px-10 pt-10 md:pt-12 pb-12 md:pb-14 text-center">
+        <img
+          src={LOGO_URL}
+          alt="Noir"
+          className="h-16 w-16 md:h-20 md:w-20 mx-auto object-contain drop-shadow"
+        />
+        <h1 className="mt-5 md:mt-6 text-[36px] md:text-[68px] leading-none font-black tracking-tight">
           NOIR&nbsp;MUN&nbsp;2025
         </h1>
         <div className="mt-3 inline-flex items-center gap-2 text-white/80">
@@ -770,7 +793,7 @@ function Prologue() {
           <Gilded>Whispers Today, Echo Tomorrow</Gilded>
         </div>
 
-        {/* Premium partner + associated partners */}
+        {/* Premium + associated partners */}
         <HeroPartnersRibbon />
 
         <QuoteCard>
@@ -779,12 +802,12 @@ function Prologue() {
         </QuoteCard>
 
         {/* CTA row */}
-        <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="mt-9 relative z-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-3xl mx-auto">
           <a
             href={REGISTER_HREF}
             target="_blank"
             rel="noreferrer"
-            className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
+            className="click-safe inline-flex items-center justify-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20"
           >
             Secure your seat <ChevronRight size={18} />
           </a>
@@ -792,20 +815,20 @@ function Prologue() {
             href={EB_APPLY_HREF}
             target="_blank"
             rel="noreferrer"
-            className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
+            className="click-safe inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20"
             title="Apply for the Executive Board"
           >
             EB Applications <ChevronRight size={18} />
           </a>
           <Link
             to="/signup"
-            className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
+            className="click-safe inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20"
           >
             Sign Up
           </Link>
           <Link
             to="/assistance"
-            className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
+            className="click-safe inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20"
           >
             MUN Assistance
           </Link>
@@ -828,7 +851,9 @@ function Prologue() {
 function Chapter({ kicker, title, children, icon }) {
   return (
     <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
-      <div className="text-white/60 text-xs tracking-[0.35em] uppercase">{kicker}</div>
+      <div className="text-white/60 text-xs tracking-[0.35em] uppercase">
+        {kicker}
+      </div>
       <div className="mt-2 flex items-center gap-3">
         {icon}
         <h2 className="text-2xl md:text-3xl font-extrabold">{title}</h2>
@@ -860,7 +885,9 @@ function PosterWall({ onOpen }) {
         <h3 className="text-3xl md:text-4xl font-extrabold">
           <Gilded>The Councils</Gilded>
         </h3>
-        <p className="mt-2 text-white/70">Step into chambers where rhetoric rivals legend.</p>
+        <p className="mt-2 text-white/70">
+          Step into chambers where rhetoric rivals legend.
+        </p>
       </div>
 
       <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -873,8 +900,12 @@ function PosterWall({ onOpen }) {
             <div className="aspect-[16/10] md:aspect-[16/9] w-full grid place-items-center px-6 text-center">
               <LogoBadge src={c.logo} alt={`${c.name} logo`} />
               <div className="mt-4">
-                <div className="font-semibold text-lg leading-tight">{c.name}</div>
-                <div className="text-xs text-white/70 line-clamp-3 mt-2">{c.agenda}</div>
+                <div className="font-semibold text-lg leading-tight">
+                  {c.name}
+                </div>
+                <div className="text-xs text-white/70 line-clamp-3 mt-2">
+                  {c.agenda}
+                </div>
               </div>
             </div>
             <div className="absolute inset-0 pointer-events-none">
@@ -994,22 +1025,34 @@ function TalkToUs() {
       return add({ from: "bot", text: "Delegate fee: ₹2300." });
     }
     if (/\b(venue|where|location|address)\b/.test(q)) {
-      try { window.open(VENUE_HOTEL_URL, "_blank"); } catch {}
+      try {
+        window.open(VENUE_HOTEL_URL, "_blank");
+      } catch {}
       return add({
         from: "bot",
         text: `Venue: ${VENUE.name}.\nHotel page → ${VENUE_HOTEL_URL}\nMaps → ${VENUE.location}`,
       });
     }
-    if (/\b(register|sign\s*up|enrol|enroll|apply|secure\s*(my|your)?\s*seat)\b/.test(q)) {
-      try { window.open(REGISTER_HREF, "_blank"); } catch {}
+    if (
+      /\b(register|sign\s*up|enrol|enroll|apply|secure\s*(my|your)?\s*seat)\b/.test(
+        q
+      )
+    ) {
+      try {
+        window.open(REGISTER_HREF, "_blank");
+      } catch {}
       return add({ from: "bot", text: `Opening registration → ${REGISTER_HREF}` });
     }
     if (/\b(insta|instagram)\b/.test(q)) {
-      try { window.open(IG_HREF, "_blank"); } catch {}
+      try {
+        window.open(IG_HREF, "_blank");
+      } catch {}
       return add({ from: "bot", text: `Instagram → ${IG_HREF}` });
     }
     if (/\blinktr|linktree|links?\b/.test(q)) {
-      try { window.open(LINKTREE_HREF, "_blank"); } catch {}
+      try {
+        window.open(LINKTREE_HREF, "_blank");
+      } catch {}
       return add({ from: "bot", text: `Links hub → ${LINKTREE_HREF}` });
     }
     if (/\b(committee|committees|councils?|agenda|topics?)\b/.test(q)) {
@@ -1026,7 +1069,9 @@ function TalkToUs() {
       });
     }
     if (/\b(exec|human|someone|whatsapp|help|contact|support)\b/.test(q)) {
-      try { window.open(WHATSAPP_ESCALATE, "_blank"); } catch {}
+      try {
+        window.open(WHATSAPP_ESCALATE, "_blank");
+      } catch {}
       return add({ from: "bot", text: "Opening WhatsApp…" });
     }
     return add({
@@ -1114,7 +1159,7 @@ function InlineFooter() {
   const CORE = useShowcasePartners();
   return (
     <footer className="mt-16 border-top border-white/10">
-      {/* Mini partners strip (filtered) */}
+      {/* Mini partners strip */}
       {CORE.length > 0 && (
         <div className="mx-auto max-w-7xl px-4 py-6">
           <div className="text-xs uppercase tracking-[0.28em] text-white/50 text-center mb-3">
@@ -1212,7 +1257,7 @@ export default function Home() {
       <motion.div className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
 
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
+      <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/70 to-transparent backdrop-blur border-b border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-shrink-0" style={{ whiteSpace: "nowrap" }}>
             <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain" />
@@ -1262,7 +1307,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Partner ticker directly under header (updated & smooth) */}
+        {/* Partner ticker */}
         <PartnerTicker />
       </header>
 
@@ -1362,10 +1407,10 @@ export default function Home() {
           <PosterWall onOpen={(i) => setBriefIdx(i)} />
         </Chapter>
 
-        {/* Partners mid-page (featured only) */}
-        <PartnersSection />
+        {/* Partners */}
+        <PartnersShowcase />
 
-        {/* Itinerary with dress code silhouettes */}
+        {/* Itinerary */}
         <ItinerarySection />
 
         <Chapter
@@ -1397,14 +1442,13 @@ export default function Home() {
         .nav-bar::-webkit-scrollbar { display:none; }
         .nav-pill {
           display:inline-flex; align-items:center; justify-content:center;
-          border:1px solid rgba(255,255,255,.20); padding:8px 12px; border-radius:14px;
+          border:1px solid rgba(255,255,255,.20); padding:10px 14px; border-radius:16px;
           color:#fff; text-decoration:none; white-space:nowrap; background:rgba(255,255,255,.06);
           transition: background .2s ease, border-color .2s ease, transform .15s ease;
         }
         .nav-pill:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.28); transform:translateY(-1px); }
         .nav-pill--ghost { background:rgba(255,255,255,.04); }
         .nav-pill--primary { background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.30); }
-        @media (min-width:640px) { .nav-bar { max-width:none; } .nav-pill { padding:10px 14px; border-radius:16px; } }
         .menu-item {
           display:inline-flex; align-items:center; justify-content:space-between;
           padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
@@ -1417,7 +1461,7 @@ export default function Home() {
   );
 }
 
-/* ---------- Brief Modal (after Home for reference) ---------- */
+/* ---------- Brief Modal ---------- */
 function BriefModal({ idx, onClose }) {
   if (idx === null) return null;
   const c = COMMITTEES[idx];
