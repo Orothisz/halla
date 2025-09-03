@@ -1,5 +1,5 @@
 // src/pages/Home.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
@@ -264,6 +264,17 @@ function Gilded({ children }) {
   );
 }
 
+/* ---------- Partner filtering (ONLY Study & Gaming) ---------- */
+function useCorePartners() {
+  return useMemo(() => {
+    if (!Array.isArray(PARTNERS)) return [];
+    return PARTNERS.filter((p) => {
+      const role = (p.role || "").toLowerCase();
+      return role.includes("study partner") || role.includes("gaming partner");
+    });
+  }, []);
+}
+
 /* ---------- Partner Showcases ---------- */
 function PartnerMedallion({ role, name, logo }) {
   return (
@@ -284,16 +295,17 @@ function PartnerMedallion({ role, name, logo }) {
   );
 }
 
-/* Hero ribbon with large partner presence */
+/* Hero ribbon with large partner presence (filtered) */
 function HeroPartnersRibbon() {
-  if (!Array.isArray(PARTNERS) || PARTNERS.length === 0) return null;
+  const CORE = useCorePartners();
+  if (CORE.length === 0) return null;
   return (
     <div className="mt-8">
       <div className="text-xs uppercase tracking-[0.35em] text-white/60 mb-3 flex items-center justify-center gap-2">
         <Star size={14} className="opacity-80" /> <span>In Proud Association</span> <Star size={14} className="opacity-80" />
       </div>
       <div className="flex flex-wrap items-stretch justify-center gap-3">
-        {PARTNERS.map((p) => (
+        {CORE.map((p) => (
           <PartnerMedallion key={`hero-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
         ))}
       </div>
@@ -301,28 +313,93 @@ function HeroPartnersRibbon() {
   );
 }
 
-/* Slim ticker under header that loops partner logos */
+/* Super-smooth, constant-speed marquee (filtered) */
 function PartnerTicker() {
-  if (!Array.isArray(PARTNERS) || PARTNERS.length === 0) return null;
-  // duplicate items for smooth loop
-  const items = [...PARTNERS, ...PARTNERS, ...PARTNERS];
+  const CORE = useCorePartners();
+  const railRef = useRef(null);
+  const trackRef = useRef(null);
+  const animRef = useRef({ x: 0, last: 0 });
+  const SPEED_PX_PER_S = 48; // constant speed across devices
+
+  useEffect(() => {
+    const rail = railRef.current;
+    const track = trackRef.current;
+    if (!rail || !track || CORE.length === 0) return;
+
+    // Ensure at least two copies so the loop is seamless.
+    // Build once, then rAF translateX.
+    const base = track.querySelector("[data-chunk='base']");
+    const cloneA = base.cloneNode(true);
+    const cloneB = base.cloneNode(true);
+    cloneA.setAttribute("data-chunk", "cloneA");
+    cloneB.setAttribute("data-chunk", "cloneB");
+    track.appendChild(cloneA);
+    track.appendChild(cloneB);
+
+    // Measure total width of one chunk
+    const chunkWidth = base.getBoundingClientRect().width;
+
+    const onFrame = (ts) => {
+      if (!animRef.current.last) animRef.current.last = ts;
+      const dt = (ts - animRef.current.last) / 1000; // seconds
+      animRef.current.last = ts;
+
+      animRef.current.x -= SPEED_PX_PER_S * dt;
+
+      // Loop seamlessly when a full chunk has passed
+      if (-animRef.current.x >= chunkWidth) {
+        animRef.current.x += chunkWidth;
+      }
+
+      track.style.transform = `translate3d(${animRef.current.x}px,0,0)`;
+      requestAnimationFrame(onFrame);
+    };
+
+    const id = requestAnimationFrame(onFrame);
+
+    // Cleanup on unmount
+    return () => {
+      cancelAnimationFrame(id);
+      // Remove clones so re-mount is clean
+      try {
+        cloneA.remove();
+        cloneB.remove();
+      } catch {}
+      animRef.current = { x: 0, last: 0 };
+      if (track) track.style.transform = "translate3d(0,0,0)";
+    };
+  }, [CORE.length]);
+
+  if (CORE.length === 0) return null;
+
   return (
-    <div className="bg-white/[0.05] border-b border-white/10 backdrop-blur-sm overflow-hidden">
-      <div className="relative mx-auto max-w-7xl">
-        <div className="flex items-center gap-8 py-2 animate-partner-marquee will-change-transform">
-          {items.map((p, i) => (
-            <div key={`ticker-${p.name}-${i}`} className="flex items-center gap-2 text-white/70">
-              <img
-                src={p.logo}
-                alt={`${p.name} logo`}
-                className="h-6 w-6 object-contain"
-                onError={(e) => (e.currentTarget.style.opacity = 0.35)}
-              />
-              <span className="text-[11px] whitespace-nowrap">
-                <span className="text-white/55">{p.role}:</span> <span className="font-medium">{p.name}</span>
-              </span>
-            </div>
-          ))}
+    <div
+      className="bg-white/[0.05] border-b border-white/10 backdrop-blur-sm overflow-hidden"
+      style={{ contain: "paint", willChange: "transform" }}
+    >
+      <div className="relative mx-auto max-w-7xl" ref={railRef}>
+        <div
+          ref={trackRef}
+          className="flex items-center gap-8 py-2"
+          style={{ willChange: "transform", backfaceVisibility: "hidden", transform: "translate3d(0,0,0)" }}
+        >
+          <div className="flex items-center gap-8" data-chunk="base">
+            {CORE.map((p, i) => (
+              <div key={`ticker-${p.name}-${i}`} className="flex items-center gap-2 text-white/70">
+                <img
+                  src={p.logo}
+                  alt={`${p.name} logo`}
+                  className="h-6 w-6 object-contain"
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => (e.currentTarget.style.opacity = 0.35)}
+                />
+                <span className="text-[11px] whitespace-nowrap">
+                  <span className="text-white/55">{p.role}:</span> <span className="font-medium">{p.name}</span>
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -475,7 +552,8 @@ function PartnerBadge({ role, name, logo }) {
   );
 }
 function PartnersSection() {
-  if (!Array.isArray(PARTNERS) || PARTNERS.length === 0) return null;
+  const CORE = useCorePartners();
+  if (CORE.length === 0) return null;
   return (
     <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
       <SectionHeading
@@ -487,13 +565,13 @@ function PartnersSection() {
         Institutions that stand with Noir — strengthening access, study, and community.
       </p>
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {PARTNERS.map((p) => (
+        {CORE.map((p) => (
           <PartnerBadge key={`${p.role}-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
         ))}
       </div>
       <div className="mt-6 overflow-x-auto sm:hidden [-webkit-overflow-scrolling:touch]">
         <div className="flex gap-3 min-w-max">
-          {PARTNERS.map((p) => (
+          {CORE.map((p) => (
             <div key={`mini-${p.name}`} className="px-3 py-2 rounded-full border border-white/12 bg-white/[0.04] text-xs whitespace-nowrap">
               {p.role}: <span className="font-medium">{p.name}</span>
             </div>
@@ -869,16 +947,17 @@ function TalkToUs() {
 
 /* ---------- Footer ---------- */
 function InlineFooter() {
+  const CORE = useCorePartners();
   return (
     <footer className="mt-16 border-top border-white/10">
-      {/* Mini partners strip */}
-      {Array.isArray(PARTNERS) && PARTNERS.length > 0 && (
+      {/* Mini partners strip (filtered) */}
+      {CORE.length > 0 && (
         <div className="mx-auto max-w-7xl px-4 py-6">
           <div className="text-xs uppercase tracking-[0.28em] text-white/50 text-center mb-3">
             Partners
           </div>
           <div className="flex items-center justify-center gap-6 flex-wrap">
-            {PARTNERS.map((p) => (
+            {CORE.map((p) => (
               <div key={`footer-${p.name}`} className="flex items-center gap-2 text-white/70">
                 <img
                   src={p.logo}
@@ -1014,7 +1093,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Partner ticker directly under header */}
+        {/* Partner ticker directly under header (filtered & smooth) */}
         <PartnerTicker />
       </header>
 
@@ -1161,15 +1240,6 @@ export default function Home() {
         }
         .menu-item--primary { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.24); }
         .click-safe { position:relative; z-index:30; pointer-events:auto; }
-
-        /* Partner ticker animation */
-        @keyframes partner-marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-33.333%); }
-        }
-        .animate-partner-marquee {
-          animation: partner-marquee 18s linear infinite;
-        }
       `}</style>
     </div>
   );
