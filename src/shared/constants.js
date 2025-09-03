@@ -1,4 +1,3 @@
-```js
 // src/shared/constants.js
 // Pure JS — no JSX here.
 
@@ -125,17 +124,19 @@ export const COMMITTEES = [
   },
 ];
 
-// Assistance page short text
-export const ASSIST_TEXT = `UNA-USA ROPs (Very Short):
-• Roll Call → Setting the agenda → General Speakers’ List (GSL) → Moderated/Unmoderated Caucuses → Drafts → Amendments → Voting.
-• Points: Personal Privilege, Parliamentary Inquiry, Order.
-• Motions: Set Agenda, Moderate/Unmoderate, Adjourn/ Suspend, Introduce Draft, Close Debate.
-Tips: Be concise on GSL, drive specifics in moderated, use unmods to build blocs and text.
-
-How Noir Committees Work:
-• Study guides before conference, guided by EB.
-• Strict decorum; time discipline; plagiarism zero-tolerance.
-• Awards weigh consistency, bloc-building, drafting, and crisis handling (where applicable).`;
+// Assistance page short text (no backticks to avoid parser issues on some builds)
+export const ASSIST_TEXT = [
+  "UNA-USA ROPs (Very Short):",
+  "• Roll Call → Setting the agenda → General Speakers’ List (GSL) → Moderated/Unmoderated Caucuses → Drafts → Amendments → Voting.",
+  "• Points: Personal Privilege, Parliamentary Inquiry, Order.",
+  "• Motions: Set Agenda, Moderate/Unmoderate, Adjourn/ Suspend, Introduce Draft, Close Debate.",
+  "Tips: Be concise on GSL, drive specifics in moderated, use unmods to build blocs and text.",
+  "",
+  "How Noir Committees Work:",
+  "• Study guides before conference, guided by EB.",
+  "• Strict decorum; time discipline; plagiarism zero-tolerance.",
+  "• Awards weigh consistency, bloc-building, drafting, and crisis handling (where applicable).",
+].join("\n");
 
 // Optional helpers for older components that expect these:
 export const POSTERS = COMMITTEES.map((c) => c.logo);
@@ -167,4 +168,3 @@ export const PARTNERS = [
     logo: "https://i.postimg.cc/6Qh0ndX3/Untitled-design-11.png",
   },
 ];
-```
