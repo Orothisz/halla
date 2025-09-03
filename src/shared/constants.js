@@ -202,7 +202,7 @@ export const PARTNERS = [
   {
     role: "Study Partner",
     name: "Study Anchor",
-    logo: "https://i.postimg.cc/q7Wncs0d/Untitled-design-15.png",
+    logo: "https://i.postimg.cc/Bvwt9Hnw/Whats-App-Image-2025-09-03-at-17-26-52-ed8e1170.jpg",
   },
   {
     role: "Study Partner",
