@@ -28,6 +28,7 @@ import {
   COMMITTEES,
   WHATSAPP_ESCALATE,
   VENUE,
+  PARTNERS, // <-- NEW
 } from "../shared/constants";
 
 /* --------------------------------------------------
@@ -441,6 +442,77 @@ function VenueBanner() {
   );
 }
 
+/* ---------- Gilded Section Heading ---------- */
+function SectionHeading({ kicker, title, icon }) {
+  return (
+    <div className="mb-6">
+      <div className="text-white/60 text-xs tracking-[0.35em] uppercase">{kicker}</div>
+      <div className="mt-2 flex items-center gap-3">
+        {icon}
+        <h2 className="text-2xl md:text-3xl font-extrabold">{title}</h2>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Partners (cards + subtle glow) ---------- */
+function PartnerBadge({ role, name, logo }) {
+  return (
+    <div className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden">
+      <div
+        aria-hidden
+        className="absolute -top-8 -right-10 h-24 w-24 rounded-full bg-white/10 blur-2xl opacity-40 group-hover:opacity-70 transition"
+      />
+      <div className="flex items-center gap-3">
+        <div className="shrink-0 rounded-xl border border-white/15 bg-white/5 w-14 h-14 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.05)_inset]">
+          <img
+            src={logo}
+            alt={`${name} logo`}
+            className="w-10 h-10 object-contain"
+            onError={(e) => (e.currentTarget.style.opacity = 0.35)}
+          />
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-[0.24em] text-white/60">{role}</div>
+          <div className="text-sm font-semibold">{name}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function PartnersSection() {
+  if (!Array.isArray(PARTNERS) || PARTNERS.length === 0) return null;
+  return (
+    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
+      <SectionHeading
+        kicker="Chapter III½"
+        title="Allies & Partners"
+        icon={<Crown size={20} className="text-white/70" />}
+      />
+      <p className="text-white/80 leading-relaxed">
+        Institutions that stand with Noir — strengthening access, study, and community.
+      </p>
+
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {PARTNERS.map((p) => (
+          <PartnerBadge key={`${p.role}-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
+        ))}
+      </div>
+
+      {/* Slim scroller for mobile elegance */}
+      <div className="mt-6 overflow-x-auto sm:hidden [-webkit-overflow-scrolling:touch]">
+        <div className="flex gap-3 min-w-max">
+          {PARTNERS.map((p) => (
+            <div key={`mini-${p.name}`} className="px-3 py-2 rounded-full border border-white/12 bg-white/[0.04] text-xs whitespace-nowrap">
+              {p.role}: <span className="font-medium">{p.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ---------- Prologue (Hero) ---------- */
 function Prologue() {
   return (
@@ -829,6 +901,30 @@ function TalkToUs() {
 function InlineFooter() {
   return (
     <footer className="mt-16 border-t border-white/10">
+      {/* Mini partners strip */}
+      {Array.isArray(PARTNERS) && PARTNERS.length > 0 && (
+        <div className="mx-auto max-w-7xl px-4 py-6">
+          <div className="text-xs uppercase tracking-[0.28em] text-white/50 text-center mb-3">
+            Partners
+          </div>
+          <div className="flex items-center justify-center gap-6 flex-wrap">
+            {PARTNERS.map((p) => (
+              <div key={`footer-${p.name}`} className="flex items-center gap-2 text-white/70">
+                <img
+                  src={p.logo}
+                  alt={`${p.name} logo`}
+                  className="h-6 w-6 object-contain opacity-90"
+                  onError={(e) => (e.currentTarget.style.opacity = 0.35)}
+                />
+                <span className="text-xs">
+                  <span className="text-white/60">{p.role}:</span> <span className="font-medium">{p.name}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto max-w-7xl px-4 py-10 grid gap-8 md:grid-cols-4 text-white/80">
         <div className="flex items-center gap-3">
           <img src={LOGO_URL} alt="Noir" className="h-10 w-10 object-contain" />
@@ -1047,6 +1143,9 @@ export default function Home() {
           Choose your arena, study the agenda, and step into the role. Tap a poster to open its dossier.
           <PosterWall onOpen={(i) => setBriefIdx(i)} />
         </Chapter>
+
+        {/* NEW — Partners seated elegantly between Councils and CTA */}
+        <PartnersSection />
 
         <Chapter
           kicker="Chapter IV"
