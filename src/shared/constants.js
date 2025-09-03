@@ -207,12 +207,12 @@ export const PARTNERS = [
   {
     role: "Study Partner",
     name: "Sam Institute of English Language and Personality Development",
-    logo: "https://i.postimg.cc/6Qh0ndX3/Untitled-design-11.png",
+    logo: "https://i.postimg.cc/RhSY76c4/sam-institute-of-english-language-personality-development-logo-1.jpg",
   },
   {
     role: "Gaming Partner",
     name: "Galaxy Laser Tag",
-    logo: "https://i.postimg.cc/j2hwkhMw/Untitled-design-13.png",
+    logo: "https://i.postimg.cc/Qd1qMNTb/Untitled-design-16.png",
   },
   {
     role: "Food Partner",
