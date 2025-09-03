@@ -30,6 +30,7 @@ import {
   WHATSAPP_ESCALATE,
   VENUE,
   PARTNERS, // partners pulled from constants.js
+  ITINERARY, // <<< added
 } from "../shared/constants";
 
 /* --------------------------------------------------
@@ -97,7 +98,7 @@ const ROLE_SYNONYMS = {
   "junior advisor": "junior advisor",
   "chief advisor": "chief advisor",
   "charge d affaires": "charge d'affaires",
-  "charge d' affaires": "charge d'affaires",
+  "charge d' affairs": "charge d'affaires",
   "charge d'affaires": "charge d'affaires",
   "chef d cabinet": "chef d cabinet",
   "conference director": "conference director",
@@ -264,13 +265,19 @@ function Gilded({ children }) {
   );
 }
 
-/* ---------- Partner filtering (ONLY Study & Gaming) ---------- */
-function useCorePartners() {
+/* ---------- Partner filtering (UPDATED to include new roles) ---------- */
+function useShowcasePartners() {
   return useMemo(() => {
     if (!Array.isArray(PARTNERS)) return [];
     return PARTNERS.filter((p) => {
       const role = (p.role || "").toLowerCase();
-      return role.includes("study partner") || role.includes("gaming partner");
+      return (
+        role.includes("study partner") ||
+        role.includes("gaming partner") ||
+        role.includes("rewards partner") ||
+        role.includes("kitchen partner") ||
+        role.includes("venue & catering partner")
+      );
     });
   }, []);
 }
@@ -278,8 +285,8 @@ function useCorePartners() {
 /* ---------- Partner Showcases ---------- */
 function PartnerMedallion({ role, name, logo }) {
   return (
-    <div className="group flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] transition backdrop-blur">
-      <div className="shrink-0 w-12 h-12 rounded-xl border border-white/15 bg-white/5 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.06)_inset]">
+    <div className="group flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/12 bg-white/[0.06] hover:bg-white/[0.1] transition backdrop-blur-sm">
+      <div className="shrink-0 w-12 h-12 rounded-xl border border-white/12 bg-white/5 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.06)_inset]">
         <img
           src={logo}
           alt={`${name} logo`}
@@ -295,17 +302,62 @@ function PartnerMedallion({ role, name, logo }) {
   );
 }
 
-/* Hero ribbon with large partner presence (filtered) */
-function HeroPartnersRibbon() {
-  const CORE = useCorePartners();
-  if (CORE.length === 0) return null;
+/* Premium partner chip (bigger, single) */
+function PremiumPartner() {
+  const venuePartner = useMemo(
+    () =>
+      (PARTNERS || []).find((p) =>
+        (p.role || "").toLowerCase().includes("venue & catering partner")
+      ),
+    []
+  );
+  if (!venuePartner) return null;
   return (
-    <div className="mt-8">
-      <div className="text-xs uppercase tracking-[0.35em] text-white/60 mb-3 flex items-center justify-center gap-2">
-        <Star size={14} className="opacity-80" /> <span>In Proud Association</span> <Star size={14} className="opacity-80" />
+    <div className="mt-6 flex items-center justify-center">
+      <div className="inline-flex items-center gap-4 rounded-3xl border border-white/12 bg-white/[0.07] px-5 py-4 backdrop-blur-md">
+        <div className="w-14 h-14 rounded-2xl border border-white/12 bg-white/5 grid place-items-center">
+          <img
+            src={venuePartner.logo}
+            alt={`${venuePartner.name} logo`}
+            className="w-11 h-11 object-contain"
+          />
+        </div>
+        <div className="leading-tight">
+          <div className="text-[10px] uppercase tracking-[0.32em] text-white/60">
+            Venue & Catering Partner
+          </div>
+          <div className="text-base font-semibold">{venuePartner.name}</div>
+        </div>
+        <a
+          href={VENUE_HOTEL_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="ml-2 inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-2 text-xs border border-white/15"
+        >
+          Explore <ExternalLink size={14} />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/* Hero ribbon with partner presence (updated filter) */
+function HeroPartnersRibbon() {
+  const CORE = useShowcasePartners();
+  const others = CORE.filter(
+    (p) => !(p.role || "").toLowerCase().includes("venue & catering partner")
+  );
+  if (others.length === 0) return <PremiumPartner />;
+
+  return (
+    <div className="mt-6">
+      <PremiumPartner />
+      <div className="mt-5 text-xs uppercase tracking-[0.35em] text-white/60 mb-3 flex items-center justify-center gap-2">
+        <Star size={14} className="opacity-80" /> <span>In Proud Association</span>{" "}
+        <Star size={14} className="opacity-80" />
       </div>
       <div className="flex flex-wrap items-stretch justify-center gap-3">
-        {CORE.map((p) => (
+        {others.map((p) => (
           <PartnerMedallion key={`hero-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
         ))}
       </div>
@@ -313,21 +365,19 @@ function HeroPartnersRibbon() {
   );
 }
 
-/* Super-smooth, constant-speed marquee (filtered) */
+/* Super-smooth, constant-speed marquee (updated filter) */
 function PartnerTicker() {
-  const CORE = useCorePartners();
+  const CORE = useShowcasePartners();
   const railRef = useRef(null);
   const trackRef = useRef(null);
   const animRef = useRef({ x: 0, last: 0 });
-  const SPEED_PX_PER_S = 48; // constant speed across devices
+  const SPEED_PX_PER_S = 48;
 
   useEffect(() => {
     const rail = railRef.current;
     const track = trackRef.current;
     if (!rail || !track || CORE.length === 0) return;
 
-    // Ensure at least two copies so the loop is seamless.
-    // Build once, then rAF translateX.
     const base = track.querySelector("[data-chunk='base']");
     const cloneA = base.cloneNode(true);
     const cloneB = base.cloneNode(true);
@@ -336,17 +386,15 @@ function PartnerTicker() {
     track.appendChild(cloneA);
     track.appendChild(cloneB);
 
-    // Measure total width of one chunk
     const chunkWidth = base.getBoundingClientRect().width;
 
     const onFrame = (ts) => {
       if (!animRef.current.last) animRef.current.last = ts;
-      const dt = (ts - animRef.current.last) / 1000; // seconds
+      const dt = (ts - animRef.current.last) / 1000;
       animRef.current.last = ts;
 
       animRef.current.x -= SPEED_PX_PER_S * dt;
 
-      // Loop seamlessly when a full chunk has passed
       if (-animRef.current.x >= chunkWidth) {
         animRef.current.x += chunkWidth;
       }
@@ -357,10 +405,8 @@ function PartnerTicker() {
 
     const id = requestAnimationFrame(onFrame);
 
-    // Cleanup on unmount
     return () => {
       cancelAnimationFrame(id);
-      // Remove clones so re-mount is clean
       try {
         cloneA.remove();
         cloneB.remove();
@@ -395,7 +441,8 @@ function PartnerTicker() {
                   onError={(e) => (e.currentTarget.style.opacity = 0.35)}
                 />
                 <span className="text-[11px] whitespace-nowrap">
-                  <span className="text-white/55">{p.role}:</span> <span className="font-medium">{p.name}</span>
+                  <span className="text-white/55">{p.role}:</span>{" "}
+                  <span className="font-medium">{p.name}</span>
                 </span>
               </div>
             ))}
@@ -424,9 +471,7 @@ function VenuePill() {
         title={VENUE.name}
       >
         <MapPin size={14} />
-        <span className="truncate max-w-[62vw] sm:max-w-none">
-          Venue: {VENUE.name}
-        </span>
+        <span className="truncate max-w-[62vw] sm:max-w-none">Venue: {VENUE.name}</span>
         <ExternalLink size={14} className="opacity-80" />
       </a>
 
@@ -472,7 +517,7 @@ function VenuePill() {
 /* ---------- Venue Banner ---------- */
 function VenueBanner() {
   return (
-    <div className="mt-6 relative isolate overflow-hidden rounded-[20px] border border-white/12 bg-white/[0.04] p-4 text-white">
+    <div className="mt-6 relative isolate overflow-hidden rounded-[24px] border border-white/12 bg-white/[0.04] p-4 text-white">
       <div
         aria-hidden
         className="absolute inset-0 -z-10 opacity-20"
@@ -514,19 +559,22 @@ function VenueBanner() {
 }
 
 /* ---------- Section Heading ---------- */
-function SectionHeading({ kicker, title, icon }) {
+function SectionHeading({ kicker, title, icon, aside }) {
   return (
-    <div className="mb-6">
-      <div className="text-white/60 text-xs tracking-[0.35em] uppercase">{kicker}</div>
-      <div className="mt-2 flex items-center gap-3">
-        {icon}
-        <h2 className="text-2xl md:text-3xl font-extrabold">{title}</h2>
+    <div className="mb-6 flex items-end justify-between gap-3">
+      <div>
+        <div className="text-white/60 text-xs tracking-[0.35em] uppercase">{kicker}</div>
+        <div className="mt-2 flex items-center gap-3">
+          {icon}
+          <h2 className="text-2xl md:text-3xl font-extrabold">{title}</h2>
+        </div>
       </div>
+      {aside}
     </div>
   );
 }
 
-/* ---------- Partners Section (mid-page cards) ---------- */
+/* ---------- Partners Section (mid-page; FEATURED only) ---------- */
 function PartnerBadge({ role, name, logo }) {
   return (
     <div className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden">
@@ -552,31 +600,95 @@ function PartnerBadge({ role, name, logo }) {
   );
 }
 function PartnersSection() {
-  const CORE = useCorePartners();
-  if (CORE.length === 0) return null;
+  const FEATURED = useMemo(() => {
+    const roles = ["venue & catering partner", "rewards partner", "kitchen partner"];
+    return (PARTNERS || []).filter((p) => roles.includes((p.role || "").toLowerCase()));
+  }, []);
+  if (FEATURED.length === 0) return null;
   return (
     <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
       <SectionHeading
         kicker="Chapter III½"
         title="Allies & Partners"
         icon={<Crown size={20} className="text-white/70" />}
+        aside={<div className="text-xs text-white/60">Handpicked sponsors</div>}
       />
       <p className="text-white/80 leading-relaxed">
         Institutions that stand with Noir — strengthening access, study, and community.
       </p>
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {CORE.map((p) => (
+        {FEATURED.map((p) => (
           <PartnerBadge key={`${p.role}-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
         ))}
       </div>
-      <div className="mt-6 overflow-x-auto sm:hidden [-webkit-overflow-scrolling:touch]">
-        <div className="flex gap-3 min-w-max">
-          {CORE.map((p) => (
-            <div key={`mini-${p.name}`} className="px-3 py-2 rounded-full border border-white/12 bg-white/[0.04] text-xs whitespace-nowrap">
-              {p.role}: <span className="font-medium">{p.name}</span>
+    </section>
+  );
+}
+
+/* ---------- Dress Code Icons (inline SVG silhouettes) ---------- */
+function IndianFormalIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="currentColor" className="opacity-90">
+      <path d="M8 3c1.4 0 2.4.8 3 1.7C11.6 3.8 12.6 3 14 3c1.8 0 3 1 3 1l-1 3.5-2 .8V21H10V8.3l-2-.8L7 4s1.2-1 3-1Z" />
+      <path d="M10 9h4v2h-4zM10 12h4v2h-4z" />
+    </svg>
+  );
+}
+function WesternFormalIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="currentColor" className="opacity-90">
+      <path d="M8 3h8l2 6-4 3 2 9H8l2-9-4-3 2-6Z" />
+      <path d="M12 3v6l-1 2h2l-1-2V3Z" />
+    </svg>
+  );
+}
+function DressCodeChip({ text }) {
+  const isIndian = /indian|ethnic/i.test(text);
+  const Icon = isIndian ? IndianFormalIcon : WesternFormalIcon;
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-xs text-white/85">
+      <Icon size={14} />
+      {text}
+    </span>
+  );
+}
+
+/* ---------- Itinerary Section ---------- */
+function ItinerarySection() {
+  if (!Array.isArray(ITINERARY) || ITINERARY.length === 0) return null;
+
+  return (
+    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
+      <SectionHeading
+        kicker="Chapter IIII"
+        title="Order of Days"
+        icon={<Calendar size={20} className="text-white/70" />}
+        aside={<div className="text-[11px] text-white/60">*</div>}
+      />
+      <div className="text-white/60 text-xs -mt-4 mb-4">
+        * Schedule is tentative and subject to minor adjustments.
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        {ITINERARY.map((d) => (
+          <div
+            key={d.day}
+            className="rounded-2xl border border-white/12 bg-white/[0.05] p-5 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-lg font-semibold">Day {d.day} — {d.dateText}</div>
+              <DressCodeChip text={d.dressCode} />
             </div>
-          ))}
-        </div>
+            <div className="mt-4 space-y-2">
+              {d.events.map((ev, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-28 shrink-0 text-white/70 text-sm">{ev.time}</div>
+                  <div className="h-px w-6 bg-white/10" />
+                  <div className="text-sm">{ev.title}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -606,7 +718,7 @@ function Prologue() {
           <Gilded>Whispers Today, Echo Tomorrow</Gilded>
         </div>
 
-        {/* PROMINENT HERO PARTNERS RIBBON */}
+        {/* Premium partner + associated partners */}
         <HeroPartnersRibbon />
 
         <QuoteCard>
@@ -947,7 +1059,7 @@ function TalkToUs() {
 
 /* ---------- Footer ---------- */
 function InlineFooter() {
-  const CORE = useCorePartners();
+  const CORE = useShowcasePartners();
   return (
     <footer className="mt-16 border-top border-white/10">
       {/* Mini partners strip (filtered) */}
@@ -966,7 +1078,8 @@ function InlineFooter() {
                   onError={(e) => (e.currentTarget.style.opacity = 0.35)}
                 />
                 <span className="text-xs">
-                  <span className="text-white/60">{p.role}:</span> <span className="font-medium">{p.name}</span>
+                  <span className="text-white/60">{p.role}:</span>{" "}
+                  <span className="font-medium">{p.name}</span>
                 </span>
               </div>
             ))}
@@ -984,7 +1097,9 @@ function InlineFooter() {
         </div>
         <div>
           <div className="font-semibold">Explore</div>
-          <Link to="/assistance" className="block text-sm hover:underline">Assistance</Link>
+          <Link to="/assistance" className="block text-sm hover:underline">
+            Assistance
+          </Link>
           <a
             href="https://www.noirmun.com/best-mun-delhi-faridabad"
             className="block text-sm hover:underline"
@@ -1006,7 +1121,9 @@ function InlineFooter() {
         <div>
           <div className="font-semibold">Legal</div>
           <Link to="/legal" className="block text-sm hover:underline">Terms & Privacy</Link>
-          <div className="text-xs text-white/60">© {new Date().getFullYear()} Noir MUN — “Whispers Today, Echo Tomorrow.”</div>
+          <div className="text-xs text-white/60">
+            © {new Date().getFullYear()} Noir MUN — “Whispers Today, Echo Tomorrow.”
+          </div>
         </div>
       </div>
     </footer>
@@ -1093,7 +1210,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Partner ticker directly under header (filtered & smooth) */}
+        {/* Partner ticker directly under header (updated & smooth) */}
         <PartnerTicker />
       </header>
 
@@ -1193,8 +1310,11 @@ export default function Home() {
           <PosterWall onOpen={(i) => setBriefIdx(i)} />
         </Chapter>
 
-        {/* Partners mid-page (cards) */}
+        {/* Partners mid-page (featured only) */}
         <PartnersSection />
+
+        {/* Itinerary with dress code silhouettes */}
+        <ItinerarySection />
 
         <Chapter
           kicker="Chapter IV"
