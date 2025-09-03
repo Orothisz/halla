@@ -17,6 +17,7 @@ import {
   MapPin,
   ExternalLink,
   Navigation,
+  Star,
 } from "lucide-react";
 
 import {
@@ -28,7 +29,7 @@ import {
   COMMITTEES,
   WHATSAPP_ESCALATE,
   VENUE,
-  PARTNERS, // <-- NEW
+  PARTNERS, // partners pulled from constants.js
 } from "../shared/constants";
 
 /* --------------------------------------------------
@@ -38,7 +39,6 @@ const REGISTER_HREF = "https://noirmun.com/register";
 const EB_APPLY_HREF = "https://docs.google.com/forms/d/e/1FAIpQLSckm785lhMOj09BOBpaFWxbBzxp6cO5UjJulhbzZQz__lFtxw/viewform";
 const IG_HREF = "https://instagram.com/noirmodelun";
 const LINKTREE_HREF = "https://linktr.ee/noirmun";
-// Official hotel page (as requested)
 const VENUE_HOTEL_URL = "https://www.sarovarhotels.com/delite-sarovar-portico-faridabad/";
 
 /* --------------------------------------------------
@@ -104,7 +104,7 @@ const ROLE_SYNONYMS = {
   founder: "founder",
 };
 
-// Special override: “Who is the ED?”
+/* Special override: “Who is the ED?” */
 function specialEDIntercept(q) {
   const isWho = /\bwho(\s+is|'?s)?\b/.test(q);
   const mentionsED = /(\bthe\s+)?\bed\b|executive\s+director/.test(q);
@@ -147,7 +147,7 @@ function Atmosphere() {
   return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
 }
 
-/* ---------- Roman Layer (real statues, marble, noise, parallax) ---------- */
+/* ---------- Roman Layer (statues, parallax) ---------- */
 function RomanLayer() {
   const { scrollYProgress } = useScroll();
   const yBust = useTransform(scrollYProgress, [0, 1], [0, -100]);
@@ -160,7 +160,6 @@ function RomanLayer() {
 
   return (
     <>
-      {/* Marble gradients */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]"
@@ -169,20 +168,10 @@ function RomanLayer() {
             "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))",
         }}
       />
-
-      {/* Gold glints */}
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <motion.div
-          style={{ y: yBust }}
-          className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
-        />
-        <motion.div
-          style={{ y: yColumn }}
-          className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl"
-        />
+        <motion.div style={{ y: yBust }} className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl" />
+        <motion.div style={{ y: yColumn }} className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl" />
       </div>
-
-      {/* Statues — parallax + blend for premium depth */}
       <motion.img
         src={IMG_LEFT}
         alt=""
@@ -207,8 +196,6 @@ function RomanLayer() {
         className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
         style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
       />
-
-      {/* Fine film grain for luxe finish */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay"
@@ -245,62 +232,6 @@ const BigBlock = ({ label, value }) => (
   </div>
 );
 
-/* ---------- Committee Brief Modal ---------- */
-function BriefModal({ idx, onClose }) {
-  if (idx === null) return null;
-  const c = COMMITTEES[idx];
-  return (
-    <AnimatePresence>
-      <motion.div
-        className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        <motion.div
-          initial={{ y: 30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 30, opacity: 0 }}
-          className="max-w-3xl w-full max-h-[85vh] overflow-auto rounded-2xl border border-white/15 bg-[#0a0a1a] text-white p-6"
-        >
-          <div className="flex items-center gap-3">
-            <img src={c.logo} className="h-12 w-12 object-contain" alt={`${c.name} logo`} />
-            <h3 className="text-xl font-bold">{c.name}</h3>
-            <button onClick={onClose} className="ml-auto p-1 hover:opacity-80">
-              <X size={18} />
-            </button>
-          </div>
-          <div className="mt-4 text-white/80">
-            <span className="font-semibold">Agenda:</span> {c.agenda}
-          </div>
-          <div className="mt-5 grid md:grid-cols-2 gap-5">
-            <div>
-              <div className="text-white font-semibold">Overview</div>
-              <p className="mt-2 text-white/80">{c.brief.overview}</p>
-              <div className="mt-4 text-white font-semibold">Objectives</div>
-              <ul className="mt-2 list-disc list-inside text-white/80 space-y-1">
-                {c.brief.objectives.map((o, i) => (
-                  <li key={i}>{o}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <div className="text-white font-semibold">Format</div>
-              <p className="mt-2 text-white/80">{c.brief.format}</p>
-              <div className="mt-4 text-white font-semibold">Suggested Resources</div>
-              <ul className="mt-2 list-disc list-inside text-white/80 space-y-1">
-                {c.brief.resources.map((r, i) => (
-                  <li key={i}>{r}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  );
-}
-
 /* ---------- Visual Bits ---------- */
 const LaurelDivider = () => (
   <div className="my-8 flex items-center justify-center gap-3 text-white/40">
@@ -319,7 +250,6 @@ const QuoteCard = ({ children }) => (
   </div>
 );
 
-/* ---------- Gilded Heading ---------- */
 function Gilded({ children }) {
   return (
     <span
@@ -334,7 +264,72 @@ function Gilded({ children }) {
   );
 }
 
-/* ---------- Venue Pill (Hero inline) ---------- */
+/* ---------- Partner Showcases ---------- */
+function PartnerMedallion({ role, name, logo }) {
+  return (
+    <div className="group flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] transition backdrop-blur">
+      <div className="shrink-0 w-12 h-12 rounded-xl border border-white/15 bg-white/5 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.06)_inset]">
+        <img
+          src={logo}
+          alt={`${name} logo`}
+          className="w-9 h-9 object-contain"
+          onError={(e) => (e.currentTarget.style.opacity = 0.35)}
+        />
+      </div>
+      <div className="leading-tight">
+        <div className="text-[10px] uppercase tracking-[0.28em] text-white/60">{role}</div>
+        <div className="text-sm font-semibold">{name}</div>
+      </div>
+    </div>
+  );
+}
+
+/* Hero ribbon with large partner presence */
+function HeroPartnersRibbon() {
+  if (!Array.isArray(PARTNERS) || PARTNERS.length === 0) return null;
+  return (
+    <div className="mt-8">
+      <div className="text-xs uppercase tracking-[0.35em] text-white/60 mb-3 flex items-center justify-center gap-2">
+        <Star size={14} className="opacity-80" /> <span>In Proud Association</span> <Star size={14} className="opacity-80" />
+      </div>
+      <div className="flex flex-wrap items-stretch justify-center gap-3">
+        {PARTNERS.map((p) => (
+          <PartnerMedallion key={`hero-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* Slim ticker under header that loops partner logos */
+function PartnerTicker() {
+  if (!Array.isArray(PARTNERS) || PARTNERS.length === 0) return null;
+  // duplicate items for smooth loop
+  const items = [...PARTNERS, ...PARTNERS, ...PARTNERS];
+  return (
+    <div className="bg-white/[0.05] border-b border-white/10 backdrop-blur-sm overflow-hidden">
+      <div className="relative mx-auto max-w-7xl">
+        <div className="flex items-center gap-8 py-2 animate-partner-marquee will-change-transform">
+          {items.map((p, i) => (
+            <div key={`ticker-${p.name}-${i}`} className="flex items-center gap-2 text-white/70">
+              <img
+                src={p.logo}
+                alt={`${p.name} logo`}
+                className="h-6 w-6 object-contain"
+                onError={(e) => (e.currentTarget.style.opacity = 0.35)}
+              />
+              <span className="text-[11px] whitespace-nowrap">
+                <span className="text-white/55">{p.role}:</span> <span className="font-medium">{p.name}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Venue Pill ---------- */
 function VenuePill() {
   const [hover, setHover] = useState(false);
   return (
@@ -358,7 +353,6 @@ function VenuePill() {
         <ExternalLink size={14} className="opacity-80" />
       </a>
 
-      {/* Hover / focus card (desktop) */}
       <AnimatePresence>
         {hover && (
           <motion.div
@@ -398,7 +392,7 @@ function VenuePill() {
   );
 }
 
-/* ---------- Venue Banner (optional; below CTAs) ---------- */
+/* ---------- Venue Banner ---------- */
 function VenueBanner() {
   return (
     <div className="mt-6 relative isolate overflow-hidden rounded-[20px] border border-white/12 bg-white/[0.04] p-4 text-white">
@@ -442,7 +436,7 @@ function VenueBanner() {
   );
 }
 
-/* ---------- Gilded Section Heading ---------- */
+/* ---------- Section Heading ---------- */
 function SectionHeading({ kicker, title, icon }) {
   return (
     <div className="mb-6">
@@ -455,7 +449,7 @@ function SectionHeading({ kicker, title, icon }) {
   );
 }
 
-/* ---------- Partners (cards + subtle glow) ---------- */
+/* ---------- Partners Section (mid-page cards) ---------- */
 function PartnerBadge({ role, name, logo }) {
   return (
     <div className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden">
@@ -492,14 +486,11 @@ function PartnersSection() {
       <p className="text-white/80 leading-relaxed">
         Institutions that stand with Noir — strengthening access, study, and community.
       </p>
-
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {PARTNERS.map((p) => (
           <PartnerBadge key={`${p.role}-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
         ))}
       </div>
-
-      {/* Slim scroller for mobile elegance */}
       <div className="mt-6 overflow-x-auto sm:hidden [-webkit-overflow-scrolling:touch]">
         <div className="flex gap-3 min-w-max">
           {PARTNERS.map((p) => (
@@ -529,7 +520,6 @@ function Prologue() {
           <Calendar size={16} /> {DATES_TEXT} • Faridabad
         </div>
 
-        {/* Venue pill directly under the date line */}
         <div className="mt-3">
           <VenuePill />
         </div>
@@ -537,6 +527,9 @@ function Prologue() {
         <div className="mt-5 text-xl md:text-2xl font-semibold">
           <Gilded>Whispers Today, Echo Tomorrow</Gilded>
         </div>
+
+        {/* PROMINENT HERO PARTNERS RIBBON */}
+        <HeroPartnersRibbon />
 
         <QuoteCard>
           In marble and laurel, discipline met rhetoric. Noir brings that precision to diplomacy —
@@ -553,8 +546,6 @@ function Prologue() {
           >
             Secure your seat <ChevronRight size={18} />
           </a>
-
-          {/* EB Applications (new) */}
           <a
             href={EB_APPLY_HREF}
             target="_blank"
@@ -564,7 +555,6 @@ function Prologue() {
           >
             EB Applications <ChevronRight size={18} />
           </a>
-
           <Link
             to="/signup"
             className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
@@ -579,7 +569,6 @@ function Prologue() {
           </Link>
         </div>
 
-        {/* Optional, elegant venue banner under CTAs */}
         <VenueBanner />
 
         <div className="mt-2 text-white/70 text-sm">
@@ -607,7 +596,7 @@ function Chapter({ kicker, title, children, icon }) {
   );
 }
 
-/* ---------- Councils grid (uniform logos) ---------- */
+/* ---------- Councils grid ---------- */
 function LogoBadge({ src, alt }) {
   return (
     <div className="mx-auto mt-2 shrink-0 rounded-full border border-yellow-100/20 bg-white/[0.06] w-16 h-16 md:w-20 md:h-20 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.04)_inset]">
@@ -646,8 +635,6 @@ function PosterWall({ onOpen }) {
                 <div className="text-xs text-white/70 line-clamp-3 mt-2">{c.agenda}</div>
               </div>
             </div>
-
-            {/* premium hover frame */}
             <div className="absolute inset-0 pointer-events-none">
               <div
                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
@@ -758,17 +745,12 @@ function TalkToUs() {
 
     const q = norm(msg);
 
-    // Dates / When
     if (/\b(date|when|schedule|day|dates|what\s+day|which\s+date)\b/.test(q)) {
       return add({ from: "bot", text: `Dates: ${DATES_TEXT}.` });
     }
-
-    // Fee
     if (/\b(fee|price|cost|charges?)\b/.test(q)) {
       return add({ from: "bot", text: "Delegate fee: ₹2300." });
     }
-
-    // Venue
     if (/\b(venue|where|location|address)\b/.test(q)) {
       try { window.open(VENUE_HOTEL_URL, "_blank"); } catch {}
       return add({
@@ -776,14 +758,10 @@ function TalkToUs() {
         text: `Venue: ${VENUE.name}.\nHotel page → ${VENUE_HOTEL_URL}\nMaps → ${VENUE.location}`,
       });
     }
-
-    // Register
     if (/\b(register|sign\s*up|enrol|enroll|apply|secure\s*(my|your)?\s*seat)\b/.test(q)) {
       try { window.open(REGISTER_HREF, "_blank"); } catch {}
       return add({ from: "bot", text: `Opening registration → ${REGISTER_HREF}` });
     }
-
-    // Socials
     if (/\b(insta|instagram)\b/.test(q)) {
       try { window.open(IG_HREF, "_blank"); } catch {}
       return add({ from: "bot", text: `Instagram → ${IG_HREF}` });
@@ -792,13 +770,9 @@ function TalkToUs() {
       try { window.open(LINKTREE_HREF, "_blank"); } catch {}
       return add({ from: "bot", text: `Links hub → ${LINKTREE_HREF}` });
     }
-
-    // Committees / agendas
     if (/\b(committee|committees|councils?|agenda|topics?)\b/.test(q)) {
       return add({ from: "bot", text: listCommittees() });
     }
-
-    // Staff / Org
     const staffAnswer = answerStaffQuery(q);
     if (staffAnswer) return add({ from: "bot", text: staffAnswer });
 
@@ -809,14 +783,10 @@ function TalkToUs() {
           "Leadership — Founder: Sameer Jhamb, Co-Founder: Maahir Gulati, President: Gautam Khera. Ask me any role by name too.",
       });
     }
-
-    // WhatsApp escalation
     if (/\b(exec|human|someone|whatsapp|help|contact|support)\b/.test(q)) {
       try { window.open(WHATSAPP_ESCALATE, "_blank"); } catch {}
       return add({ from: "bot", text: "Opening WhatsApp…" });
     }
-
-    // Fallback
     return add({
       from: "bot",
       text:
@@ -900,7 +870,7 @@ function TalkToUs() {
 /* ---------- Footer ---------- */
 function InlineFooter() {
   return (
-    <footer className="mt-16 border-t border-white/10">
+    <footer className="mt-16 border-top border-white/10">
       {/* Mini partners strip */}
       {Array.isArray(PARTNERS) && PARTNERS.length > 0 && (
         <div className="mx-auto max-w-7xl px-4 py-6">
@@ -1001,7 +971,7 @@ export default function Home() {
             <span className="font-semibold tracking-wide">Noir MUN</span>
           </div>
 
-          {/* Desktop nav — Register first, EB Applications next, Assistance & Legal last; Venue inserted */}
+          {/* Desktop nav */}
           <nav className="nav-bar hidden sm:flex">
             <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
               Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
@@ -1043,9 +1013,12 @@ export default function Home() {
             <Menu size={18} />
           </button>
         </div>
+
+        {/* Partner ticker directly under header */}
+        <PartnerTicker />
       </header>
 
-      {/* Mobile Menu Sheet — Register first, EB Applications next; Venue + Maps added */}
+      {/* Mobile Menu */}
       <AnimatePresence>
         {menuOpen && (
           <>
@@ -1081,15 +1054,12 @@ export default function Home() {
                 <a onClick={() => setMenuOpen(false)} href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="menu-item" title="Apply for the Executive Board">
                   EB Applications <ChevronRight size={16} className="inline-block ml-1" />
                 </a>
-
-                {/* Venue entries */}
                 <a onClick={() => setMenuOpen(false)} href={VENUE_HOTEL_URL} target="_blank" rel="noreferrer" className="menu-item">
                   Venue <ExternalLink size={16} className="inline-block ml-1" />
                 </a>
                 <a onClick={() => setMenuOpen(false)} href={VENUE.location} target="_blank" rel="noreferrer" className="menu-item">
                   Open in Maps <Navigation size={16} className="inline-block ml-1" />
                 </a>
-
                 <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">Login</Link>
                 <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">Sign Up</Link>
                 <Link onClick={() => setMenuOpen(false)} to="/assistance" className="menu-item">Assistance</Link>
@@ -1144,7 +1114,7 @@ export default function Home() {
           <PosterWall onOpen={(i) => setBriefIdx(i)} />
         </Chapter>
 
-        {/* NEW — Partners seated elegantly between Councils and CTA */}
+        {/* Partners mid-page (cards) */}
         <PartnersSection />
 
         <Chapter
@@ -1191,7 +1161,72 @@ export default function Home() {
         }
         .menu-item--primary { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.24); }
         .click-safe { position:relative; z-index:30; pointer-events:auto; }
+
+        /* Partner ticker animation */
+        @keyframes partner-marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-33.333%); }
+        }
+        .animate-partner-marquee {
+          animation: partner-marquee 18s linear infinite;
+        }
       `}</style>
     </div>
+  );
+}
+
+/* ---------- Brief Modal (after Home for reference) ---------- */
+function BriefModal({ idx, onClose }) {
+  if (idx === null) return null;
+  const c = COMMITTEES[idx];
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.div
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 30, opacity: 0 }}
+          className="max-w-3xl w-full max-h-[85vh] overflow-auto rounded-2xl border border-white/15 bg-[#0a0a1a] text-white p-6"
+        >
+          <div className="flex items-center gap-3">
+            <img src={c.logo} className="h-12 w-12 object-contain" alt={`${c.name} logo`} />
+            <h3 className="text-xl font-bold">{c.name}</h3>
+            <button onClick={onClose} className="ml-auto p-1 hover:opacity-80">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="mt-4 text-white/80">
+            <span className="font-semibold">Agenda:</span> {c.agenda}
+          </div>
+          <div className="mt-5 grid md:grid-cols-2 gap-5">
+            <div>
+              <div className="text-white font-semibold">Overview</div>
+              <p className="mt-2 text-white/80">{c.brief.overview}</p>
+              <div className="mt-4 text-white font-semibold">Objectives</div>
+              <ul className="mt-2 list-disc list-inside text-white/80 space-y-1">
+                {c.brief.objectives.map((o, i) => (
+                  <li key={i}>{o}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="text-white font-semibold">Format</div>
+              <p className="mt-2 text-white/80">{c.brief.format}</p>
+              <div className="mt-4 text-white font-semibold">Suggested Resources</div>
+              <ul className="mt-2 list-disc list-inside text-white/80 space-y-1">
+                {c.brief.resources.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
