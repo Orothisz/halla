@@ -36,8 +36,7 @@ import {
 /* --------------------------------------------------
  * Local constants
  * -------------------------------------------------- */
-const THEME_BASE = "#000026"; // <<<< forced theme color (per your request)
-
+const THEME_BASE = "#000026"; // << forced theme color
 const REGISTER_HREF = "https://noirmun.com/register";
 const EB_APPLY_HREF =
   "https://docs.google.com/forms/d/e/1FAIpQLSckm785lhMOj09BOBpaFWxbBzxp6cO5UjJulhbzZQz__lFtxw/viewform";
@@ -64,7 +63,7 @@ const STAFF = {
   "shubh dahiya": "Executive Director",
   "nimay gupta": "Deputy Executive Director",
   "gauri khatter": "Charge D'Affaires",
-  "garima": "Conference Director",
+  garima: "Conference Director",
   "madhav sadana": "Conference Director",
   "shreyas kalra": "Chef D Cabinet",
 };
@@ -151,7 +150,7 @@ function Atmosphere() {
   return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
 }
 
-/* ---------- RomanLayer (same background feel as Assistance.jsx) ---------- */
+/* ---------- RomanLayer (background only) ---------- */
 function RomanLayer() {
   const { scrollYProgress } = useScroll();
   const yBust = useTransform(scrollYProgress, [0, 1], [0, -100]);
@@ -182,7 +181,8 @@ function RomanLayer() {
           className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl"
         />
       </div>
-      {/* Parallax statues (background) */}
+
+      {/* Parallax statues — background only */}
       <motion.img
         src={IMG_LEFT}
         alt=""
@@ -207,6 +207,7 @@ function RomanLayer() {
         className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
         style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
       />
+
       {/* Film grain */}
       <div
         aria-hidden
@@ -276,7 +277,7 @@ function Gilded({ children }) {
   );
 }
 
-/* ---------- Partner filtering (now includes new roles) ---------- */
+/* ---------- Partner filtering ---------- */
 function useCorePartners() {
   return useMemo(() => {
     if (!Array.isArray(PARTNERS)) return [];
@@ -313,15 +314,14 @@ function PartnerMedallion({ role, name, logo }) {
     </div>
   );
 }
-
-/* Hero ribbon with large partner presence (filtered) */
 function HeroPartnersRibbon() {
   const CORE = useCorePartners();
   if (CORE.length === 0) return null;
   return (
     <div className="mt-8">
       <div className="text-xs uppercase tracking-[0.35em] text-white/60 mb-3 flex items-center justify-start sm:justify-center gap-2">
-        <Star size={14} className="opacity-80" /> <span>In Proud Association</span> <Star size={14} className="opacity-80" />
+        <Star size={14} className="opacity-80" /> <span>In Proud Association</span>{" "}
+        <Star size={14} className="opacity-80" />
       </div>
       <div className="flex flex-wrap items-stretch justify-start sm:justify-center gap-3 text-left">
         {CORE.map((p) => (
@@ -332,7 +332,7 @@ function HeroPartnersRibbon() {
   );
 }
 
-/* Super-smooth, constant-speed marquee (filtered) */
+/* ---------- Partner Ticker ---------- */
 function PartnerTicker() {
   const CORE = useCorePartners();
   const railRef = useRef(null);
@@ -350,7 +350,7 @@ function PartnerTicker() {
     const base = document.createElement("div");
     base.setAttribute("data-chunk", "base");
     base.className = "flex items-center gap-8";
-    CORE.forEach((p, i) => {
+    CORE.forEach((p) => {
       const item = document.createElement("div");
       item.className = "flex items-center gap-2 text-white/70";
       item.innerHTML = `
@@ -397,7 +397,10 @@ function PartnerTicker() {
   if (CORE.length === 0) return null;
 
   return (
-    <div className="bg-white/[0.05] border-b border-white/10 backdrop-blur-sm overflow-hidden" style={{ contain: "paint", willChange: "transform" }}>
+    <div
+      className="bg-white/[0.05] border-b border-white/10 backdrop-blur-sm overflow-hidden"
+      style={{ contain: "paint", willChange: "transform" }}
+    >
       <div className="relative mx-auto max-w-7xl" ref={railRef}>
         <div
           ref={trackRef}
@@ -439,13 +442,27 @@ function VenuePill() {
             exit={{ opacity: 0, y: 6 }}
             className="absolute left-1/2 -translate-x-1/2 mt-2 w-[280px] rounded-2xl border border-white/15 bg-[#0a0a1a]/95 backdrop-blur p-3 shadow-xl z-20 hidden md:block"
           >
-            <div className="h-28 w-full rounded-xl bg-cover bg-center opacity-90" style={{ backgroundImage: `url(${VENUE.image})` }} aria-hidden />
+            <div
+              className="h-28 w-full rounded-xl bg-cover bg-center opacity-90"
+              style={{ backgroundImage: `url(${VENUE.image})` }}
+              aria-hidden
+            />
             <div className="mt-3 text-sm font-medium">{VENUE.name}</div>
             <div className="mt-2 flex gap-2">
-              <a href={VENUE_HOTEL_URL} target="_blank" rel="noreferrer" className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 border border-white/15 text-xs">
+              <a
+                href={VENUE_HOTEL_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 border border-white/15 text-xs"
+              >
                 <ExternalLink size={14} /> Explore Hotel
               </a>
-              <a href={VENUE.location} target="_blank" rel="noreferrer" className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 border border-white/15 text-xs">
+              <a
+                href={VENUE.location}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 border border-white/15 text-xs"
+              >
                 <Navigation size={14} /> Open in Maps
               </a>
             </div>
@@ -475,7 +492,12 @@ function PartnerBadgeCard({ role, name, logo }) {
     <div className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden text-left">
       <div className="flex items-center gap-3">
         <div className="shrink-0 rounded-xl border border-white/15 bg-white/5 w-14 h-14 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.05)_inset]">
-          <img src={logo} alt={`${name} logo`} className="w-10 h-10 object-contain" onError={(e) => (e.currentTarget.style.opacity = 0.35)} />
+          <img
+            src={logo}
+            alt={`${name} logo`}
+            className="w-10 h-10 object-contain"
+            onError={(e) => (e.currentTarget.style.opacity = 0.35)}
+          />
         </div>
         <div>
           <div className="text-xs uppercase tracking-[0.24em] text-white/60">{role}</div>
@@ -498,8 +520,14 @@ function PartnersSection() {
   if (FEATURED.length === 0) return null;
   return (
     <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
-      <SectionHeading kicker="Chapter III½" title="Allies & Partners" icon={<Crown size={20} className="text-white/70" />} />
-      <p className="text-white/80 leading-relaxed">Institutions that stand with Noir — strengthening access, study, and community.</p>
+      <SectionHeading
+        kicker="Chapter III½"
+        title="Allies & Partners"
+        icon={<Crown size={20} className="text-white/70" />}
+      />
+      <p className="text-white/80 leading-relaxed">
+        Institutions that stand with Noir — strengthening access, study, and community.
+      </p>
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
         {FEATURED.map((p) => (
           <PartnerBadgeCard key={`${p.role}-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
@@ -510,7 +538,10 @@ function PartnersSection() {
       <div className="mt-6 overflow-x-auto sm:hidden pl-1 [-webkit-overflow-scrolling:touch]">
         <div className="flex gap-3 min-w-max">
           {FEATURED.map((p) => (
-            <div key={`mini-${p.name}`} className="px-3 py-2 rounded-full border border-white/12 bg-white/[0.04] text-xs whitespace-nowrap">
+            <div
+              key={`mini-${p.name}`}
+              className="px-3 py-2 rounded-full border border-white/12 bg-white/[0.04] text-xs whitespace-nowrap"
+            >
               {p.role}: <span className="font-medium">{p.name}</span>
             </div>
           ))}
@@ -538,12 +569,18 @@ function DressIcon({ type }) {
 function ItinerarySection() {
   return (
     <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5 text-left">
-      <SectionHeading kicker="Chapter V" title="Itinerary & Dress Code  *Tentative" icon={<Sparkles size={20} className="text-white/70" />} />
+      <SectionHeading
+        kicker="Chapter V"
+        title="Itinerary & Dress Code  *Tentative"
+        icon={<Sparkles size={20} className="text-white/70" />}
+      />
       <div className="grid md:grid-cols-2 gap-6">
         {ITINERARY.map((day) => (
           <div key={day.day} className="rounded-2xl border border-white/12 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between">
-              <div className="text-lg font-semibold">Day {day.day} — {day.dateText}</div>
+              <div className="text-lg font-semibold">
+                Day {day.day} — {day.dateText}
+              </div>
               <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/70">
                 <DressIcon type={day.dressCode} />
                 {day.dressCode}
@@ -563,7 +600,9 @@ function ItinerarySection() {
           </div>
         ))}
       </div>
-      <div className="mt-3 text-xs text-white/60">*Tentative — final timings will be announced closer to the conference.</div>
+      <div className="mt-3 text-xs text-white/60">
+        *Tentative — final timings will be announced closer to the conference.
+      </div>
     </section>
   );
 }
@@ -643,22 +682,30 @@ function TalkToUs() {
       return add({ from: "bot", text: "Delegate fee: ₹2300." });
     }
     if (/\b(venue|where|location|address)\b/.test(q)) {
-      try { window.open(VENUE_HOTEL_URL, "_blank"); } catch {}
+      try {
+        window.open(VENUE_HOTEL_URL, "_blank");
+      } catch {}
       return add({
         from: "bot",
         text: `Venue: ${VENUE.name}.\nHotel page → ${VENUE_HOTEL_URL}\nMaps → ${VENUE.location}`,
       });
     }
     if (/\b(register|sign\s*up|enrol|enroll|apply|secure\s*(my|your)?\s*seat)\b/.test(q)) {
-      try { window.open(REGISTER_HREF, "_blank"); } catch {}
+      try {
+        window.open(REGISTER_HREF, "_blank");
+      } catch {}
       return add({ from: "bot", text: `Opening registration → ${REGISTER_HREF}` });
     }
     if (/\b(insta|instagram)\b/.test(q)) {
-      try { window.open(IG_HREF, "_blank"); } catch {}
+      try {
+        window.open(IG_HREF, "_blank");
+      } catch {}
       return add({ from: "bot", text: `Instagram → ${IG_HREF}` });
     }
     if (/\blinktr|linktree|links?\b/.test(q)) {
-      try { window.open(LINKTREE_HREF, "_blank"); } catch {}
+      try {
+        window.open(LINKTREE_HREF, "_blank");
+      } catch {}
       return add({ from: "bot", text: `Links hub → ${LINKTREE_HREF}` });
     }
     if (/\b(committee|committees|councils?|agenda|topics?)\b/.test(q)) {
@@ -671,11 +718,14 @@ function TalkToUs() {
     if (/\b(founder|organiser|organizer|oc|eb|lead|leadership|team)\b/.test(q)) {
       return add({
         from: "bot",
-        text: "Leadership — Founder: Sameer Jhamb, Co-Founder: Maahir Gulati, President: Gautam Khera. Ask me any role by name too.",
+        text:
+          "Leadership — Founder: Sameer Jhamb, Co-Founder: Maahir Gulati, President: Gautam Khera. Ask me any role by name too.",
       });
     }
     if (/\b(exec|human|someone|whatsapp|help|contact|support)\b/.test(q)) {
-      try { window.open(WHATSAPP_ESCALATE, "_blank"); } catch {}
+      try {
+        window.open(WHATSAPP_ESCALATE, "_blank");
+      } catch {}
       return add({ from: "bot", text: "Opening WhatsApp…" });
     }
     return add({
@@ -707,7 +757,11 @@ function TalkToUs() {
             <div className="max-h-96 overflow-auto p-3 space-y-3">
               {thread.map((m, i) => (
                 <div key={i} className={`flex ${m.from === "bot" ? "justify-start" : "justify-end"}`}>
-                  <div className={`${m.from === "bot" ? "bg-white/20" : "bg-white/30"} text-sm px-3 py-2 rounded-2xl max-w-[85%] whitespace-pre-wrap leading-relaxed`}>
+                  <div
+                    className={`${
+                      m.from === "bot" ? "bg-white/20" : "bg-white/30"
+                    } text-sm px-3 py-2 rounded-2xl max-w-[85%] whitespace-pre-wrap leading-relaxed`}
+                  >
                     {m.text}
                   </div>
                 </div>
@@ -715,14 +769,72 @@ function TalkToUs() {
             </div>
 
             <div className="px-3 pb-2 flex flex-wrap gap-2">
-              <button onClick={() => { setInput("Dates?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Dates</button>
-              <button onClick={() => { setInput("Fee?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Fee</button>
-              <button onClick={() => { setInput("Venue?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Venue</button>
-              <button onClick={() => { setInput("Committees"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Committees</button>
-              <button onClick={() => { setInput("Register"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Register</button>
-              <button onClick={() => { setInput("Instagram"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Instagram</button>
-              <button onClick={() => { setInput("Linktree"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Linktree</button>
-              <Link to="/assistance" className="text-xs rounded-full px-3 py-1 bg-white/15">Open Assistance</Link>
+              <button
+                onClick={() => {
+                  setInput("Dates?");
+                  setTimeout(send, 0);
+                }}
+                className="text-xs rounded-full px-3 py-1 bg-white/15"
+              >
+                Dates
+              </button>
+              <button
+                onClick={() => {
+                  setInput("Fee?");
+                  setTimeout(send, 0);
+                }}
+                className="text-xs rounded-full px-3 py-1 bg-white/15"
+              >
+                Fee
+              </button>
+              <button
+                onClick={() => {
+                  setInput("Venue?");
+                  setTimeout(send, 0);
+                }}
+                className="text-xs rounded-full px-3 py-1 bg-white/15"
+              >
+                Venue
+              </button>
+              <button
+                onClick={() => {
+                  setInput("Committees");
+                  setTimeout(send, 0);
+                }}
+                className="text-xs rounded-full px-3 py-1 bg-white/15"
+              >
+                Committees
+              </button>
+              <button
+                onClick={() => {
+                  setInput("Register");
+                  setTimeout(send, 0);
+                }}
+                className="text-xs rounded-full px-3 py-1 bg-white/15"
+              >
+                Register
+              </button>
+              <button
+                onClick={() => {
+                  setInput("Instagram");
+                  setTimeout(send, 0);
+                }}
+                className="text-xs rounded-full px-3 py-1 bg-white/15"
+              >
+                Instagram
+              </button>
+              <button
+                onClick={() => {
+                  setInput("Linktree");
+                  setTimeout(send, 0);
+                }}
+                className="text-xs rounded-full px-3 py-1 bg-white/15"
+              >
+                Linktree
+              </button>
+              <Link to="/assistance" className="text-xs rounded-full px-3 py-1 bg-white/15">
+                Open Assistance
+              </Link>
             </div>
 
             <div className="p-3 flex items-center gap-2">
@@ -764,7 +876,9 @@ function InlineFooter() {
     <footer className="mt-16 border-top border-white/10">
       {CORE.length > 0 && (
         <div className="mx-auto max-w-7xl px-4 py-6">
-          <div className="text-xs uppercase tracking-[0.28em] text-white/50 text-left sm:text-center mb-3">Partners</div>
+          <div className="text-xs uppercase tracking-[0.28em] text-white/50 text-left sm:text-center mb-3">
+            Partners
+          </div>
           <div className="flex items-center justify-start sm:justify-center gap-6 flex-wrap">
             {CORE.map((p) => (
               <div key={`footer-${p.name}`} className="flex items-center gap-2 text-white/70">
@@ -775,7 +889,8 @@ function InlineFooter() {
                   onError={(e) => (e.currentTarget.style.opacity = 0.35)}
                 />
                 <span className="text-xs">
-                  <span className="text-white/60">{p.role}:</span> <span className="font-medium">{p.name}</span>
+                  <span className="text-white/60">{p.role}:</span>{" "}
+                  <span className="font-medium">{p.name}</span>
                 </span>
               </div>
             ))}
@@ -802,7 +917,9 @@ function InlineFooter() {
         </div>
         <div>
           <div className="font-semibold">Explore</div>
-          <Link to="/assistance" className="block text-sm hover:underline">Assistance</Link>
+          <Link to="/assistance" className="block text-sm hover:underline">
+            Assistance
+          </Link>
           <a
             href="https://www.noirmun.com/best-mun-delhi-faridabad"
             className="block text-sm hover:underline"
@@ -812,19 +929,33 @@ function InlineFooter() {
           >
             Best MUN in Delhi &amp; Faridabad (2025 Guide)
           </a>
-          <Link to="/login" className="block text-sm hover:underline">Login</Link>
-          <Link to="/signup" className="block text-sm hover:underline">Sign Up</Link>
-          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Register</a>
+          <Link to="/login" className="block text-sm hover:underline">
+            Login
+          </Link>
+          <Link to="/signup" className="block text-sm hover:underline">
+            Sign Up
+          </Link>
+          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">
+            Register
+          </a>
         </div>
         <div>
           <div className="font-semibold">Socials</div>
-          <a href={IG_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Instagram</a>
-          <a href={LINKTREE_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Linktree</a>
+          <a href={IG_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">
+            Instagram
+          </a>
+          <a href={LINKTREE_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">
+            Linktree
+          </a>
         </div>
         <div>
           <div className="font-semibold">Legal</div>
-          <Link to="/legal" className="block text-sm hover:underline">Terms & Privacy</Link>
-          <div className="text-xs text-white/60">© {new Date().getFullYear()} Noir MUN — “Whispers Today, Echo Tomorrow.”</div>
+          <Link to="/legal" className="block text-sm hover:underline">
+            Terms & Privacy
+          </Link>
+          <div className="text-xs text-white/60">
+            © {new Date().getFullYear()} Noir MUN — “Whispers Today, Echo Tomorrow.”
+          </div>
         </div>
       </div>
     </footer>
@@ -923,20 +1054,38 @@ function Prologue() {
         <HeroPartnersRibbon />
 
         <QuoteCard>
-          In marble and laurel, discipline met rhetoric. Noir brings that precision to diplomacy — a modern pantheon where words shape order.
+          In marble and laurel, discipline met rhetoric. Noir brings that precision to diplomacy — a modern pantheon
+          where words shape order.
         </QuoteCard>
 
         <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center">
+          <a
+            href={REGISTER_HREF}
+            target="_blank"
+            rel="noreferrer"
+            className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
+          >
             Secure your seat <ChevronRight size={18} />
           </a>
-          <a href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center" title="Apply for the Executive Board">
+          <a
+            href={EB_APPLY_HREF}
+            target="_blank"
+            rel="noreferrer"
+            className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
+            title="Apply for the Executive Board"
+          >
             EB Applications <ChevronRight size={18} />
           </a>
-          <Link to="/signup" className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center">
+          <Link
+            to="/signup"
+            className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
+          >
             Sign Up
           </Link>
-          <Link to="/assistance" className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center">
+          <Link
+            to="/assistance"
+            className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
+          >
             MUN Assistance
           </Link>
         </div>
@@ -950,11 +1099,7 @@ function CountdownSection() {
   const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
   return (
     <section className="mt-8 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5 text-center">
-      <SectionHeading
-        kicker="Chapter 0"
-        title="Countdown to Noir"
-        icon={<Sparkles size={20} className="text-white/70" />}
-      />
+      <SectionHeading kicker="Chapter 0" title="Countdown to Noir" icon={<Sparkles size={20} className="text-white/70" />} />
       {!past ? (
         <div className="mt-4 flex gap-5 flex-wrap justify-center">
           <BigBlock label="Days" value={d} />
@@ -1009,7 +1154,10 @@ function PosterWall({ onOpen }) {
               </div>
             </div>
             <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ boxShadow: "inset 0 0 140px rgba(255,255,255,.09)" }} />
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{ boxShadow: "inset 0 0 140px rgba(255,255,255,.09)" }}
+              />
               <div className="absolute inset-0 rounded-[26px] border border-yellow-200/0 group-hover:border-yellow-100/25 transition-colors" />
             </div>
           </button>
@@ -1064,12 +1212,15 @@ export default function Home() {
             <span className="font-semibold tracking-wide">Noir MUN</span>
           </div>
 
-          {/* Mobile Register pill — appears BETWEEN logo and hamburger */}
+          {/* spacer to push mobile register to center-right before hamburger */}
+          <div className="flex-1 sm:hidden" />
+
+          {/* Mobile Register pill — BETWEEN logo and hamburger */}
           <a
             href={REGISTER_HREF}
             target="_blank"
             rel="noreferrer"
-            className="sm:hidden ml-auto mr-2 inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-sm border border-white/20 bg-white/10"
+            className="sm:hidden inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-sm border border-white/20 bg-white/10"
           >
             Register
             <ChevronRight size={14} />
@@ -1089,15 +1240,23 @@ export default function Home() {
             <a href={VENUE.location} target="_blank" rel="noreferrer" className="nav-pill nav-pill--ghost" title="Open in Google Maps">
               Maps <Navigation size={14} style={{ marginLeft: 6 }} />
             </a>
-            <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
-            <Link to="/signup" className="nav-pill">Sign Up</Link>
-            <Link to="/assistance" className="nav-pill">Assistance</Link>
-            <Link to="/legal" className="nav-pill">Legal</Link>
+            <Link to="/login" className="nav-pill nav-pill--ghost">
+              Login
+            </Link>
+            <Link to="/signup" className="nav-pill">
+              Sign Up
+            </Link>
+            <Link to="/assistance" className="nav-pill">
+              Assistance
+            </Link>
+            <Link to="/legal" className="nav-pill">
+              Legal
+            </Link>
           </nav>
 
           {/* Hamburger (mobile) */}
           <button
-            className="sm:hidden rounded-2xl border border-white/20 p-2 ml-0"
+            className="sm:hidden rounded-2xl border border-white/20 p-2 ml-2"
             aria-label="Menu"
             aria-controls="mobile-menu"
             aria-expanded={menuOpen}
@@ -1141,10 +1300,23 @@ export default function Home() {
               </div>
 
               <div className="px-4 pb-4 grid gap-2">
-                <a onClick={() => setMenuOpen(false)} href={REGISTER_HREF} target="_blank" rel="noreferrer" className="menu-item menu-item--primary">
+                <a
+                  onClick={() => setMenuOpen(false)}
+                  href={REGISTER_HREF}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="menu-item menu-item--primary"
+                >
                   Register <ChevronRight size={16} className="inline-block ml-1" />
                 </a>
-                <a onClick={() => setMenuOpen(false)} href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="menu-item" title="Apply for the Executive Board">
+                <a
+                  onClick={() => setMenuOpen(false)}
+                  href={EB_APPLY_HREF}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="menu-item"
+                  title="Apply for the Executive Board"
+                >
                   EB Applications <ChevronRight size={16} className="inline-block ml-1" />
                 </a>
                 <a onClick={() => setMenuOpen(false)} href={VENUE_HOTEL_URL} target="_blank" rel="noreferrer" className="menu-item">
@@ -1153,10 +1325,18 @@ export default function Home() {
                 <a onClick={() => setMenuOpen(false)} href={VENUE.location} target="_blank" rel="noreferrer" className="menu-item">
                   Open in Maps <Navigation size={16} className="inline-block ml-1" />
                 </a>
-                <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">Login</Link>
-                <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">Sign Up</Link>
-                <Link onClick={() => setMenuOpen(false)} to="/assistance" className="menu-item">Assistance</Link>
-                <Link onClick={() => setMenuOpen(false)} to="/legal" className="menu-item">Legal</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">
+                  Login
+                </Link>
+                <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">
+                  Sign Up
+                </Link>
+                <Link onClick={() => setMenuOpen(false)} to="/assistance" className="menu-item">
+                  Assistance
+                </Link>
+                <Link onClick={() => setMenuOpen(false)} to="/legal" className="menu-item">
+                  Legal
+                </Link>
               </div>
             </motion.div>
           </>
@@ -1180,8 +1360,15 @@ export default function Home() {
         </section>
 
         <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
-          <SectionHeading kicker="Chapter II" title="The Pantheon of Councils" icon={<Columns size={20} className="text-white/70" />} />
-          <div className="text-white/80">Each chamber upholds a different creed — strategy, justice, history, negotiation. Choose your arena, study the agenda, and step into the role. Tap a poster to open its dossier.</div>
+          <SectionHeading
+            kicker="Chapter II"
+            title="The Pantheon of Councils"
+            icon={<Columns size={20} className="text-white/70" />}
+          />
+          <div className="text-white/80">
+            Each chamber upholds a different creed — strategy, justice, history, negotiation. Choose your arena, study the
+            agenda, and step into the role. Tap a poster to open its dossier.
+          </div>
           <PosterWall onOpen={(i) => setBriefIdx(i)} />
         </section>
 
@@ -1193,7 +1380,12 @@ export default function Home() {
             <Gilded>The council that will echo tomorrow.</Gilded>
           </div>
           <div className="mt-2 text-white/70">Two days. One stage. Bring your discipline, your design, your diplomacy.</div>
-          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20">
+          <a
+            href={REGISTER_HREF}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20"
+          >
             Register Now <ChevronRight size={18} />
           </a>
         </section>
