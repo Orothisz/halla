@@ -125,7 +125,7 @@ function specialEDIntercept(q) {
 }
 
 /* --------------------------------------------------
- * Atmosphere (starfield) — mobile-optimized (zero-jank)
+ * Atmosphere (starfield) — mobile-optimized
  * -------------------------------------------------- */
 function Atmosphere() {
   const star = useRef(null);
@@ -135,13 +135,13 @@ function Atmosphere() {
     const c = star.current;
     if (!c) return;
 
-    const isSmall = matchMedia("(max-width: 640px)").matches;
     const ctx = c.getContext("2d", { alpha: true, desynchronized: true });
+    const isSmall = matchMedia("(max-width: 640px)").matches;
 
     let w = (c.width = innerWidth);
     let h = (c.height = innerHeight);
 
-    const COUNT = reduce ? 0 : isSmall ? 36 : 90; // drop density on phones
+    const COUNT = reduce ? 0 : isSmall ? 36 : 90;
     const pts = Array.from({ length: COUNT }, () => ({
       x: Math.random() * w,
       y: Math.random() * h,
@@ -152,7 +152,6 @@ function Atmosphere() {
     let last = 0;
 
     const draw = (ts) => {
-      // Throttle to ~30fps on phones
       const dt = ts - last;
       const target = isSmall ? 33 : 16;
       if (dt < target) {
@@ -186,11 +185,11 @@ function Atmosphere() {
     };
   }, [useReducedMotion]);
 
-  return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
+  return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full pointer-events-none" />;
 }
 
 /* --------------------------------------------------
- * Roman Background Layer (tasteful, cinematic, mobile-safe)
+ * Roman Background Layer (cinematic, mobile-safe)
  * -------------------------------------------------- */
 function RomanLayer() {
   const reduce = useReducedMotion();
@@ -201,12 +200,13 @@ function RomanLayer() {
 
   return (
     <>
+      {/* Subtle marble gradients */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[.16]"
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.14]"
         style={{
           backgroundImage:
-            "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.14), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.10), rgba(0,0,0,0))",
+            "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.13), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.09), rgba(0,0,0,0))",
         }}
       />
       {!reduce && (
@@ -216,7 +216,7 @@ function RomanLayer() {
         </div>
       )}
 
-      {/* Parallax statues — visible on mobile, GPU-accelerated */}
+      {/* Parallax statues — visible on mobile */}
       <motion.img
         src={ROMAN_URLS.left}
         alt=""
@@ -244,6 +244,8 @@ function RomanLayer() {
         className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[420px] sm:w-[520px] md:w-[560px] max-w-[92vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10 will-change-transform"
         style={reduce ? {} : { y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
       />
+
+      {/* Film grain */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10 opacity-[.06] mix-blend-overlay"
@@ -589,7 +591,7 @@ function RomanTriad() {
 }
 
 /* --------------------------------------------------
- * Prologue (Hero) — cinematic entrance
+ * Prologue (Hero)
  * -------------------------------------------------- */
 function Prologue() {
   return (
@@ -704,9 +706,7 @@ function LogoBadge({ src, alt }) {
         src={src}
         alt={alt}
         className="w-[72%] h-[72%] object-contain"
-        onError={(e) => {
-          e.currentTarget.style.opacity = 0.35;
-        }}
+        onError={(e) => { e.currentTarget.style.opacity = 0.35; }}
         loading="lazy"
         decoding="async"
       />
@@ -873,7 +873,7 @@ function WhyNoir() {
 }
 
 /* --------------------------------------------------
- * Testimonials — varied content as requested
+ * Testimonials — varied content
  * -------------------------------------------------- */
 function Testimonials() {
   const items = [
@@ -1042,10 +1042,7 @@ function TalkToUs() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [thread, setThread] = useState([
-    {
-      from: "bot",
-      text: "Ave! I’m WILT Mini — ask dates, fee, venue, founders, committees, or any staff role like ‘Who is the ED?’",
-    },
+    { from: "bot", text: "Ave! I’m WILT Mini — ask dates, fee, venue, founders, committees, or any staff role like ‘Who is the ED?’" },
   ]);
   const add = (m) => setThread((t) => [...t, m]);
 
@@ -1316,18 +1313,23 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
+    return () => { document.body.style.overflow = ""; };
   }, [menuOpen]);
 
   useEffect(() => {
+    // Keep theme var for buttons, but DO NOT force body background (prevents solid blue screen)
     document.documentElement.style.setProperty("--theme", THEME_HEX);
-    document.body.style.background = THEME_HEX;
   }, []);
 
   return (
-    <div className="min-h-screen text-white relative">
+    <div
+      className="min-h-screen text-white relative"
+      style={{
+        // Safe, dark gradient background independent of THEME_HEX to prevent "all blue" pages
+        background:
+          "radial-gradient(1200px 800px at 50% -10%, rgba(108,118,255,.08), rgba(10,10,26,0)), linear-gradient(#0a0a1a, #0a0a1a)",
+      }}
+    >
       <Atmosphere />
       <RomanLayer />
 
@@ -1521,12 +1523,35 @@ export default function Home() {
 
         .click-safe { position:relative; z-index:30; pointer-events:auto; }
 
+        /* Hard override to prevent solid body fills from elsewhere */
+        body { background: #0a0a1a !important; }
+
         /* motion preference */
         @media (prefers-reduced-motion: reduce) {
           * { animation: none !important; transition: none !important; }
           .will-change-transform { will-change: auto; }
         }
       `}</style>
+    </div>
+  );
+}
+
+/* --------------------------------------------------
+ * Hero partners ribbon (kept last for hoist)
+ * -------------------------------------------------- */
+function HeroPartnersRibbon() {
+  const CORE = useCorePartners();
+  if (CORE.length === 0) return null;
+  return (
+    <div className="mt-8">
+      <div className="text-xs uppercase tracking-[0.35em] text-white/60 mb-3 flex items-center justify-start sm:justify-center gap-2">
+        <Star size={14} className="opacity-80" /> <span>In Proud Association</span> <Star size={14} className="opacity-80" />
+      </div>
+      <div className="flex flex-wrap items-stretch justify-start sm:justify-center gap-3 text-left">
+        {CORE.map((p) => (
+          <PartnerMedallion key={`hero-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
+        ))}
+      </div>
     </div>
   );
 }
