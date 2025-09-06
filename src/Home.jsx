@@ -999,7 +999,7 @@ export default function Home() {
 
       {/* Header */}
       <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
+        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-4">
 
           {/* Left: brand */}
           <div className="flex items-center gap-3 flex-shrink-0" style={{ whiteSpace: "nowrap" }}>
@@ -1007,51 +1007,53 @@ export default function Home() {
             <span className="font-semibold tracking-wide">Noir MUN</span>
           </div>
 
-          {/* Desktop nav */}
-          <nav className="nav-bar hidden sm:flex">
-            <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
-              Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
-            </a>
-            <a href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="nav-pill" title="Apply for the Executive Board">
-              EB Applications <ChevronRight size={16} style={{ marginLeft: 6 }} />
-            </a>
-            <a href={VENUE_HOTEL_URL} target="_blank" rel="noreferrer" className="nav-pill" title={`Conference Venue — ${VENUE.name}`}>
-              Venue <ExternalLink size={14} style={{ marginLeft: 6 }} />
-            </a>
-            <a href={VENUE.location} target="_blank" rel="noreferrer" className="nav-pill nav-pill--ghost" title="Open in Google Maps">
-              Maps <Navigation size={14} style={{ marginLeft: 6 }} />
-            </a>
-            <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
-            <Link to="/signup" className="nav-pill">Sign Up</Link>
-            <Link to="/assistance" className="nav-pill">Assistance</Link>
-            <Link to="/legal" className="nav-pill">Legal</Link>
-          </nav>
+          {/* Right: Grouped navigation controls for robust layout */}
+          <div>
+            {/* Desktop nav */}
+            <nav className="nav-bar hidden sm:flex">
+              <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
+                Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
+              </a>
+              <a href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="nav-pill" title="Apply for the Executive Board">
+                EB Applications <ChevronRight size={16} style={{ marginLeft: 6 }} />
+              </a>
+              <a href={VENUE_HOTEL_URL} target="_blank" rel="noreferrer" className="nav-pill" title={`Conference Venue — ${VENUE.name}`}>
+                Venue <ExternalLink size={14} style={{ marginLeft: 6 }} />
+              </a>
+              <a href={VENUE.location} target="_blank" rel="noreferrer" className="nav-pill nav-pill--ghost" title="Open in Google Maps">
+                Maps <Navigation size={14} style={{ marginLeft: 6 }} />
+              </a>
+              <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
+              <Link to="/signup" className="nav-pill">Sign Up</Link>
+              <Link to="/assistance" className="nav-pill">Assistance</Link>
+              <Link to="/legal" className="nav-pill">Legal</Link>
+            </nav>
 
-          {/* Mobile controls: Register + Hamburger (grouped on the right) */}
-          <div className="sm:hidden flex items-center gap-2 shrink-0">
-            <a
-              href={REGISTER_HREF}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm shrink-0"
-              aria-label="Register for Noir MUN"
-            >
-              Register <ChevronRight size={14} />
-            </a>
-
-            <button
-              className="rounded-xl border border-white/20 p-2 shrink-0"
-              aria-label="Menu"
-              aria-controls="mobile-menu"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen(true)}
-            >
-              <Menu size={18} />
-            </button>
+            {/* Mobile controls */}
+            <div className="sm:hidden flex items-center gap-2">
+              <a
+                href={REGISTER_HREF}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm shrink-0 whitespace-nowrap"
+                aria-label="Register for Noir MUN"
+              >
+                Register <ChevronRight size={14} />
+              </a>
+              <button
+                className="rounded-xl border border-white/20 p-2 shrink-0"
+                aria-label="Menu"
+                aria-controls="mobile-menu"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen(true)}
+              >
+                <Menu size={18} />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Partner ticker directly under header (filtered & smooth) */}
+        {/* Partner ticker directly under header */}
         <PartnerTicker />
       </header>
 
