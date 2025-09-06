@@ -975,7 +975,7 @@ function BriefModal({ idx, onClose }) {
 }
 
 /* ---------- Prologue (Hero) ---------- */
-// NOTE: Roman statues REMOVED from hero; background RomanLayer still active globally.
+// Roman statues remain in background only; quote bar removed; CTA says "Register".
 function Prologue() {
   return (
     <section className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
@@ -1007,12 +1007,9 @@ function Prologue() {
           <Gilded>Whispers Today, Echo Tomorrow</Gilded>
         </div>
 
-        <HeroPartnersRibbon />
+        {/* QuoteCard removed */}
 
-        <QuoteCard>
-          In marble and laurel, discipline met rhetoric. Noir brings that precision to diplomacy — a modern pantheon
-          where words shape order.
-        </QuoteCard>
+        <HeroPartnersRibbon />
 
         <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
@@ -1021,7 +1018,7 @@ function Prologue() {
             rel="noreferrer"
             className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center"
           >
-            Secure your seat <ChevronRight size={18} />
+            Register <ChevronRight size={18} />
           </a>
           <a
             href={EB_APPLY_HREF}
