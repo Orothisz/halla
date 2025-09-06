@@ -1,6 +1,6 @@
 // src/pages/Home.jsx
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
   Calendar,
@@ -17,19 +17,15 @@ import {
   MapPin,
   ExternalLink,
   Navigation,
+  Star,
   Sparkles,
-  Info,
-  Award,
-  Users,
-  HelpCircle,
-  CheckCircle2,
 } from "lucide-react";
 
 import {
   LOGO_URL,
   DATES_TEXT,
   TARGET_DATE_IST,
-  THEME_HEX, // kept but overridden below
+  THEME_HEX, // ignored; we force THEME_BASE below
   COMMITTEES,
   WHATSAPP_ESCALATE,
   VENUE,
@@ -37,31 +33,90 @@ import {
   ITINERARY,
 } from "../shared/constants";
 
-/* =========================================================
- * Palette / Theme (explicitly force #000026)
- * =======================================================*/
-const NOIR_THEME = "#000026";
-const GOLD = "#d6c089";
-const GOLD_SOFT = "rgba(214,192,137,.45)";
+/* --------------------------------------------------
+ * Local constants
+ * -------------------------------------------------- */
+const THEME_BASE = "#000026"; // <<<< forced theme color (per your request)
 
-function setCSSVars() {
-  const root = document.documentElement;
-  root.style.setProperty("--noir-theme", NOIR_THEME);
-  root.style.setProperty("--noir-bg0", "#090918");
-  root.style.setProperty("--noir-bg1", "#0D0D1F");
-  root.style.setProperty("--noir-bg2", "#141429");
-  root.style.setProperty("--noir-ink", "rgba(255,255,255,.86)");
-  root.style.setProperty("--noir-ink-dim", "rgba(255,255,255,.72)");
-  root.style.setProperty("--noir-stroke", "rgba(255,255,255,.12)");
-  root.style.setProperty("--noir-stroke-soft", "rgba(255,255,255,.08)");
-  root.style.setProperty("--noir-glass", "rgba(255,255,255,.06)");
-  root.style.setProperty("--noir-glass-2", "rgba(255,255,255,.10)");
-  root.style.setProperty("--noir-gold", GOLD);
+const REGISTER_HREF = "https://noirmun.com/register";
+const EB_APPLY_HREF =
+  "https://docs.google.com/forms/d/e/1FAIpQLSckm785lhMOj09BOBpaFWxbBzxp6cO5UjJulhbzZQz__lFtxw/viewform";
+const IG_HREF = "https://instagram.com/noirmodelun";
+const LINKTREE_HREF = "https://linktr.ee/noirmun";
+const VENUE_HOTEL_URL =
+  "https://www.sarovarhotels.com/delite-sarovar-portico-faridabad/";
+
+/* --------------------------------------------------
+ * Staff Directory (for WILT Mini lookups)
+ * -------------------------------------------------- */
+const STAFF = {
+  "sameer jhamb": "Founder",
+  "maahir gulati": "Co-Founder",
+  "gautam khera": "President",
+  "daanesh narang": "Chief Advisor",
+  "daanish narang": "Chief Advisor",
+  "vishesh kumar": "Junior Advisor",
+  "jhalak batra": "Secretary General",
+  "anushka dua": "Director General",
+  "mahi choudharie": "Deputy Director General",
+  "namya negi": "Deputy Secretary General",
+  "shambhavi sharma": "Vice President",
+  "shubh dahiya": "Executive Director",
+  "nimay gupta": "Deputy Executive Director",
+  "gauri khatter": "Charge D'Affaires",
+  "garima": "Conference Director",
+  "madhav sadana": "Conference Director",
+  "shreyas kalra": "Chef D Cabinet",
+};
+
+/* --------------------------------------------------
+ * Helpers
+ * -------------------------------------------------- */
+function norm(s = "") {
+  return s.toLowerCase().replace(/\s+/g, " ").trim();
+}
+function titleCase(s = "") {
+  return s.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+const ROLE_TO_NAMES = Object.entries(STAFF).reduce((acc, [name, role]) => {
+  const k = norm(role);
+  (acc[k] = acc[k] || []).push(name);
+  return acc;
+}, {});
+const ROLE_SYNONYMS = {
+  ed: "executive director",
+  "executive director": "executive director",
+  "deputy ed": "deputy executive director",
+  "deputy executive director": "deputy executive director",
+  cofounder: "co-founder",
+  "co founder": "co-founder",
+  "co-founder": "co-founder",
+  sg: "secretary general",
+  "sec gen": "secretary general",
+  dg: "director general",
+  vps: "vice president",
+  vp: "vice president",
+  pres: "president",
+  president: "president",
+  "junior advisor": "junior advisor",
+  "chief advisor": "chief advisor",
+  "charge d affaires": "charge d'affaires",
+  "charge d' affairs": "charge d'affaires",
+  "charge d'affaires": "charge d'affaires",
+  "chef d cabinet": "chef d cabinet",
+  "conference director": "conference director",
+  founder: "founder",
+};
+
+/* Special override: “Who is the ED?” */
+function specialEDIntercept(q) {
+  const isWho = /\bwho(\s+is|'?s)?\b/.test(q);
+  const mentionsED = /(\bthe\s+)?\bed\b|executive\s+director/.test(q);
+  if (isWho && mentionsED) return "Nimay Gupta — Deputy Executive Director (ED)";
+  return null;
 }
 
-/* =========================================================
- * Atmosphere — shared with Assistance.jsx
- * =======================================================*/
+/* ---------- Atmosphere (subtle starfield) ---------- */
 function Atmosphere() {
   const star = useRef(null);
   useEffect(() => {
@@ -75,7 +130,6 @@ function Atmosphere() {
       y: Math.random() * h,
       v: Math.random() * 0.35 + 0.1,
     }));
-    let raf = 0;
     const draw = () => {
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = "rgba(255,255,255,.4)";
@@ -84,7 +138,7 @@ function Atmosphere() {
         if (p.y > h) p.y = 0;
         ctx.fillRect(p.x, p.y, 1, 1);
       });
-      raf = requestAnimationFrame(draw);
+      requestAnimationFrame(draw);
     };
     const onResize = () => {
       w = (c.width = innerWidth);
@@ -92,17 +146,12 @@ function Atmosphere() {
     };
     addEventListener("resize", onResize);
     draw();
-    return () => {
-      cancelAnimationFrame(raf);
-      removeEventListener("resize", onResize);
-    };
+    return () => removeEventListener("resize", onResize);
   }, []);
   return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
 }
 
-/* =========================================================
- * RomanLayer — keep statues in global background
- * =======================================================*/
+/* ---------- RomanLayer (same background feel as Assistance.jsx) ---------- */
 function RomanLayer() {
   const { scrollYProgress } = useScroll();
   const yBust = useTransform(scrollYProgress, [0, 1], [0, -100]);
@@ -115,7 +164,6 @@ function RomanLayer() {
 
   return (
     <>
-      {/* Marble gradients */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]"
@@ -124,8 +172,6 @@ function RomanLayer() {
             "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))",
         }}
       />
-
-      {/* Gold glints */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <motion.div
           style={{ y: yBust }}
@@ -136,8 +182,7 @@ function RomanLayer() {
           className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl"
         />
       </div>
-
-      {/* Parallax statues */}
+      {/* Parallax statues (background) */}
       <motion.img
         src={IMG_LEFT}
         alt=""
@@ -162,7 +207,6 @@ function RomanLayer() {
         className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
         style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
       />
-
       {/* Film grain */}
       <div
         aria-hidden
@@ -176,16 +220,7 @@ function RomanLayer() {
   );
 }
 
-/* =========================================================
- * Helpers / Data
- * =======================================================*/
-const REGISTER_HREF = "https://noirmun.com/register";
-const EB_APPLY_HREF =
-  "https://docs.google.com/forms/d/e/1FAIpQLSckm785lhMOj09BOBpaFWxbBzxp6cO5UjJulhbzZQz__lFtxw/viewform";
-const IG_HREF = "https://instagram.com/noirmodelun";
-const LINKTREE_HREF = "https://linktr.ee/noirmun";
-const VENUE_HOTEL_URL = "https://www.sarovarhotels.com/delite-sarovar-portico-faridabad/";
-
+/* ---------- Countdown ---------- */
 function useCountdown(targetISO) {
   const [diff, setDiff] = useState(() => new Date(targetISO).getTime() - Date.now());
   useEffect(() => {
@@ -200,158 +235,66 @@ function useCountdown(targetISO) {
   const s = Math.floor((abs / 1000) % 60);
   return { past, d, h, m, s };
 }
-
-/* =========================================================
- * Partner Marquee — fixed rotation
- * =======================================================*/
-function PartnerMarquee() {
-  const reduce = useReducedMotion();
-  const CORE = useMemo(() => {
-    if (!Array.isArray(PARTNERS)) return [];
-    const rolesWanted = [
-      "study partner",
-      "gaming partner",
-      "rewards partner",
-      "kitchen partner",
-      "venue & catering partner",
-      "brand association partner",
-    ];
-    return PARTNERS.filter((p) => rolesWanted.includes((p.role || "").toLowerCase()));
-  }, []);
-
-  if (CORE.length === 0) return null;
-
-  const Row = ({ dup = false }) => (
-    <div className="marquee-row" aria-hidden={dup}>
-      {CORE.map((p, i) => (
-        <div key={`${dup ? "b" : "a"}-${p.name}-${i}`} className="item">
-          <img
-            src={p.logo}
-            alt={`${p.name} logo`}
-            className="logo"
-            loading="lazy"
-            decoding="async"
-            onError={(e) => (e.currentTarget.style.opacity = 0.35)}
-          />
-          <span className="label">
-            <span className="role">{p.role}:</span> <span className="name">{p.name}</span>
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-
-  return (
-    <div className={`marquee-wrap ${reduce ? "marquee-static" : ""}`}>
-      <div className="marquee-track">
-        <Row />
-        <Row dup />
-      </div>
-
-      <style>{`
-        .marquee-wrap {
-          position: relative;
-          overflow: hidden;
-          background: var(--noir-glass);
-          border-top: 1px solid var(--noir-stroke);
-          border-bottom: 1px solid var(--noir-stroke);
-          backdrop-filter: blur(6px);
-          -webkit-backdrop-filter: blur(6px);
-        }
-        .marquee-track {
-          display: inline-flex;
-          align-items: center;
-          width: max-content;
-          will-change: transform;
-          animation: noir-marquee 28s linear infinite;
-        }
-        .marquee-wrap:hover .marquee-track { animation-play-state: paused; }
-
-        .marquee-row {
-          display: inline-flex;
-          align-items: center;
-          gap: 16px;
-          padding: 8px 12px;
-        }
-        .marquee-row .item {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 10px;
-          border: 1px solid var(--noir-stroke);
-          background: rgba(255,255,255,.05);
-          border-radius: 12px;
-          white-space: nowrap;
-        }
-        .marquee-row .item .logo {
-          height: 20px; width: 20px; object-fit: contain; opacity: .9;
-        }
-        .marquee-row .label { font-size: 11px; color: rgba(255,255,255,.85); }
-        .marquee-row .label .role { color: rgba(255,255,255,.60); }
-        .marquee-row .label .name { font-weight: 600; }
-
-        @keyframes noir-marquee {
-          from { transform: translate3d(0,0,0); }
-          to   { transform: translate3d(-50%,0,0); }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .marquee-track { animation: none !important; transform: translate3d(0,0,0); }
-          .marquee-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-/* =========================================================
- * Small UI atoms
- * =======================================================*/
 const BigBlock = ({ label, value }) => (
-  <motion.div
-    className="flex flex-col items-center"
-    initial={{ opacity: 0, y: 6 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true }}
-    transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1] }}
-  >
+  <div className="flex flex-col items-center">
     <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-white/8 border border-white/15 grid place-items-center text-4xl md:text-5xl font-black">
       {String(value).padStart(2, "0")}
     </div>
     <div className="mt-2 text-[10px] uppercase tracking-[0.25em] text-white/70">{label}</div>
-  </motion.div>
+  </div>
+);
+
+/* ---------- Visual Bits ---------- */
+const LaurelDivider = () => (
+  <div className="my-8 flex items-center justify-center gap-3 text-white/40">
+    <div className="h-px w-12 bg-white/20" />
+    <span className="tracking-[0.35em] text-xs uppercase">Laurels</span>
+    <div className="h-px w-12 bg-white/20" />
+  </div>
 );
 
 const QuoteCard = ({ children }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 6 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true }}
-    transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1] }}
-    className="mt-6 rounded-2xl border border-white/15 bg-white/[0.05] p-4 text-white/80 backdrop-blur-sm"
-  >
+  <div className="mt-6 rounded-2xl border border-white/15 bg-white/[0.05] p-4 text-white/80 backdrop-blur-sm">
     <div className="flex items-start gap-3">
       <Quote className="mt-1" size={18} />
       <p className="leading-relaxed">{children}</p>
     </div>
-  </motion.div>
+  </div>
 );
 
-function SectionHeading({ kicker, title, icon }) {
+function Gilded({ children }) {
   return (
-    <div className="mb-6 text-left">
-      <div className="text-white/60 text-xs tracking-[0.35em] uppercase">{kicker}</div>
-      <div className="mt-2 flex items-center gap-3">
-        {icon}
-        <h2 className="text-2xl md:text-3xl font-extrabold">{title}</h2>
-      </div>
-    </div>
+    <span
+      className="bg-clip-text text-transparent"
+      style={{
+        backgroundImage:
+          "linear-gradient(90deg, #FFF7C4 0%, #F8E08E 15%, #E6C769 35%, #F2DA97 50%, #CDAE57 65%, #F5E6B9 85%, #E9D27F 100%)",
+      }}
+    >
+      {children}
+    </span>
   );
 }
 
-/* =========================================================
- * Venue + Partner chip
- * =======================================================*/
+/* ---------- Partner filtering (now includes new roles) ---------- */
+function useCorePartners() {
+  return useMemo(() => {
+    if (!Array.isArray(PARTNERS)) return [];
+    return PARTNERS.filter((p) => {
+      const role = (p.role || "").toLowerCase();
+      return (
+        role.includes("study partner") ||
+        role.includes("gaming partner") ||
+        role.includes("rewards partner") ||
+        role.includes("kitchen partner") ||
+        role.includes("venue & catering partner") ||
+        role.includes("brand association partner")
+      );
+    });
+  }, []);
+}
+
+/* ---------- Partner Medallion (hero ribbon) ---------- */
 function PartnerMedallion({ role, name, logo }) {
   return (
     <div className="group flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] transition backdrop-blur">
@@ -360,8 +303,6 @@ function PartnerMedallion({ role, name, logo }) {
           src={logo}
           alt={`${name} logo`}
           className="w-9 h-9 object-contain"
-          loading="lazy"
-          decoding="async"
           onError={(e) => (e.currentTarget.style.opacity = 0.35)}
         />
       </div>
@@ -373,6 +314,102 @@ function PartnerMedallion({ role, name, logo }) {
   );
 }
 
+/* Hero ribbon with large partner presence (filtered) */
+function HeroPartnersRibbon() {
+  const CORE = useCorePartners();
+  if (CORE.length === 0) return null;
+  return (
+    <div className="mt-8">
+      <div className="text-xs uppercase tracking-[0.35em] text-white/60 mb-3 flex items-center justify-start sm:justify-center gap-2">
+        <Star size={14} className="opacity-80" /> <span>In Proud Association</span> <Star size={14} className="opacity-80" />
+      </div>
+      <div className="flex flex-wrap items-stretch justify-start sm:justify-center gap-3 text-left">
+        {CORE.map((p) => (
+          <PartnerMedallion key={`hero-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* Super-smooth, constant-speed marquee (filtered) */
+function PartnerTicker() {
+  const CORE = useCorePartners();
+  const railRef = useRef(null);
+  const trackRef = useRef(null);
+  const animRef = useRef({ x: 0, last: 0 });
+  const SPEED_PX_PER_S = 48;
+
+  useEffect(() => {
+    const rail = railRef.current;
+    const track = trackRef.current;
+    if (!rail || !track || CORE.length === 0) return;
+
+    // Clear any previous clones
+    track.innerHTML = "";
+    const base = document.createElement("div");
+    base.setAttribute("data-chunk", "base");
+    base.className = "flex items-center gap-8";
+    CORE.forEach((p, i) => {
+      const item = document.createElement("div");
+      item.className = "flex items-center gap-2 text-white/70";
+      item.innerHTML = `
+        <img src="${p.logo}" alt="${p.name} logo" class="h-6 w-6 object-contain" />
+        <span class="text-[11px] whitespace-nowrap">
+          <span class="text-white/55">${p.role}:</span> <span class="font-medium">${p.name}</span>
+        </span>`;
+      base.appendChild(item);
+    });
+    track.appendChild(base);
+
+    const cloneA = base.cloneNode(true);
+    const cloneB = base.cloneNode(true);
+    cloneA.setAttribute("data-chunk", "cloneA");
+    cloneB.setAttribute("data-chunk", "cloneB");
+    track.appendChild(cloneA);
+    track.appendChild(cloneB);
+
+    const chunkWidth = base.getBoundingClientRect().width;
+
+    let rafId = 0;
+    const onFrame = (ts) => {
+      if (!animRef.current.last) animRef.current.last = ts;
+      const dt = (ts - animRef.current.last) / 1000;
+      animRef.current.last = ts;
+
+      animRef.current.x -= SPEED_PX_PER_S * dt;
+      if (-animRef.current.x >= chunkWidth) {
+        animRef.current.x += chunkWidth;
+      }
+      track.style.transform = `translate3d(${animRef.current.x}px,0,0)`;
+      rafId = requestAnimationFrame(onFrame);
+    };
+
+    rafId = requestAnimationFrame(onFrame);
+    return () => {
+      cancelAnimationFrame(rafId);
+      animRef.current = { x: 0, last: 0 };
+      if (track) track.style.transform = "translate3d(0,0,0)";
+      if (track) track.innerHTML = "";
+    };
+  }, [CORE.length]);
+
+  if (CORE.length === 0) return null;
+
+  return (
+    <div className="bg-white/[0.05] border-b border-white/10 backdrop-blur-sm overflow-hidden" style={{ contain: "paint", willChange: "transform" }}>
+      <div className="relative mx-auto max-w-7xl" ref={railRef}>
+        <div
+          ref={trackRef}
+          className="flex items-center gap-8 py-2"
+          style={{ willChange: "transform", backfaceVisibility: "hidden", transform: "translate3d(0,0,0)" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Venue Pill ---------- */
 function VenuePill() {
   const [hover, setHover] = useState(false);
   return (
@@ -385,10 +422,9 @@ function VenuePill() {
         onMouseLeave={() => setHover(false)}
         onFocus={() => setHover(true)}
         onBlur={() => setHover(false)}
-        className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs sm:text-sm border transition"
+        className="inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs sm:text-sm border border-white/20 transition"
         aria-label="Open venue website"
         title={VENUE.name}
-        style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)", color: "var(--noir-ink)" }}
       >
         <MapPin size={14} />
         <span className="truncate max-w-[62vw] sm:max-w-none">Venue: {VENUE.name}</span>
@@ -401,19 +437,15 @@ function VenuePill() {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
-            transition={{ duration: 0.5, ease: [0.22, 0.61, 0.36, 1] }}
-            className="absolute left-1/2 -translate-x-1/2 mt-2 w-[280px] rounded-2xl border bg-[#0a0a1a]/95 backdrop-blur p-3 shadow-xl z-20 hidden md:block"
-            style={{ borderColor: "var(--noir-stroke)" }}
+            className="absolute left-1/2 -translate-x-1/2 mt-2 w-[280px] rounded-2xl border border-white/15 bg-[#0a0a1a]/95 backdrop-blur p-3 shadow-xl z-20 hidden md:block"
           >
             <div className="h-28 w-full rounded-xl bg-cover bg-center opacity-90" style={{ backgroundImage: `url(${VENUE.image})` }} aria-hidden />
             <div className="mt-3 text-sm font-medium">{VENUE.name}</div>
             <div className="mt-2 flex gap-2">
-              <a href={VENUE_HOTEL_URL} target="_blank" rel="noreferrer" className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 border text-xs"
-                 style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}>
+              <a href={VENUE_HOTEL_URL} target="_blank" rel="noreferrer" className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 border border-white/15 text-xs">
                 <ExternalLink size={14} /> Explore Hotel
               </a>
-              <a href={VENUE.location} target="_blank" rel="noreferrer" className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 border text-xs"
-                 style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}>
+              <a href={VENUE.location} target="_blank" rel="noreferrer" className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 border border-white/15 text-xs">
                 <Navigation size={14} /> Open in Maps
               </a>
             </div>
@@ -424,245 +456,103 @@ function VenuePill() {
   );
 }
 
-/* =========================================================
- * Prologue (hero) — Roman statues REMOVED here
- * =======================================================*/
-function Prologue() {
+/* ---------- Section Heading ---------- */
+function SectionHeading({ kicker, title, icon }) {
   return (
-    <section
-      className="relative isolate overflow-hidden rounded-[28px]"
-      style={{
-        border: "1px solid var(--noir-stroke)",
-        background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)",
-      }}
-    >
-      {/* (No RomanTriad here as requested) */}
-
-      <div className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
-        <div className="mx-auto h-20 w-20 rounded-xl overflow-hidden relative">
-          <img
-            src={LOGO_URL}
-            alt="Noir"
-            width="80"
-            height="80"
-            fetchpriority="high"
-            decoding="async"
-            className="h-20 w-20 object-contain drop-shadow transition-opacity duration-500 opacity-0"
-            onLoad={(e) => (e.currentTarget.style.opacity = 1)}
-          />
-          <div className="absolute inset-0 bg-white/[0.06]" aria-hidden />
-        </div>
-
-        <motion.h1
-          className="mt-6 text-[40px] md:text-[68px] leading-none font-black tracking-tight"
-          initial={{ opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, ease: [0.22, 0.61, 0.36, 1] }}
-        >
-          NOIR&nbsp;MUN&nbsp;2025
-        </motion.h1>
-
-        <div className="mt-3 inline-flex items-center gap-2 text-white/80">
-          <Calendar size={16} /> {DATES_TEXT} • Faridabad
-        </div>
-
-        <div className="mt-3">
-          <VenuePill />
-        </div>
-
-        <div className="mt-5 text-xl md:text-2xl font-semibold">
-          <span
-            className="bg-clip-text text-transparent"
-            style={{
-              backgroundImage:
-                "linear-gradient(90deg, #FFF7C4 0%, #F8E08E 15%, #E6C769 35%, #F2DA97 50%, #CDAE57 65%, #F5E6B9 85%, #E9D27F 100%)",
-            }}
-          >
-            Whispers Today, Echo Tomorrow
-          </span>
-        </div>
-
-        <QuoteCard>
-          In marble and laurel, discipline met rhetoric. Noir brings that precision to diplomacy — a modern pantheon where words shape order.
-        </QuoteCard>
-
-        <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <a
-            href={REGISTER_HREF}
-            target="_blank"
-            rel="noreferrer"
-            className="click-safe inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-white w-full sm:w-auto justify-center"
-            style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}
-          >
-            Secure your seat <ChevronRight size={18} />
-          </a>
-          <a
-            href={EB_APPLY_HREF}
-            target="_blank"
-            rel="noreferrer"
-            className="click-safe inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-white w-full sm:w-auto justify-center"
-            style={{ background: "var(--noir-glass)", border: "1px solid var(--noir-stroke)" }}
-            title="Apply for the Executive Board"
-          >
-            EB Applications <ChevronRight size={18} />
-          </a>
-          <Link
-            to="/signup"
-            className="click-safe inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-white w-full sm:w-auto justify-center"
-            style={{ background: "var(--noir-glass)", border: "1px solid var(--noir-stroke)" }}
-          >
-            Sign Up
-          </Link>
-          <Link
-            to="/assistance"
-            className="click-safe inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-white w-full sm:w-auto justify-center"
-            style={{ background: "var(--noir-glass)", border: "1px solid var(--noir-stroke)" }}
-          >
-            MUN Assistance
-          </Link>
-        </div>
+    <div className="mb-6 text-left">
+      <div className="text-white/60 text-xs tracking-[0.35em] uppercase">{kicker}</div>
+      <div className="mt-2 flex items-center gap-3">
+        {icon}
+        <h2 className="text-2xl md:text-3xl font-extrabold">{title}</h2>
       </div>
-    </section>
-  );
-}
-
-/* =========================================================
- * Sections (unchanged content)
- * =======================================================*/
-function CountdownSection() {
-  const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
-  return (
-    <section
-      className="mt-8 rounded-[28px] p-6 md:p-10 text-center"
-      style={{
-        border: "1px solid var(--noir-stroke)",
-        background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)",
-      }}
-    >
-      <SectionHeading kicker="Chapter 0" title="Countdown to Noir" icon={<Sparkles size={20} className="text-white/70" />} />
-      {!past ? (
-        <div className="mt-4 flex gap-5 flex-wrap justify-center">
-          <BigBlock label="Days" value={d} />
-          <BigBlock label="Hours" value={h} />
-          <BigBlock label="Mins" value={m} />
-          <BigBlock label="Secs" value={s} />
-        </div>
-      ) : (
-        <div className="mt-4 text-white/80">See you at Noir MUN — thank you!</div>
-      )}
-    </section>
-  );
-}
-
-function LogoBadge({ src, alt }) {
-  return (
-    <div
-      className="mx-auto mt-2 shrink-0 rounded-full w-16 h-16 md:w-20 md:h-20 grid place-items-center"
-      style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}
-    >
-      <img
-        src={src}
-        alt={alt}
-        className="w-[72%] h-[72%] object-contain"
-        onError={(e) => {
-          e.currentTarget.style.opacity = 0.35;
-        }}
-        loading="lazy"
-        decoding="async"
-      />
     </div>
   );
 }
 
-function PosterWall({ onOpen }) {
+/* ---------- Partners Section (cards) ---------- */
+function PartnerBadgeCard({ role, name, logo }) {
   return (
-    <section className="mt-8">
-      <div className="text-center text-left sm:text-center">
-        <h3 className="text-3xl md:text-4xl font-extrabold">
-          <span
-            className="bg-clip-text text-transparent"
-            style={{
-              backgroundImage:
-                "linear-gradient(90deg, #FFF7C4 0%, #F8E08E 15%, #E6C769 35%, #F2DA97 50%, #CDAE57 65%, #F5E6B9 85%, #E9D27F 100%)",
-            }}
-          >
-            The Councils
-          </span>
-        </h3>
-        <p className="mt-2 text-white/70">Step into chambers where rhetoric rivals legend.</p>
+    <div className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden text-left">
+      <div className="flex items-center gap-3">
+        <div className="shrink-0 rounded-xl border border-white/15 bg-white/5 w-14 h-14 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.05)_inset]">
+          <img src={logo} alt={`${name} logo`} className="w-10 h-10 object-contain" onError={(e) => (e.currentTarget.style.opacity = 0.35)} />
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-[0.24em] text-white/60">{role}</div>
+          <div className="text-sm font-semibold">{name}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function PartnersSection() {
+  const FEATURED = useMemo(() => {
+    const roles = [
+      "venue & catering partner",
+      "rewards partner",
+      "kitchen partner",
+      "brand association partner",
+    ];
+    return (PARTNERS || []).filter((p) => roles.includes((p.role || "").toLowerCase()));
+  }, []);
+  if (FEATURED.length === 0) return null;
+  return (
+    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
+      <SectionHeading kicker="Chapter III½" title="Allies & Partners" icon={<Crown size={20} className="text-white/70" />} />
+      <p className="text-white/80 leading-relaxed">Institutions that stand with Noir — strengthening access, study, and community.</p>
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
+        {FEATURED.map((p) => (
+          <PartnerBadgeCard key={`${p.role}-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
+        ))}
       </div>
 
-      <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {COMMITTEES.map((c, idx) => (
-          <motion.button
-            key={c.name}
-            onClick={() => onOpen(idx)}
-            className="group relative rounded-[26px] overflow-hidden text-left focus:outline-none"
-            style={{
-              border: "1px solid var(--noir-stroke)",
-              background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02))",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)",
-            }}
-            initial={{ opacity: 0, y: 6 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{
-              duration: 0.6,
-              ease: [0.22, 0.61, 0.36, 1],
-              delay: (idx % 6) * 0.03,
-            }}
-          >
-            <div className="aspect-[16/10] md:aspect-[16/9] w-full grid place-items-center px-6 text-center">
-              <LogoBadge src={c.logo} alt={`${c.name} logo`} />
-              <div className="mt-4">
-                <div className="font-semibold text-lg leading-tight">{c.name}</div>
-                <div className="text-xs text-white/70 line-clamp-3 mt-2">{c.agenda}</div>
-              </div>
+      {/* Mobile quick chips row */}
+      <div className="mt-6 overflow-x-auto sm:hidden pl-1 [-webkit-overflow-scrolling:touch]">
+        <div className="flex gap-3 min-w-max">
+          {FEATURED.map((p) => (
+            <div key={`mini-${p.name}`} className="px-3 py-2 rounded-full border border-white/12 bg-white/[0.04] text-xs whitespace-nowrap">
+              {p.role}: <span className="font-medium">{p.name}</span>
             </div>
-            <div className="absolute inset-0 pointer-events-none">
-              <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                style={{ boxShadow: "inset 0 0 140px rgba(255,255,255,.09)" }}
-              />
-              <div className="absolute inset-0 rounded-[26px]" style={{ border: "1px solid rgba(255,255,255,.18)" }} />
-            </div>
-          </motion.button>
-        ))}
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
+/* ---------- Itinerary Section ---------- */
+function DressIcon({ type }) {
+  if (type.toLowerCase().includes("indian")) {
+    return (
+      <svg viewBox="0 0 64 64" className="w-5 h-5">
+        <path d="M18 10h28l2 10-16 6-16-6 2-10zM32 26l-10 6v16h20V32l-10-6z" fill="currentColor" opacity="0.85" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 64 64" className="w-5 h-5">
+      <path d="M24 10h16l4 10-12 6-12-6 4-10zm-2 18h20l-2 20H24l-2-20z" fill="currentColor" opacity="0.85" />
+    </svg>
+  );
+}
 function ItinerarySection() {
   return (
-    <section
-      className="mt-16 rounded-[28px] p-6 md:p-10 text-left"
-      style={{
-        border: "1px solid var(--noir-stroke)",
-        background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)",
-      }}
-    >
+    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5 text-left">
       <SectionHeading kicker="Chapter V" title="Itinerary & Dress Code  *Tentative" icon={<Sparkles size={20} className="text-white/70" />} />
       <div className="grid md:grid-cols-2 gap-6">
         {ITINERARY.map((day) => (
-          <div key={day.day} className="rounded-2xl p-4" style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}>
+          <div key={day.day} className="rounded-2xl border border-white/12 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between">
-              <div className="text-lg font-semibold">
-                Day {day.day} — {day.dateText}
-              </div>
+              <div className="text-lg font-semibold">Day {day.day} — {day.dateText}</div>
               <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/70">
-                <span className="inline-block w-2 h-2 rounded-full" style={{ background: GOLD }} />
+                <DressIcon type={day.dressCode} />
                 {day.dressCode}
               </div>
             </div>
             <ul className="mt-3 space-y-2">
               {day.events.map((e, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <div className="mt-1 h-2 w-2 rounded-full" style={{ background: "rgba(255,255,255,.7)" }} />
+                  <div className="mt-1 h-2 w-2 rounded-full bg-white/70" />
                   <div>
                     <div className="text-sm font-medium">{e.title}</div>
                     <div className="text-xs text-white/70">{e.time}</div>
@@ -678,220 +568,286 @@ function ItinerarySection() {
   );
 }
 
-function WhyNoir() {
-  const CARDS = [
-    {
-      title: "First hotel-hosted MUN in Faridabad",
-      desc: "Premium venue experience at Delite Sarovar Portico. Serious rooms for serious diplomacy.",
-      icon: <MapPin size={18} />,
-    },
-    {
-      title: "Hospitality • Catering • Socials",
-      desc: "Great hospitality, curated catering, and socials that actually deliver.",
-      icon: <Users size={18} />,
-    },
-    {
-      title: "Cash prizes & Prestige",
-      desc: (
-        <>
-          Normal committee prizes + Secretary General’s Best Delegate <span className="text-[10px] opacity-75">(T&amp;C apply, tentative)</span>.
-        </>
-      ),
-      icon: <Award size={18} />,
-    },
-    {
-      title: "Our past conferences",
-      desc: "Born from a love of design and debate. A council of builders and diplomats.",
-      icon: <Shield size={18} />,
-    },
-  ];
-  return (
-    <section
-      className="mt-16 rounded-[28px] p-6 md:p-10"
-      style={{
-        border: "1px solid var(--noir-stroke)",
-        background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)",
-      }}
-    >
-      <SectionHeading kicker="Chapter IV" title="Why Noir?" icon={<Info size={20} className="text-white/70" />} />
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {CARDS.map((c, i) => (
-          <motion.div
-            key={typeof c.title === "string" ? c.title : `card-${i}`}
-            initial={{ opacity: 0, y: 6 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, ease: [0.22, 0.61, 0.36, 1], delay: i * 0.03 }}
-            className="rounded-2xl p-4"
-            style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}
-          >
-            <div className="flex items-center gap-2 text-white/80">
-              {c.icon} <div className="font-semibold">{c.title}</div>
-            </div>
-            <div className="mt-2 text-white/70 text-sm">{c.desc}</div>
-          </motion.div>
-        ))}
-      </div>
+/* ---------- WILT Mini (chat) ---------- */
+function answerStaffQuery(qRaw) {
+  const q = norm(qRaw);
+  const special = specialEDIntercept(q);
+  if (special) return special;
 
-      <div className="mt-6 rounded-2xl p-4" style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}>
-        <div className="text-xs uppercase tracking-[0.28em] text-white/60 mb-2">Leadership</div>
-        <div className="text-white/85 text-sm">
-          Sameer Jhamb — Founder • Maahir Gulati — Co-Founder • Gautam Khera — President
+  for (const [name, role] of Object.entries(STAFF)) {
+    const n = norm(name);
+    if (q.includes(n)) return `${titleCase(name)} — ${role}`;
+  }
+
+  const possible = Object.keys(ROLE_TO_NAMES)
+    .concat(Object.keys(ROLE_SYNONYMS))
+    .sort((a, b) => b.length - a.length);
+
+  for (const token of possible) {
+    const key = ROLE_SYNONYMS[token] ? ROLE_SYNONYMS[token] : token;
+    if (q.includes(token)) {
+      const names = ROLE_TO_NAMES[norm(key)];
+      if (names && names.length) {
+        const pretty = names.map((n) => titleCase(n)).join(", ");
+        return `${pretty} — ${titleCase(key)}`;
+      }
+    }
+  }
+
+  const whoRole = q.match(/who(?:\s+is|'?s)?\s+(the\s+)?([a-z\s']{2,40})\??$/);
+  if (whoRole) {
+    const roleText = norm((whoRole[2] || "").replace(/\bof\b.*$/, "").trim());
+    const key = ROLE_SYNONYMS[roleText] || roleText;
+    const names = ROLE_TO_NAMES[key];
+    if (names && names.length) {
+      const pretty = names.map((n) => titleCase(n)).join(", ");
+      return `${pretty} — ${titleCase(key)}`;
+    }
+  }
+
+  const whoName = q.match(/who(?:\s+is|'?s)?\s+([a-z\s']{2,40})\??$/);
+  if (whoName) {
+    const nameGuess = norm(whoName[1]);
+    for (const [name, role] of Object.entries(STAFF)) {
+      if (name.includes(nameGuess) || nameGuess.includes(name.split(" ")[0])) {
+        return `${titleCase(name)} — ${role}`;
+      }
+    }
+  }
+
+  return null;
+}
+function TalkToUs() {
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [thread, setThread] = useState([
+    {
+      from: "bot",
+      text: "Ave! I’m WILT Mini — ask dates, fee, venue, founders, committees, or any staff role like ‘Who is the ED?’",
+    },
+  ]);
+  const add = (m) => setThread((t) => [...t, m]);
+
+  const send = () => {
+    if (!input.trim()) return;
+    const msg = input.trim();
+    setInput("");
+    add({ from: "user", text: msg });
+
+    const q = norm(msg);
+
+    if (/\b(date|when|schedule|day|dates|what\s+day|which\s+date)\b/.test(q)) {
+      return add({ from: "bot", text: `Dates: ${DATES_TEXT}.` });
+    }
+    if (/\b(fee|price|cost|charges?)\b/.test(q)) {
+      return add({ from: "bot", text: "Delegate fee: ₹2300." });
+    }
+    if (/\b(venue|where|location|address)\b/.test(q)) {
+      try { window.open(VENUE_HOTEL_URL, "_blank"); } catch {}
+      return add({
+        from: "bot",
+        text: `Venue: ${VENUE.name}.\nHotel page → ${VENUE_HOTEL_URL}\nMaps → ${VENUE.location}`,
+      });
+    }
+    if (/\b(register|sign\s*up|enrol|enroll|apply|secure\s*(my|your)?\s*seat)\b/.test(q)) {
+      try { window.open(REGISTER_HREF, "_blank"); } catch {}
+      return add({ from: "bot", text: `Opening registration → ${REGISTER_HREF}` });
+    }
+    if (/\b(insta|instagram)\b/.test(q)) {
+      try { window.open(IG_HREF, "_blank"); } catch {}
+      return add({ from: "bot", text: `Instagram → ${IG_HREF}` });
+    }
+    if (/\blinktr|linktree|links?\b/.test(q)) {
+      try { window.open(LINKTREE_HREF, "_blank"); } catch {}
+      return add({ from: "bot", text: `Links hub → ${LINKTREE_HREF}` });
+    }
+    if (/\b(committee|committees|councils?|agenda|topics?)\b/.test(q)) {
+      const names = COMMITTEES.map((c) => c.name).join(", ");
+      return add({ from: "bot", text: `Councils: ${names}.\nOpen Assistance for full briefs → /assistance` });
+    }
+    const staffAnswer = answerStaffQuery(q);
+    if (staffAnswer) return add({ from: "bot", text: staffAnswer });
+
+    if (/\b(founder|organiser|organizer|oc|eb|lead|leadership|team)\b/.test(q)) {
+      return add({
+        from: "bot",
+        text: "Leadership — Founder: Sameer Jhamb, Co-Founder: Maahir Gulati, President: Gautam Khera. Ask me any role by name too.",
+      });
+    }
+    if (/\b(exec|human|someone|whatsapp|help|contact|support)\b/.test(q)) {
+      try { window.open(WHATSAPP_ESCALATE, "_blank"); } catch {}
+      return add({ from: "bot", text: "Opening WhatsApp…" });
+    }
+    return add({
+      from: "bot",
+      text: "Try: dates • fee • venue • committees • register • founders • staff lookups • Instagram • Linktree",
+    });
+  };
+
+  return (
+    <div className="fixed bottom-5 right-5 z-40">
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="w-96 max-w-[92vw] rounded-2xl shadow-2xl overflow-hidden border border-white/15 backdrop-blur bg-white/10 text-white"
+          >
+            <div className="flex items-center justify-between px-4 py-3 bg-white/10">
+              <div className="font-semibold flex items-center gap-2">
+                <Crown size={16} className="opacity-80" />
+                Talk to us (WILT Mini)
+              </div>
+              <button onClick={() => setOpen(false)} className="p-1 hover:opacity-80">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="max-h-96 overflow-auto p-3 space-y-3">
+              {thread.map((m, i) => (
+                <div key={i} className={`flex ${m.from === "bot" ? "justify-start" : "justify-end"}`}>
+                  <div className={`${m.from === "bot" ? "bg-white/20" : "bg-white/30"} text-sm px-3 py-2 rounded-2xl max-w-[85%] whitespace-pre-wrap leading-relaxed`}>
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="px-3 pb-2 flex flex-wrap gap-2">
+              <button onClick={() => { setInput("Dates?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Dates</button>
+              <button onClick={() => { setInput("Fee?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Fee</button>
+              <button onClick={() => { setInput("Venue?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Venue</button>
+              <button onClick={() => { setInput("Committees"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Committees</button>
+              <button onClick={() => { setInput("Register"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Register</button>
+              <button onClick={() => { setInput("Instagram"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Instagram</button>
+              <button onClick={() => { setInput("Linktree"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Linktree</button>
+              <Link to="/assistance" className="text-xs rounded-full px-3 py-1 bg-white/15">Open Assistance</Link>
+            </div>
+
+            <div className="p-3 flex items-center gap-2">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && send()}
+                placeholder="Ask anything… e.g., dates, fee, venue, committees"
+                className="flex-1 bg-white/15 px-3 py-2 rounded-xl outline-none placeholder-white/60"
+              />
+              <button onClick={send} className="px-3 py-2 rounded-xl bg-white/20 hover:bg-white/30">
+                <Send size={16} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!open && (
+        <motion.button
+          onClick={() => setOpen(true)}
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          whileHover={{ y: -2 }}
+          className="flex items-center gap-2 px-4 py-3 rounded-2xl text-white shadow-xl bg-[--theme] border border-white/20 hover:shadow-2xl"
+          style={{ "--theme": THEME_BASE }}
+        >
+          <MessageCircle size={18} /> Talk to us
+        </motion.button>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Footer ---------- */
+function InlineFooter() {
+  const CORE = useCorePartners();
+  return (
+    <footer className="mt-16 border-top border-white/10">
+      {CORE.length > 0 && (
+        <div className="mx-auto max-w-7xl px-4 py-6">
+          <div className="text-xs uppercase tracking-[0.28em] text-white/50 text-left sm:text-center mb-3">Partners</div>
+          <div className="flex items-center justify-start sm:justify-center gap-6 flex-wrap">
+            {CORE.map((p) => (
+              <div key={`footer-${p.name}`} className="flex items-center gap-2 text-white/70">
+                <img
+                  src={p.logo}
+                  alt={`${p.name} logo`}
+                  className="h-6 w-6 object-contain opacity-90"
+                  onError={(e) => (e.currentTarget.style.opacity = 0.35)}
+                />
+                <span className="text-xs">
+                  <span className="text-white/60">{p.role}:</span> <span className="font-medium">{p.name}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mx-auto max-w-7xl px-4 py-10 grid gap-8 md:grid-cols-4 text-white/80">
+        <div className="flex items-center gap-3">
+          <img
+            src={LOGO_URL}
+            alt="Noir"
+            width="40"
+            height="40"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+            className="h-10 w-10 object-contain"
+          />
+          <div>
+            <div className="font-semibold">Noir MUN</div>
+            <div className="text-xs text-white/60">Faridabad, India</div>
+          </div>
+        </div>
+        <div>
+          <div className="font-semibold">Explore</div>
+          <Link to="/assistance" className="block text-sm hover:underline">Assistance</Link>
+          <a
+            href="https://www.noirmun.com/best-mun-delhi-faridabad"
+            className="block text-sm hover:underline"
+            target="_blank"
+            rel="noreferrer"
+            title="Best Model UN (MUN) in Delhi & Faridabad – 2025 Guide"
+          >
+            Best MUN in Delhi &amp; Faridabad (2025 Guide)
+          </a>
+          <Link to="/login" className="block text-sm hover:underline">Login</Link>
+          <Link to="/signup" className="block text-sm hover:underline">Sign Up</Link>
+          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Register</a>
+        </div>
+        <div>
+          <div className="font-semibold">Socials</div>
+          <a href={IG_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Instagram</a>
+          <a href={LINKTREE_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">Linktree</a>
+        </div>
+        <div>
+          <div className="font-semibold">Legal</div>
+          <Link to="/legal" className="block text-sm hover:underline">Terms & Privacy</Link>
+          <div className="text-xs text-white/60">© {new Date().getFullYear()} Noir MUN — “Whispers Today, Echo Tomorrow.”</div>
         </div>
       </div>
-    </section>
+    </footer>
   );
 }
 
-/* =========================================================
- * Testimonials
- * =======================================================*/
-function Testimonials() {
-  const items = [
-    {
-      event: "HIAC MUN",
-      text:
-        "HIAC MUN felt like the moment Faridabad’s MUN era truly began. Tight agendas, sharp moderation, and rooms that buzzed with intent.",
-      name: "Aarav Mehta",
-      role: "Delegate",
-    },
-    {
-      event: "HIAC MUN",
-      text:
-        "HIAC allowed me to begin my MUN journey. I walked in nervous and walked out hunting for my next committee.",
-      name: "Navya Kapoor",
-      role: "Delegate",
-    },
-    {
-      event: "MosaicMUN",
-      text:
-        "MosaicMUN was the first in Faridabad to promise socials like HOCO and actually deliver. Committee rooms had working ACs — comfort dialed in.",
-      name: "Raghav Malhotra",
-      role: "Delegate",
-    },
-    {
-      event: "MosaicMUN",
-      text:
-        "The HOCO Night at MosaicMUN was genuinely fun — the perfect reset between heavy debate and drafting.",
-      name: "Sanya Arora",
-      role: "Delegate",
-    },
-  ];
-
-  return (
-    <section
-      className="mt-16 rounded-[28px] p-6 md:p-10"
-      style={{
-        border: "1px solid var(--noir-stroke)",
-        background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)",
-      }}
-    >
-      <SectionHeading kicker="Chapter VI" title="What People Loved" icon={<Quote size={20} className="text-white/70" />} />
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {items.map((t, i) => (
-          <motion.figure
-            key={t.name + i}
-            className="rounded-2xl p-4 text-left"
-            style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}
-            initial={{ opacity: 0, y: 6 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1], delay: i * 0.02 }}
-          >
-            <div className="text-[11px] uppercase tracking-[0.26em] text-white/60">{t.event}</div>
-            <div className="mt-2 text-sm text-white/85 leading-relaxed">{t.text}</div>
-            <div className="mt-3 text-[13px] text-white/80">
-              <span className="font-medium text-white/90">{t.name}</span> • {t.role}
-            </div>
-          </motion.figure>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* =========================================================
- * FAQ
- * =======================================================*/
-function FAQ() {
-  const QA = [
-    {
-      q: "How big are the cash prizes?",
-      a: (
-        <>
-          We award normal committee prizes and a special Secretary General’s Best Delegate.{" "}
-          <span className="text-[11px] opacity-75">(T&amp;C apply, tentative)</span>
-        </>
-      ),
-    },
-    {
-      q: "I’m a first-timer. Can I still attend?",
-      a: "Absolutely. Use our MUN Assistance for prep, tips, and committee matching. Open Assistance from the homepage or go to /assistance.",
-    },
-    {
-      q: "What happens after I register?",
-      a: "You’ll receive a confirmation, allotments window updates, and a prep pack with resources. Keep an eye on your email and our Instagram.",
-    },
-    {
-      q: "Where is the venue and how do I reach?",
-      a: `Delite Sarovar Portico, Faridabad. Find directions on the Venue card above or open Maps from the header.`,
-    },
-    {
-      q: "Dress code?",
-      a: "Day 1: Indian Ethnic. Day 2: Western Formals. See the Itinerary section for timings.",
-    },
-  ];
-  return (
-    <section
-      className="mt-16 rounded-[28px] p-6 md:p-10"
-      style={{
-        border: "1px solid var(--noir-stroke)",
-        background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)",
-      }}
-    >
-      <SectionHeading kicker="Chapter VII" title="FAQs" icon={<HelpCircle size={20} className="text-white/70" />} />
-      <div className="grid md:grid-cols-2 gap-4">
-        {QA.map((x, i) => (
-          <motion.details
-            key={x.q}
-            initial={{ opacity: 0, y: 6 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1], delay: i * 0.02 }}
-            className="rounded-2xl p-4 open:bg-white/[0.05]"
-            style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}
-          >
-            <summary className="cursor-pointer select-none list-none flex items-center gap-2">
-              <CheckCircle2 size={16} className="text-white/70" />
-              <span className="font-semibold">{x.q}</span>
-            </summary>
-            <div className="mt-2 text-white/75">{x.a}</div>
-          </motion.details>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* =========================================================
- * Brief Modal
- * =======================================================*/
+/* ---------- Brief Modal ---------- */
 function BriefModal({ idx, onClose }) {
   if (idx === null) return null;
   const c = COMMITTEES[idx];
   return (
     <AnimatePresence>
-      <motion.div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div
+        className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
         <motion.div
-          initial={{ y: 24, opacity: 0 }}
+          initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 24, opacity: 0 }}
-          transition={{ duration: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
-          className="max-w-3xl w-full max-h-[85vh] overflow-auto rounded-2xl p-6 text-white"
-          style={{ border: "1px solid var(--noir-stroke)", background: "rgba(10,10,26,0.96)" }}
+          exit={{ y: 30, opacity: 0 }}
+          className="max-w-3xl w-full max-h-[85vh] overflow-auto rounded-2xl border border-white/15 bg-[#0a0a1a] text-white p-6"
         >
           <div className="flex items-center gap-3">
             <img src={c.logo} className="h-12 w-12 object-contain" alt={`${c.name} logo`} />
@@ -931,391 +887,145 @@ function BriefModal({ idx, onClose }) {
   );
 }
 
-/* =========================================================
- * Talk to us (WILT Mini)
- * =======================================================*/
-const STAFF = {
-  "sameer jhamb": "Founder",
-  "maahir gulati": "Co-Founder",
-  "gautam khera": "President",
-  "daanesh narang": "Chief Advisor",
-  "daanish narang": "Chief Advisor",
-  "vishesh kumar": "Junior Advisor",
-  "jhalak batra": "Secretary General",
-  "anushka dua": "Director General",
-  "mahi choudharie": "Deputy Director General",
-  "namya negi": "Deputy Secretary General",
-  "shambhavi sharma": "Vice President",
-  "shubh dahiya": "Executive Director",
-  "nimay gupta": "Deputy Executive Director",
-  "gauri khatter": "Charge D'Affaires",
-  "garima": "Conference Director",
-  "madhav sadana": "Conference Director",
-  "shreyas kalra": "Chef D Cabinet",
-};
-
-function norm(s = "") {
-  return s.toLowerCase().replace(/\s+/g, " ").trim();
-}
-function titleCase(s = "") {
-  return s.replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-const ROLE_TO_NAMES = Object.entries(STAFF).reduce((acc, [name, role]) => {
-  const k = norm(role);
-  (acc[k] = (acc[k] || [])).push(name);
-  return acc;
-}, {});
-const ROLE_SYNONYMS = {
-  ed: "executive director",
-  "executive director": "executive director",
-  "deputy ed": "deputy executive director",
-  "deputy executive director": "deputy executive director",
-  cofounder: "co-founder",
-  "co founder": "co-founder",
-  "co-founder": "co-founder",
-  sg: "secretary general",
-  "sec gen": "secretary general",
-  dg: "director general",
-  vps: "vice president",
-  vp: "vice president",
-  pres: "president",
-  president: "president",
-  "junior advisor": "junior advisor",
-  "chief advisor": "chief advisor",
-  "charge d affaires": "charge d'affaires",
-  "charge d' affairs": "charge d'affaires",
-  "charge d'affaires": "charge d'affaires",
-  "chef d cabinet": "chef d cabinet",
-  "conference director": "conference director",
-  founder: "founder",
-};
-
-function specialEDIntercept(q) {
-  const isWho = /\bwho(\s+is|'?s)?\b/.test(q);
-  const mentionsED = /(\bthe\s+)?\bed\b|executive\s+director/.test(q);
-  if (isWho && mentionsED) return "Nimay Gupta — Deputy Executive Director (ED)";
-  return null;
-}
-
-function answerStaffQuery(qRaw) {
-  const q = norm(qRaw);
-  const special = specialEDIntercept(q);
-  if (special) return special;
-
-  for (const [name, role] of Object.entries(STAFF)) {
-    const n = norm(name);
-    if (q.includes(n)) return `${titleCase(name)} — ${role}`;
-  }
-
-  const possible = Object.keys(ROLE_TO_NAMES).concat(Object.keys(ROLE_SYNONYMS)).sort((a, b) => b.length - a.length);
-  for (const token of possible) {
-    const key = ROLE_SYNONYMS[token] ? ROLE_SYNONYMS[token] : token;
-    if (q.includes(token)) {
-      const names = ROLE_TO_NAMES[norm(key)];
-      if (names && names.length) {
-        const pretty = names.map((n) => titleCase(n)).join(", ");
-        return `${pretty} — ${titleCase(key)}`;
-      }
-    }
-  }
-  const whoRole = q.match(/who(?:\s+is|'?s)?\s+(the\s+)?([a-z\s']{2,40})\??$/);
-  if (whoRole) {
-    const roleText = norm((whoRole[2] || "").replace(/\bof\b.*$/, "").trim());
-    const key = ROLE_SYNONYMS[roleText] || roleText;
-    const names = ROLE_TO_NAMES[key];
-    if (names && names.length) {
-      const pretty = names.map((n) => titleCase(n)).join(", ");
-      return `${pretty} — ${titleCase(key)}`;
-    }
-  }
-  const whoName = q.match(/who(?:\s+is|'?s)?\s+([a-z\s']{2,40})\??$/);
-  if (whoName) {
-    const nameGuess = norm(whoName[1]);
-    for (const [name, role] of Object.entries(STAFF)) {
-      if (name.includes(nameGuess) || nameGuess.includes(name.split(" ")[0])) {
-        return `${titleCase(name)} — ${role}`;
-      }
-    }
-  }
-  return null;
-}
-
-function TalkToUs() {
-  const [open, setOpen] = useState(false);
-  const [input, setInput] = useState("");
-  const [thread, setThread] = useState([{ from: "bot", text: "Ave! I’m WILT Mini — ask dates, fee, venue, founders, committees, or any staff role like ‘Who is the ED?’" }]);
-  const add = (m) => setThread((t) => [...t, m]);
-
-  const send = () => {
-    if (!input.trim()) return;
-    const msg = input.trim();
-    setInput("");
-    add({ from: "user", text: msg });
-
-    const q = norm(msg);
-
-    if (/\b(date|when|schedule|day|dates|what\s+day|which\s+date)\b/.test(q)) {
-      return add({ from: "bot", text: `Dates: ${DATES_TEXT}.` });
-    }
-    if (/\b(fee|price|cost|charges?)\b/.test(q)) {
-      return add({ from: "bot", text: "Delegate fee: ₹2300." });
-    }
-    if (/\b(venue|where|location|address)\b/.test(q)) {
-      try {
-        window.open(VENUE_HOTEL_URL, "_blank");
-      } catch {}
-      return add({
-        from: "bot",
-        text: `Venue: ${VENUE.name}.\nHotel page → ${VENUE_HOTEL_URL}\nMaps → ${VENUE.location}`,
-      });
-    }
-    if (/\b(register|sign\s*up|enrol|enroll|apply|secure\s*(my|your)?\s*seat)\b/.test(q)) {
-      try {
-        window.open(REGISTER_HREF, "_blank");
-      } catch {}
-      return add({ from: "bot", text: `Opening registration → ${REGISTER_HREF}` });
-    }
-    if (/\b(insta|instagram)\b/.test(q)) {
-      try {
-        window.open(IG_HREF, "_blank");
-      } catch {}
-      return add({ from: "bot", text: `Instagram → ${IG_HREF}` });
-    }
-    if (/\blinktr|linktree|links?\b/.test(q)) {
-      try {
-        window.open(LINKTREE_HREF, "_blank");
-      } catch {}
-      return add({ from: "bot", text: `Links hub → ${LINKTREE_HREF}` });
-    }
-    if (/\b(committee|committees|councils?|agenda|topics?)\b/.test(q)) {
-      const names = COMMITTEES.map((c) => c.name).join(", ");
-      return add({ from: "bot", text: `Councils: ${names}.\nOpen Assistance for full briefs → /assistance` });
-    }
-    const staffAnswer = answerStaffQuery(q);
-    if (staffAnswer) return add({ from: "bot", text: staffAnswer });
-
-    if (/\b(founder|organiser|organizer|oc|eb|lead|leadership|team)\b/.test(q)) {
-      return add({
-        from: "bot",
-        text: "Leadership — Founder: Sameer Jhamb, Co-Founder: Maahir Gulati, President: Gautam Khera. Ask me any role by name too.",
-      });
-    }
-    if (/\b(exec|human|someone|whatsapp|help|contact|support)\b/.test(q)) {
-      try {
-        window.open(WHATSAPP_ESCALATE, "_blank");
-      } catch {}
-      return add({ from: "bot", text: "Opening WhatsApp…" });
-    }
-    return add({
-      from: "bot",
-      text: "Try: dates • fee • venue • committees • register • founders • staff lookups • Instagram • Linktree",
-    });
-  };
-
+/* ---------- Prologue (Hero) ---------- */
+// NOTE: Roman statues REMOVED from hero; background RomanLayer still active globally.
+function Prologue() {
   return (
-    <div className="fixed bottom-5 right-5 z-40">
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
-            transition={{ duration: 0.4, ease: [0.22, 0.61, 0.36, 1] }}
-            className="w-96 max-w-[92vw] rounded-2xl shadow-2xl overflow-hidden border backdrop-blur"
-            style={{ borderColor: "var(--noir-stroke)", background: "rgba(255,255,255,.10)", color: "var(--noir-ink)" }}
-          >
-            <div className="flex items-center justify-between px-4 py-3" style={{ background: "rgba(255,255,255,.10)" }}>
-              <div className="font-semibold flex items-center gap-2">
-                <Crown size={16} className="opacity-80" />
-                Talk to us (WILT Mini)
-              </div>
-              <button onClick={() => setOpen(false)} className="p-1 hover:opacity-80">
-                <X size={18} />
-              </button>
-            </div>
+    <section className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
+      {/* soft glows */}
+      <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
+      <div className="pointer-events-none absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-white/10 blur-3xl rounded-full" />
 
-            <div className="max-h-96 overflow-auto p-3 space-y-3">
-              {thread.map((m, i) => (
-                <div key={i} className={`flex ${m.from === "bot" ? "justify-start" : "justify-end"}`}>
-                  <div className={`${m.from === "bot" ? "bg-white/20" : "bg-white/30"} text-sm px-3 py-2 rounded-2xl max-w-[85%] whitespace-pre-wrap leading-relaxed`}>{m.text}</div>
-                </div>
-              ))}
-            </div>
+      <div className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
+        <img
+          src={LOGO_URL}
+          alt="Noir"
+          width="80"
+          height="80"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+          className="h-20 w-20 mx-auto object-contain drop-shadow"
+        />
+        <h1 className="mt-6 text-[40px] md:text-[68px] leading-none font-black tracking-tight">NOIR&nbsp;MUN&nbsp;2025</h1>
+        <div className="mt-3 inline-flex items-center gap-2 text-white/80">
+          <Calendar size={16} /> {DATES_TEXT} • Faridabad
+        </div>
 
-            <div className="px-3 pb-2 flex flex-wrap gap-2">
-              <button onClick={() => { setInput("Dates?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>
-                Dates
-              </button>
-              <button onClick={() => { setInput("Fee?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>
-                Fee
-              </button>
-              <button onClick={() => { setInput("Venue?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>
-                Venue
-              </button>
-              <button onClick={() => { setInput("Committees"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>
-                Committees
-              </button>
-              <button onClick={() => { setInput("Register"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>
-                Register
-              </button>
-              <button onClick={() => { setInput("Instagram"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>
-                Instagram
-              </button>
-              <button onClick={() => { setInput("Linktree"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>
-                Linktree
-              </button>
-              <Link to="/assistance" className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>
-                Open Assistance
-              </Link>
-            </div>
+        <div className="mt-3">
+          <VenuePill />
+        </div>
 
-            <div className="p-3 flex items-center gap-2">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && send()}
-                placeholder="Ask anything… e.g., dates, fee, venue, committees"
-                className="flex-1 px-3 py-2 rounded-xl outline-none"
-                style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)", color: "var(--noir-ink)" }}
-              />
-              <button onClick={send} className="px-3 py-2 rounded-xl" style={{ background: "var(--noir-glass)", border: "1px solid var(--noir-stroke)" }}>
-                <Send size={16} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        <div className="mt-5 text-xl md:text-2xl font-semibold">
+          <Gilded>Whispers Today, Echo Tomorrow</Gilded>
+        </div>
 
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          className="flex items-center gap-2 px-4 py-3 rounded-2xl text-white shadow-xl border transition"
-          style={{ background: "var(--noir-glass-2)", borderColor: "var(--noir-stroke)" }}
-        >
-          <MessageCircle size={18} /> Talk to us
-        </button>
+        <HeroPartnersRibbon />
+
+        <QuoteCard>
+          In marble and laurel, discipline met rhetoric. Noir brings that precision to diplomacy — a modern pantheon where words shape order.
+        </QuoteCard>
+
+        <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center">
+            Secure your seat <ChevronRight size={18} />
+          </a>
+          <a href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center" title="Apply for the Executive Board">
+            EB Applications <ChevronRight size={18} />
+          </a>
+          <Link to="/signup" className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center">
+            Sign Up
+          </Link>
+          <Link to="/assistance" className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center">
+            MUN Assistance
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Separate Countdown Section ---------- */
+function CountdownSection() {
+  const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
+  return (
+    <section className="mt-8 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5 text-center">
+      <SectionHeading
+        kicker="Chapter 0"
+        title="Countdown to Noir"
+        icon={<Sparkles size={20} className="text-white/70" />}
+      />
+      {!past ? (
+        <div className="mt-4 flex gap-5 flex-wrap justify-center">
+          <BigBlock label="Days" value={d} />
+          <BigBlock label="Hours" value={h} />
+          <BigBlock label="Mins" value={m} />
+          <BigBlock label="Secs" value={s} />
+        </div>
+      ) : (
+        <div className="mt-4 text-white/80">See you at Noir MUN — thank you!</div>
       )}
+    </section>
+  );
+}
+
+/* ---------- Councils grid ---------- */
+function LogoBadge({ src, alt }) {
+  return (
+    <div className="mx-auto mt-2 shrink-0 rounded-full border border-yellow-100/20 bg-white/[0.06] w-16 h-16 md:w-20 md:h-20 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.04)_inset]">
+      <img
+        src={src}
+        alt={alt}
+        className="w-[72%] h-[72%] object-contain"
+        onError={(e) => {
+          e.currentTarget.style.opacity = 0.35;
+        }}
+      />
     </div>
   );
 }
-
-/* =========================================================
- * Footer / Partners
- * =======================================================*/
-function useCorePartners() {
-  return useMemo(() => {
-    if (!Array.isArray(PARTNERS)) return [];
-    return PARTNERS.filter((p) => {
-      const role = (p.role || "").toLowerCase();
-      return (
-        role.includes("study partner") ||
-        role.includes("gaming partner") ||
-        role.includes("rewards partner") ||
-        role.includes("kitchen partner") ||
-        role.includes("venue & catering partner") ||
-        role.includes("brand association partner")
-      );
-    });
-  }, []);
-}
-
-function InlineFooter() {
-  const CORE = useCorePartners();
+function PosterWall({ onOpen }) {
   return (
-    <footer className="mt-16">
-      {CORE.length > 0 && (
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          <div className="text-xs uppercase tracking-[0.28em] text-white/50 text-left sm:text-center mb-3">Partners</div>
-          <div className="flex items-center justify-start sm:justify-center gap-6 flex-wrap">
-            {CORE.map((p) => (
-              <div key={`footer-${p.name}`} className="flex items-center gap-2 text-white/70">
-                <img
-                  src={p.logo}
-                  alt={`${p.name} logo`}
-                  className="h-6 w-6 object-contain opacity-90"
-                  loading="lazy"
-                  decoding="async"
-                  onError={(e) => (e.currentTarget.style.opacity = 0.35)}
-                />
-                <span className="text-xs">
-                  <span className="text-white/60">{p.role}:</span> <span className="font-medium">{p.name}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="mx-auto max-w-7xl px-4 py-10 grid gap-8 md:grid-cols-4 text-white/80" style={{ borderTop: "1px solid var(--noir-stroke)" }}>
-        <div className="flex items-center gap-3">
-          <img src={LOGO_URL} alt="Noir" className="h-10 w-10 object-contain" />
-          <div>
-            <div className="font-semibold">Noir MUN</div>
-            <div className="text-xs text-white/60">Faridabad, India</div>
-          </div>
-        </div>
-        <div>
-          <div className="font-semibold">Explore</div>
-          <Link to="/assistance" className="block text-sm hover:underline">
-            Assistance
-          </Link>
-          <a
-            href="https://www.noirmun.com/best-mun-delhi-faridabad"
-            className="block text-sm hover:underline"
-            target="_blank"
-            rel="noreferrer"
-            title="Best Model UN (MUN) in Delhi & Faridabad – 2025 Guide"
-          >
-            Best MUN in Delhi &amp; Faridabad (2025 Guide)
-          </a>
-          <Link to="/login" className="block text-sm hover:underline">
-            Login
-          </Link>
-          <Link to="/signup" className="block text-sm hover:underline">
-            Sign Up
-          </Link>
-          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">
-            Register
-          </a>
-        </div>
-        <div>
-          <div className="font-semibold">Socials</div>
-          <a href={IG_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">
-            Instagram
-          </a>
-          <a href={LINKTREE_HREF} target="_blank" rel="noreferrer" className="block text-sm hover:underline">
-            Linktree
-          </a>
-        </div>
-        <div>
-          <div className="font-semibold">Legal</div>
-          <Link to="/legal" className="block text-sm hover:underline">
-            Terms & Privacy
-          </Link>
-          <div className="text-xs text-white/60">© {new Date().getFullYear()} Noir MUN — “Whispers Today, Echo Tomorrow.”</div>
-        </div>
+    <section className="mt-8">
+      <div className="text-center text-left sm:text-center">
+        <h3 className="text-3xl md:text-4xl font-extrabold">
+          <Gilded>The Councils</Gilded>
+        </h3>
+        <p className="mt-2 text-white/70">Step into chambers where rhetoric rivals legend.</p>
       </div>
-    </footer>
+
+      <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {COMMITTEES.map((c, idx) => (
+          <button
+            key={c.name}
+            onClick={() => onOpen(idx)}
+            className="group relative rounded-[26px] overflow-hidden border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.025] text-left focus:outline-none focus:ring-2 focus:ring-yellow-100/20"
+          >
+            <div className="aspect-[16/10] md:aspect-[16/9] w-full grid place-items-center px-6 text-center">
+              <LogoBadge src={c.logo} alt={`${c.name} logo`} />
+              <div className="mt-4">
+                <div className="font-semibold text-lg leading-tight">{c.name}</div>
+                <div className="text-xs text-white/70 line-clamp-3 mt-2">{c.agenda}</div>
+              </div>
+            </div>
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ boxShadow: "inset 0 0 140px rgba(255,255,255,.09)" }} />
+              <div className="absolute inset-0 rounded-[26px] border border-yellow-200/0 group-hover:border-yellow-100/25 transition-colors" />
+            </div>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
-/* =========================================================
- * Page
- * =======================================================*/
+/* ---------- Page ---------- */
 export default function Home() {
   const { scrollYProgress } = useScroll();
   const yHalo = useTransform(scrollYProgress, [0, 1], [0, -120]);
   const [briefIdx, setBriefIdx] = useState(null);
+
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    setCSSVars();
-    document.documentElement.style.setProperty("--theme", NOIR_THEME);
-    document.body.style.background = NOIR_THEME;
-    return () => {};
-  }, []);
-
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
     return () => {
@@ -1323,28 +1033,51 @@ export default function Home() {
     };
   }, [menuOpen]);
 
+  useEffect(() => {
+    document.documentElement.style.setProperty("--theme", THEME_BASE);
+    document.body.style.background = THEME_BASE;
+  }, []);
+
   return (
-    <div className="min-h-[100dvh] text-white relative">
-      {/* Background */}
+    <div className="min-h-screen text-white relative">
+      {/* Global background (theme + roman layer) */}
       <Atmosphere />
       <RomanLayer />
-
-      {/* Soft glows */}
       <motion.div className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
       <motion.div className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
 
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur" style={{ borderBottom: "1px solid var(--noir-stroke)" }}>
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
-          {/* Left: logo/name */}
-          <div className="flex items-center gap-3 flex-shrink-0" style={{ whiteSpace: "nowrap" }}>
-            <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain" />
+      <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
+        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
+          {/* Left: Logo + Title */}
+          <div className="flex items-center gap-3 flex-shrink-0 min-w-0" style={{ whiteSpace: "nowrap" }}>
+            <img
+              src={LOGO_URL}
+              alt="Noir"
+              width="36"
+              height="36"
+              loading="eager"
+              fetchpriority="high"
+              decoding="async"
+              className="h-9 w-9 object-contain"
+            />
             <span className="font-semibold tracking-wide">Noir MUN</span>
           </div>
 
+          {/* Mobile Register pill — appears BETWEEN logo and hamburger */}
+          <a
+            href={REGISTER_HREF}
+            target="_blank"
+            rel="noreferrer"
+            className="sm:hidden ml-auto mr-2 inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-sm border border-white/20 bg-white/10"
+          >
+            Register
+            <ChevronRight size={14} />
+          </a>
+
           {/* Desktop nav */}
-          <nav className="hidden sm:flex gap-2">
-            <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary" aria-label="Register for Noir MUN">
+          <nav className="nav-bar hidden sm:flex ml-auto">
+            <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
               Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
             </a>
             <a href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="nav-pill" title="Apply for the Executive Board">
@@ -1356,47 +1089,26 @@ export default function Home() {
             <a href={VENUE.location} target="_blank" rel="noreferrer" className="nav-pill nav-pill--ghost" title="Open in Google Maps">
               Maps <Navigation size={14} style={{ marginLeft: 6 }} />
             </a>
-            <Link to="/login" className="nav-pill nav-pill--ghost">
-              Login
-            </Link>
-            <Link to="/signup" className="nav-pill">
-              Sign Up
-            </Link>
-            <Link to="/assistance" className="nav-pill">
-              Assistance
-            </Link>
-            <Link to="/legal" className="nav-pill">
-              Legal
-            </Link>
+            <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
+            <Link to="/signup" className="nav-pill">Sign Up</Link>
+            <Link to="/assistance" className="nav-pill">Assistance</Link>
+            <Link to="/legal" className="nav-pill">Legal</Link>
           </nav>
 
-          {/* MOBILE-ONLY Register button (between logo and hamburger) */}
-          <a
-            href={REGISTER_HREF}
-            target="_blank"
-            rel="noreferrer"
-            className="sm:hidden nav-pill nav-pill--primary"
-            aria-label="Register"
-            title="Register"
-          >
-            Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
-          </a>
-
-          {/* Hamburger */}
+          {/* Hamburger (mobile) */}
           <button
-            className="sm:hidden rounded-xl p-2"
+            className="sm:hidden rounded-2xl border border-white/20 p-2 ml-0"
             aria-label="Menu"
             aria-controls="mobile-menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(true)}
-            style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}
           >
             <Menu size={18} />
           </button>
         </div>
 
-        {/* Partner marquee */}
-        <PartnerMarquee />
+        {/* Partner ticker directly under header */}
+        <PartnerTicker />
       </header>
 
       {/* Mobile Menu */}
@@ -1412,19 +1124,18 @@ export default function Home() {
             />
             <motion.div
               id="mobile-menu"
-              className="fixed top-0 left-0 right-0 z-50 rounded-b-2xl"
-              initial={{ y: -18, opacity: 0 }}
+              className="fixed top-0 left-0 right-0 z-50 rounded-b-2xl border-b border-white/15 bg-[#07071a]/95"
+              initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -18, opacity: 0 }}
-              transition={{ duration: 0.4, ease: [0.22, 0.61, 0.36, 1] }}
-              style={{ borderBottom: "1px solid var(--noir-stroke)", background: "rgba(7,7,26,.95)" }}
+              exit={{ y: -20, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 24 }}
             >
               <div className="px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <img src={LOGO_URL} alt="Noir" className="h-8 w-8 object-contain" />
                   <span className="font-semibold">Noir MUN</span>
                 </div>
-                <button className="p-2 rounded-lg" style={{ border: "1px solid var(--noir-stroke)" }} onClick={() => setMenuOpen(false)}>
+                <button className="p-2 rounded-lg border border-white/15" onClick={() => setMenuOpen(false)}>
                   <X size={18} />
                 </button>
               </div>
@@ -1442,114 +1153,47 @@ export default function Home() {
                 <a onClick={() => setMenuOpen(false)} href={VENUE.location} target="_blank" rel="noreferrer" className="menu-item">
                   Open in Maps <Navigation size={16} className="inline-block ml-1" />
                 </a>
-                <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">
-                  Login
-                </Link>
-                <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">
-                  Sign Up
-                </Link>
-                <Link onClick={() => setMenuOpen(false)} to="/assistance" className="menu-item">
-                  Assistance
-                </Link>
-                <Link onClick={() => setMenuOpen(false)} to="/legal" className="menu-item">
-                  Legal
-                </Link>
+                <Link onClick={() => setMenuOpen(false)} to="/login" className="menu-item">Login</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/signup" className="menu-item">Sign Up</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/assistance" className="menu-item">Assistance</Link>
+                <Link onClick={() => setMenuOpen(false)} to="/legal" className="menu-item">Legal</Link>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Main */}
+      {/* Main Narrative */}
       <main className="mx-auto max-w-7xl px-4 py-10">
         <Prologue />
         <CountdownSection />
 
-        <section
-          className="mt-16 rounded-[28px] p-6 md:p-10"
-          style={{
-            border: "1px solid var(--noir-stroke)",
-            background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)",
-          }}
-        >
+        <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
           <SectionHeading kicker="Chapter I" title="The Origin" icon={<Shield size={20} className="text-white/70" />} />
           <div className="text-white/80 leading-relaxed">
             Born from a love of design and debate, Noir is led by a council of builders and diplomats.
-            <div className="my-8 flex items-center justify-center gap-3 text-white/40">
-              <div className="h-px w-12" style={{ background: "var(--noir-stroke)" }} />
-              <span className="tracking-[0.35em] text-xs uppercase">Laurels</span>
-              <div className="h-px w-12" style={{ background: "var(--noir-stroke)" }} />
-            </div>
+            <LaurelDivider />
             <div className="flex items-center gap-2 text-white/70 text-sm">
               <Landmark size={16} /> <em>Ordo • Disciplina • Dignitas</em>
             </div>
           </div>
         </section>
 
-        <section
-          className="mt-16 rounded-[28px] p-6 md:p-10"
-          style={{
-            border: "1px solid var(--noir-stroke)",
-            background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)",
-          }}
-        >
+        <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
           <SectionHeading kicker="Chapter II" title="The Pantheon of Councils" icon={<Columns size={20} className="text-white/70" />} />
-          <div className="text-white/80">
-            Each chamber upholds a different creed — strategy, justice, history, negotiation. Choose your arena, study the agenda, and step into the role. Tap a poster to open its dossier.
-          </div>
+          <div className="text-white/80">Each chamber upholds a different creed — strategy, justice, history, negotiation. Choose your arena, study the agenda, and step into the role. Tap a poster to open its dossier.</div>
           <PosterWall onOpen={(i) => setBriefIdx(i)} />
         </section>
 
-        <WhyNoir />
-        <section
-          className="mt-16 rounded-[28px] p-6 md:p-10"
-          style={{
-            border: "1px solid var(--noir-stroke)",
-            background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)",
-          }}
-        >
-          <SectionHeading kicker="Chapter III½" title="Allies & Partners" icon={<Crown size={20} className="text-white/70" />} />
-          <p className="text-white/80 leading-relaxed">Institutions that stand with Noir — strengthening access, study, and community.</p>
-          <div className="mt-6 flex flex-wrap items-stretch gap-3">
-            {useCorePartners().map((p) => (
-              <PartnerMedallion key={`${p.role}-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
-            ))}
-          </div>
-        </section>
+        <PartnersSection />
         <ItinerarySection />
-        <Testimonials />
-        <FAQ />
 
-        <section
-          className="mt-16 rounded-[28px] p-8 md:p-10 text-center"
-          style={{
-            border: "1px solid var(--noir-stroke)",
-            background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)",
-          }}
-        >
+        <section className="mt-16 rounded-[28px] border border-white/12 p-8 md:p-10 bg-white/[0.04] text-center backdrop-blur-sm">
           <div className="text-[28px] md:text-[36px] font-extrabold leading-tight">
-            <span
-              className="bg-clip-text text-transparent"
-              style={{
-                backgroundImage:
-                  "linear-gradient(90deg, #FFF7C4 0%, #F8E08E 15%, #E6C769 35%, #F2DA97 50%, #CDAE57 65%, #F5E6B9 85%, #E9D27F 100%)",
-              }}
-            >
-              The council that will echo tomorrow.
-            </span>
+            <Gilded>The council that will echo tomorrow.</Gilded>
           </div>
           <div className="mt-2 text-white/70">Two days. One stage. Bring your discipline, your design, your diplomacy.</div>
-          <a
-            href={REGISTER_HREF}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-6 inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-white border"
-            style={{ background: "var(--noir-glass-2)", borderColor: "var(--noir-stroke)" }}
-          >
+          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20">
             Register Now <ChevronRight size={18} />
           </a>
         </section>
@@ -1560,42 +1204,34 @@ export default function Home() {
 
       <BriefModal idx={briefIdx} onClose={() => setBriefIdx(null)} />
 
-      {/* Inline styles for nav/menu */}
+      {/* inline styles */}
       <style>{`
-        :root { --theme: ${NOIR_THEME}; }
+        :root { --theme: ${THEME_BASE}; }
         .line-clamp-3 {
           display: -webkit-box;
           -webkit-line-clamp: 3;
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
+        .nav-bar { display:flex; gap:8px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; max-width:70vw; }
+        .nav-bar::-webkit-scrollbar { display:none; }
         .nav-pill {
           display:inline-flex; align-items:center; justify-content:center;
-          padding:10px 14px; border-radius:16px; color:#fff; text-decoration:none; white-space:nowrap;
-          background: var(--noir-glass);
-          border: 1px solid var(--noir-stroke);
-          transition: background .25s cubic-bezier(.22,.61,.36,1), transform .2s ease, border-color .25s;
-          will-change: transform;
+          border:1px solid rgba(255,255,255,.20); padding:8px 12px; border-radius:14px;
+          color:#fff; text-decoration:none; white-space:nowrap; background:rgba(255,255,255,.06);
+          transition: background .2s ease, border-color .2s ease, transform .15s ease;
         }
-        .nav-pill:hover { background: var(--noir-glass-2); transform: translateY(-1px); border-color: rgba(255,255,255,.18); }
-        .nav-pill--ghost { background: rgba(255,255,255,.04); }
-        .nav-pill--primary { background: var(--noir-glass-2); border-color: rgba(255,255,255,.30); }
-
+        .nav-pill:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.28); transform:translateY(-1px); }
+        .nav-pill--ghost { background:rgba(255,255,255,.04); }
+        .nav-pill--primary { background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.30); }
+        @media (min-width:640px) { .nav-bar { max-width:none; } .nav-pill { padding:10px 14px; border-radius:16px; } }
         .menu-item {
           display:inline-flex; align-items:center; justify-content:space-between;
-          padding:12px 14px; border-radius:12px;
-          color:#fff; text-decoration:none;
-          background: var(--noir-glass);
-          border: 1px solid var(--noir-stroke);
+          padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
+          background:rgba(255,255,255,.06); color:#fff; text-decoration:none;
         }
-        .menu-item--primary { background: var(--noir-glass-2); border-color: rgba(255,255,255,.24); }
-
-        /* Always enforce dark base */
-        body { background: ${NOIR_THEME}; }
-
-        @media (prefers-reduced-motion: reduce) {
-          * { animation: none !important; transition: none !important; }
-        }
+        .menu-item--primary { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.24); }
+        .click-safe { position:relative; z-index:30; pointer-events:auto; }
       `}</style>
     </div>
   );
