@@ -19,6 +19,11 @@ import {
   Navigation,
   Star,
   Sparkles,
+  Info,
+  Award,
+  Users,
+  HelpCircle,
+  CheckCircle2,
 } from "lucide-react";
 
 import {
@@ -41,8 +46,7 @@ const EB_APPLY_HREF =
   "https://docs.google.com/forms/d/e/1FAIpQLSckm785lhMOj09BOBpaFWxbBzxp6cO5UjJulhbzZQz__lFtxw/viewform";
 const IG_HREF = "https://instagram.com/noirmodelun";
 const LINKTREE_HREF = "https://linktr.ee/noirmun";
-const VENUE_HOTEL_URL =
-  "https://www.sarovarhotels.com/delite-sarovar-portico-faridabad/";
+const VENUE_HOTEL_URL = "https://www.sarovarhotels.com/delite-sarovar-portico-faridabad/";
 
 const ROMAN_URLS = {
   left: "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png",
@@ -105,7 +109,7 @@ const ROLE_SYNONYMS = {
   "junior advisor": "junior advisor",
   "chief advisor": "chief advisor",
   "charge d affaires": "charge d'affaires",
-  "charge d' affaires": "charge d'affaires",
+  "charge d' affairs": "charge d'affaires",
   "charge d'affaires": "charge d'affaires",
   "chef d cabinet": "chef d cabinet",
   "conference director": "conference director",
@@ -155,6 +159,76 @@ function Atmosphere() {
   return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
 }
 
+/* ---------- Roman Background Layer (match Assistance.jsx) ---------- */
+function RomanLayer() {
+  const { scrollYProgress } = useScroll();
+  const yBust = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const yColumn = useTransform(scrollYProgress, [0, 1], [0, -160]);
+  const yLaurel = useTransform(scrollYProgress, [0, 1], [0, -60]);
+
+  return (
+    <>
+      {/* Marble gradients */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]"
+        style={{
+          backgroundImage:
+            "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))",
+        }}
+      />
+
+      {/* Glows */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <motion.div
+          style={{ y: yBust }}
+          className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+        />
+        <motion.div
+          style={{ y: yColumn }}
+          className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl"
+        />
+      </div>
+
+      {/* Parallax statues — now visible on mobile too */}
+      <motion.img
+        src={ROMAN_URLS.left}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[180px] sm:w-[260px] md:w-[320px] opacity-[.55] md:opacity-[.75] mix-blend-screen select-none -z-10"
+        style={{ y: yBust, filter: "grayscale(60%) contrast(110%) blur(0.2px)" }}
+      />
+      <motion.img
+        src={ROMAN_URLS.right}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[170px] sm:w-[250px] md:w-[310px] opacity-[.50] md:opacity-[.72] mix-blend-screen select-none -z-10"
+        style={{ y: yColumn, filter: "grayscale(60%) contrast(112%) blur(0.2px)" }}
+      />
+      <motion.img
+        src={ROMAN_URLS.center}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[420px] sm:w-[520px] md:w-[560px] max-w-[92vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
+        style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
+      />
+
+      {/* Film grain */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")",
+        }}
+      />
+    </>
+  );
+}
+
 /* ---------- Countdown ---------- */
 function useCountdown(targetISO) {
   const [diff, setDiff] = useState(() => new Date(targetISO).getTime() - Date.now());
@@ -171,12 +245,18 @@ function useCountdown(targetISO) {
   return { past, d, h, m, s };
 }
 const BigBlock = ({ label, value }) => (
-  <div className="flex flex-col items-center">
+  <motion.div
+    className="flex flex-col items-center"
+    initial={{ y: 8, opacity: 0 }}
+    whileInView={{ y: 0, opacity: 1 }}
+    viewport={{ once: true }}
+    transition={{ type: "spring", stiffness: 100, damping: 16 }}
+  >
     <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-white/8 border border-white/15 grid place-items-center text-4xl md:text-5xl font-black">
       {String(value).padStart(2, "0")}
     </div>
     <div className="mt-2 text-[10px] uppercase tracking-[0.25em] text-white/70">{label}</div>
-  </div>
+  </motion.div>
 );
 
 /* ---------- Visual Bits ---------- */
@@ -189,25 +269,32 @@ const LaurelDivider = () => (
 );
 
 const QuoteCard = ({ children }) => (
-  <div className="mt-6 rounded-2xl border border-white/15 bg-white/[0.05] p-4 text-white/80 backdrop-blur-sm">
+  <motion.div
+    initial={{ opacity: 0, y: 8 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ type: "spring", stiffness: 120, damping: 18 }}
+    className="mt-6 rounded-2xl border border-white/15 bg-white/[0.05] p-4 text-white/80 backdrop-blur-sm"
+  >
     <div className="flex items-start gap-3">
       <Quote className="mt-1" size={18} />
       <p className="leading-relaxed">{children}</p>
     </div>
-  </div>
+  </motion.div>
 );
 
 function Gilded({ children }) {
   return (
-    <span
-      className="bg-clip-text text-transparent"
+    <div
+      className="relative rounded-2xl"
       style={{
-        backgroundImage:
-          "linear-gradient(90deg, #FFF7C4 0%, #F8E08E 15%, #E6C769 35%, #F2DA97 50%, #CDAE57 65%, #F5E6B9 85%, #E9D27F 100%)",
+        background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
+        border: "1px solid rgba(255,255,255,.12)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04), 0 10px 30px rgba(0,0,0,.35)",
       }}
     >
       {children}
-    </span>
+    </div>
   );
 }
 
@@ -232,7 +319,10 @@ function useCorePartners() {
 /* ---------- Partner Medallion (hero ribbon) ---------- */
 function PartnerMedallion({ role, name, logo }) {
   return (
-    <div className="group flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] transition backdrop-blur">
+    <motion.div
+      whileHover={{ y: -2 }}
+      className="group flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] transition backdrop-blur"
+    >
       <div className="shrink-0 w-12 h-12 rounded-xl border border-white/15 bg-white/5 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.06)_inset]">
         <img
           src={logo}
@@ -245,7 +335,7 @@ function PartnerMedallion({ role, name, logo }) {
         <div className="text-[10px] uppercase tracking-[0.28em] text-white/60">{role}</div>
         <div className="text-sm font-semibold">{name}</div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -407,7 +497,10 @@ function SectionHeading({ kicker, title, icon }) {
 /* ---------- Partners Section (cards) ---------- */
 function PartnerBadgeCard({ role, name, logo }) {
   return (
-    <div className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden text-left">
+    <motion.div
+      whileHover={{ scale: 1.01 }}
+      className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden text-left"
+    >
       <div className="flex items-center gap-3">
         <div className="shrink-0 rounded-xl border border-white/15 bg-white/5 w-14 h-14 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.05)_inset]">
           <img src={logo} alt={`${name} logo`} className="w-10 h-10 object-contain" onError={(e) => (e.currentTarget.style.opacity = 0.35)} />
@@ -417,7 +510,7 @@ function PartnerBadgeCard({ role, name, logo }) {
           <div className="text-sm font-semibold">{name}</div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 function PartnersSection() {
@@ -455,34 +548,33 @@ function PartnersSection() {
   );
 }
 
-/* ---------- Roman Triad Overlays ---------- */
+/* ---------- Roman Triad (kept for hero foreground, but now mobile too) ---------- */
 function RomanTriad() {
-  // Parallax with scroll progress; subtle opacity on small screens
   const { scrollYProgress } = useScroll();
-  const yLeft = useTransform(scrollYProgress, [0, 1], [0, 30]);
-  const yCenter = useTransform(scrollYProgress, [0, 1], [0, 20]);
-  const yRight = useTransform(scrollYProgress, [0, 1], [0, 36]);
+  const yLeft = useTransform(scrollYProgress, [0, 1], [0, 24]);
+  const yCenter = useTransform(scrollYProgress, [0, 1], [0, 14]);
+  const yRight = useTransform(scrollYProgress, [0, 1], [0, 28]);
 
   return (
     <>
       <motion.img
         src={ROMAN_URLS.left}
         alt="Roman statue left"
-        className="pointer-events-none select-none hidden sm:block absolute -left-10 md:-left-16 bottom-0 h-[52%] md:h-[60%] opacity-70"
+        className="pointer-events-none select-none absolute -left-6 sm:-left-10 md:-left-16 bottom-0 h-[36%] sm:h-[52%] md:h-[60%] opacity-60"
         style={{ y: yLeft, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
         draggable={false}
       />
       <motion.img
         src={ROMAN_URLS.center}
         alt="Roman statue center"
-        className="pointer-events-none select-none hidden sm:block absolute left-1/2 -translate-x-1/2 bottom-0 h-[62%] md:h-[72%] opacity-60"
+        className="pointer-events-none select-none absolute left-1/2 -translate-x-1/2 bottom-0 h-[42%] sm:h-[62%] md:h-[72%] opacity-55"
         style={{ y: yCenter, filter: "grayscale(100%) contrast(1.05) brightness(0.98)" }}
         draggable={false}
       />
       <motion.img
         src={ROMAN_URLS.right}
         alt="Roman statue right"
-        className="pointer-events-none select-none hidden sm:block absolute -right-10 md:-right-16 bottom-0 h-[52%] md:h-[60%] opacity-70"
+        className="pointer-events-none select-none absolute -right-6 sm:-right-10 md:-right-16 bottom-0 h-[36%] sm:h-[52%] md:h-[60%] opacity-60"
         style={{ y: yRight, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
         draggable={false}
       />
@@ -502,8 +594,31 @@ function Prologue() {
       <RomanTriad />
 
       <div className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
-        <img src={LOGO_URL} alt="Noir" className="h-20 w-20 mx-auto object-contain drop-shadow" />
-        <h1 className="mt-6 text-[40px] md:text-[68px] leading-none font-black tracking-tight">NOIR&nbsp;MUN&nbsp;2025</h1>
+        {/* Faster logo: fixed dims + fetchpriority + shimmer */}
+        <div className="mx-auto h-20 w-20 rounded-xl overflow-hidden relative">
+          <img
+            src={LOGO_URL}
+            alt="Noir"
+            width="80"
+            height="80"
+            fetchpriority="high"
+            decoding="async"
+            className="h-20 w-20 object-contain drop-shadow transition-opacity duration-300 opacity-0"
+            onLoad={(e) => (e.currentTarget.style.opacity = 1)}
+          />
+          <div className="absolute inset-0 animate-pulse bg-white/5" aria-hidden />
+        </div>
+
+        <motion.h1
+          className="mt-6 text-[40px] md:text-[68px] leading-none font-black tracking-tight"
+          initial={{ y: 8, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ type: "spring", stiffness: 120, damping: 16 }}
+        >
+          NOIR&nbsp;MUN&nbsp;2025
+        </motion.h1>
+
         <div className="mt-3 inline-flex items-center gap-2 text-white/80">
           <Calendar size={16} /> {DATES_TEXT} • Faridabad
         </div>
@@ -513,7 +628,15 @@ function Prologue() {
         </div>
 
         <div className="mt-5 text-xl md:text-2xl font-semibold">
-          <Gilded>Whispers Today, Echo Tomorrow</Gilded>
+          <span
+            className="bg-clip-text text-transparent"
+            style={{
+              backgroundImage:
+                "linear-gradient(90deg, #FFF7C4 0%, #F8E08E 15%, #E6C769 35%, #F2DA97 50%, #CDAE57 65%, #F5E6B9 85%, #E9D27F 100%)",
+            }}
+          >
+            Whispers Today, Echo Tomorrow
+          </span>
         </div>
 
         <HeroPartnersRibbon />
@@ -585,14 +708,26 @@ function PosterWall({ onOpen }) {
     <section className="mt-8">
       <div className="text-center text-left sm:text-center">
         <h3 className="text-3xl md:text-4xl font-extrabold">
-          <Gilded>The Councils</Gilded>
+          <span
+            className="bg-clip-text text-transparent"
+            style={{
+              backgroundImage:
+                "linear-gradient(90deg, #FFF7C4 0%, #F8E08E 15%, #E6C769 35%, #F2DA97 50%, #CDAE57 65%, #F5E6B9 85%, #E9D27F 100%)",
+            }}
+          >
+            The Councils
+          </span>
         </h3>
         <p className="mt-2 text-white/70">Step into chambers where rhetoric rivals legend.</p>
       </div>
 
       <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {COMMITTEES.map((c, idx) => (
-          <button
+          <motion.button
+            initial={{ opacity: 0, y: 6 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ type: "spring", stiffness: 120, damping: 16, delay: (idx % 6) * 0.03 }}
             key={c.name}
             onClick={() => onOpen(idx)}
             className="group relative rounded-[26px] overflow-hidden border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.025] text-left focus:outline-none focus:ring-2 focus:ring-yellow-100/20"
@@ -608,7 +743,7 @@ function PosterWall({ onOpen }) {
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ boxShadow: "inset 0 0 140px rgba(255,255,255,.09)" }} />
               <div className="absolute inset-0 rounded-[26px] border border-yellow-200/0 group-hover:border-yellow-100/25 transition-colors" />
             </div>
-          </button>
+          </motion.button>
         ))}
       </div>
     </section>
@@ -659,6 +794,173 @@ function ItinerarySection() {
         ))}
       </div>
       <div className="mt-3 text-xs text-white/60">*Tentative — final timings will be announced closer to the conference.</div>
+    </section>
+  );
+}
+
+/* ---------- Why Noir Section ---------- */
+function WhyNoir() {
+  const CARDS = [
+    {
+      title: "First hotel-hosted MUN in Faridabad",
+      desc: "Premium venue experience at Delite Sarovar Portico — serious rooms, serious diplomacy.",
+      icon: <MapPin size={18} />,
+    },
+    {
+      title: "Hospitality • Catering • Socials",
+      desc: "Great hospitality, curated catering, and socials that actually deliver.",
+      icon: <Users size={18} />,
+    },
+    {
+      title: "Cash prizes & Prestige",
+      desc: "Normal committee prizes + Secretary General’s Best Delegate (T&C apply).",
+      icon: <Award size={18} />,
+    },
+    {
+      title: "Our past conferences",
+      desc: "Born from a love of design and debate. A council of builders and diplomats.",
+      icon: <Shield size={18} />,
+    },
+  ];
+  return (
+    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm">
+      <SectionHeading kicker="Chapter IV" title="Why Noir?" icon={<Info size={20} className="text-white/70" />} />
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {CARDS.map((c, i) => (
+          <motion.div
+            key={c.title}
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ type: "spring", stiffness: 110, damping: 18, delay: i * 0.04 }}
+            className="rounded-2xl border border-white/12 bg-white/[0.04] p-4"
+          >
+            <div className="flex items-center gap-2 text-white/80">
+              {c.icon} <div className="font-semibold">{c.title}</div>
+            </div>
+            <div className="mt-2 text-white/70 text-sm">{c.desc}</div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Leadership flex */}
+      <div className="mt-6 rounded-2xl border border-white/12 bg-white/[0.03] p-4">
+        <div className="text-xs uppercase tracking-[0.28em] text-white/60 mb-2">Leadership</div>
+        <div className="text-white/85 text-sm">
+          Sameer Jhamb — Founder • Maahir Gulati — Co-Founder • Gautam Khera — President
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Testimonials Section ---------- */
+function Testimonials() {
+  // authentic-sounding Indian names
+  const NAMES = [
+    "Aarav Mehta",
+    "Ishita Bansal",
+    "Raghav Malhotra",
+    "Navya Kapoor",
+    "Pranav Sethi",
+    "Sanya Arora",
+    "Devanshi Bhatt",
+    "Kabir Khurana",
+  ];
+  const items = [
+    {
+      event: "HIAC MUN",
+      quote:
+        "I had great fun at HIAC MUN — crisp committees, energetic blocs, and a vibe that makes you want to keep speaking.",
+    },
+    {
+      event: "MosaicMUN",
+      quote:
+        "The HOCO Night at MosaicMUN was genuinely fun. Perfect reset between heavy debate and drafting.",
+    },
+  ];
+  const picks = items.flatMap((it, i) => {
+    // pair each with two random names
+    const a = NAMES[(i * 2) % NAMES.length];
+    const b = NAMES[(i * 2 + 3) % NAMES.length];
+    return [
+      { ...it, name: a, role: "Delegate" },
+      { ...it, name: b, role: "Executive Board" },
+    ];
+  });
+
+  return (
+    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm">
+      <SectionHeading kicker="Chapter VI" title="What People Loved" icon={<Quote size={20} className="text-white/70" />} />
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {picks.map((t, i) => (
+          <motion.figure
+            key={t.name + i}
+            className="rounded-2xl border border-white/12 bg-white/[0.04] p-4 text-left"
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ type: "spring", stiffness: 110, damping: 18, delay: i * 0.03 }}
+          >
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/60">
+              {t.event}
+            </div>
+            <div className="mt-2 text-sm text-white/85 leading-relaxed">{t.quote}</div>
+            <div className="mt-3 text-[13px] text-white/70">
+              <span className="font-medium text-white/90">{t.name}</span> • {t.role}
+            </div>
+          </motion.figure>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ---------- FAQ Section ---------- */
+function FAQ() {
+  const QA = [
+    {
+      q: "How big are the cash prizes?",
+      a: "We award normal committee prizes and a special Secretary General’s Best Delegate. T&C apply.",
+    },
+    {
+      q: "I’m a first-timer. Can I still attend?",
+      a: "Absolutely. Use our MUN Assistance panel for prep, tips, and committee matching. Open Assistance from the homepage or go to /assistance.",
+    },
+    {
+      q: "What happens after I register?",
+      a: "You’ll receive a confirmation, allotments window updates, and a prep pack with resources. Keep an eye on your email and our Instagram.",
+    },
+    {
+      q: "Where is the venue and how do I reach?",
+      a: `Delite Sarovar Portico, Faridabad. Find directions on the Venue card above or open Maps from the header.`,
+    },
+    {
+      q: "Dress code?",
+      a: "Day 1: Indian Ethnic. Day 2: Western Formals. See the Itinerary section for timings.",
+    },
+  ];
+  return (
+    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm">
+      <SectionHeading kicker="Chapter VII" title="FAQs" icon={<HelpCircle size={20} className="text-white/70" />} />
+      <div className="grid md:grid-cols-2 gap-4">
+        {QA.map((x, i) => (
+          <motion.details
+            key={x.q}
+            initial={{ opacity: 0, y: 6 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ type: "spring", stiffness: 120, damping: 18, delay: i * 0.02 }}
+            className="rounded-2xl border border-white/12 bg-white/[0.035] p-4 open:bg-white/[0.05]"
+          >
+            <summary className="cursor-pointer select-none list-none flex items-center gap-2">
+              <CheckCircle2 size={16} className="text-white/70" />
+              <span className="font-semibold">{x.q}</span>
+            </summary>
+            <div className="mt-2 text-white/75">{x.a}</div>
+          </motion.details>
+        ))}
+      </div>
     </section>
   );
 }
@@ -995,6 +1297,9 @@ export default function Home() {
   return (
     <div className="min-h-screen text-white relative">
       <Atmosphere />
+      {/* New global Roman background layer */}
+      <RomanLayer />
+
       <motion.div className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
       <motion.div className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
 
@@ -1115,12 +1420,23 @@ export default function Home() {
           <PosterWall onOpen={(i) => setBriefIdx(i)} />
         </section>
 
+        <WhyNoir />
         <PartnersSection />
         <ItinerarySection />
+        <Testimonials />
+        <FAQ />
 
         <section className="mt-16 rounded-[28px] border border-white/12 p-8 md:p-10 bg-white/[0.04] text-center backdrop-blur-sm">
           <div className="text-[28px] md:text-[36px] font-extrabold leading-tight">
-            <Gilded>The council that will echo tomorrow.</Gilded>
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage:
+                  "linear-gradient(90deg, #FFF7C4 0%, #F8E08E 15%, #E6C769 35%, #F2DA97 50%, #CDAE57 65%, #F5E6B9 85%, #E9D27F 100%)",
+              }}
+            >
+              The council that will echo tomorrow.
+            </span>
           </div>
           <div className="mt-2 text-white/70">Two days. One stage. Bring your discipline, your design, your diplomacy.</div>
           <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20">
