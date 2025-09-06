@@ -998,75 +998,64 @@ export default function Home() {
       <motion.div className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
 
       {/* =======================================================================
-        ==                          START: CODE FIX                          ==
+        ==                      START: REWRITTEN HEADER                      ==
         =======================================================================
+        This new header uses two simple, separate navigation patterns for mobile
+        and desktop to eliminate all conflicts and ensure reliability.
       */}
       <div className="sticky top-0 z-30">
-        <header className="bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
-          <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-4">
-            {/* Left: brand */}
-            <div className="flex items-center gap-3 flex-shrink-0" style={{ whiteSpace: "nowrap" }}>
+        <header className="bg-gradient-to-b from-[#000026]/80 via-[#000026]/70 to-transparent backdrop-blur-sm border-b border-white/10">
+          <div className="mx-auto max-w-7xl px-4 flex items-center justify-between gap-4 h-[60px]">
+
+            {/* Left: Brand */}
+            <Link to="/" className="flex items-center gap-3 flex-shrink-0">
               <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain" />
               <span className="font-semibold tracking-wide">Noir MUN</span>
-            </div>
+            </Link>
 
-            {/* Right: Grouped navigation controls for robust layout */}
-            <div>
-              {/* Desktop nav */}
-              <nav className="nav-bar hidden sm:flex">
-                <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
-                  Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
-                </a>
-                <a href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="nav-pill" title="Apply for the Executive Board">
-                  EB Applications <ChevronRight size={16} style={{ marginLeft: 6 }} />
-                </a>
-                <a href={VENUE_HOTEL_URL} target="_blank" rel="noreferrer" className="nav-pill" title={`Conference Venue — ${VENUE.name}`}>
-                  Venue <ExternalLink size={14} style={{ marginLeft: 6 }} />
-                </a>
-                <a href={VENUE.location} target="_blank" rel="noreferrer" className="nav-pill nav-pill--ghost" title="Open in Google Maps">
-                  Maps <Navigation size={14} style={{ marginLeft: 6 }} />
-                </a>
-                <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
-                <Link to="/signup" className="nav-pill">Sign Up</Link>
-                <Link to="/assistance" className="nav-pill">Assistance</Link>
-                <Link to="/legal" className="nav-pill">Legal</Link>
-              </nav>
+            {/* Right: Navigation */}
+            {/* --- DESKTOP NAVIGATION --- */}
+            <nav className="hidden sm:flex items-center gap-2">
+              <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
+                Register <ChevronRight size={16} className="ml-1" />
+              </a>
+              <a href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="nav-pill" title="Apply for the Executive Board">
+                EB Applications
+              </a>
+              <a href={VENUE_HOTEL_URL} target="_blank" rel="noreferrer" className="nav-pill" title={`Conference Venue — ${VENUE.name}`}>
+                Venue
+              </a>
+              <Link to="/assistance" className="nav-pill">Assistance</Link>
+              <Link to="/login" className="nav-pill nav-pill--ghost">Login</Link>
+            </nav>
 
-              {/* Mobile controls */}
-              <div className="sm:hidden flex items-center gap-2">
-                <a
-                  href={REGISTER_HREF}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm shrink-0 whitespace-nowrap"
-                  aria-label="Register for Noir MUN"
-                >
-                  Register <ChevronRight size={14} />
-                </a>
-                <button
-                  className="rounded-xl border border-white/20 p-2 shrink-0"
-                  aria-label="Menu"
-                  aria-controls="mobile-menu"
-                  aria-expanded={menuOpen}
-                  onClick={() => setMenuOpen(true)}
-                >
-                  <Menu size={18} />
-                </button>
-              </div>
+            {/* --- MOBILE CONTROLS --- */}
+            <div className="flex sm:hidden items-center gap-2">
+              <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
+                Register
+              </a>
+              <button
+                className="rounded-xl border border-white/20 p-2 shrink-0"
+                aria-label="Menu"
+                aria-controls="mobile-menu"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen(true)}
+              >
+                <Menu size={18} />
+              </button>
             </div>
           </div>
         </header>
 
-        {/* Partner ticker moved OUTSIDE the header for correct layout */}
+        {/* Partner ticker sits below the sticky header structure */}
         <PartnerTicker />
       </div>
       {/* =======================================================================
-        ==                           END: CODE FIX                           ==
+        ==                       END: REWRITTEN HEADER                       ==
         =======================================================================
       */}
-      
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu (now opened by the hamburger) */}
       <AnimatePresence>
         {menuOpen && (
           <>
@@ -1095,6 +1084,7 @@ export default function Home() {
                 </button>
               </div>
 
+              {/* These are now secondary links for mobile */}
               <div className="px-4 pb-4 grid gap-2">
                 <a onClick={() => setMenuOpen(false)} href={REGISTER_HREF} target="_blank" rel="noreferrer" className="menu-item menu-item--primary">
                   Register <ChevronRight size={16} className="inline-block ml-1" />
@@ -1172,14 +1162,25 @@ export default function Home() {
         .nav-bar::-webkit-scrollbar { display:none; }
         .nav-pill {
           display:inline-flex; align-items:center; justify-content:center;
-          border:1px solid rgba(255,255,255,.20); padding:8px 12px; border-radius:14px;
+          flex-shrink: 0; /* Prevent buttons from shrinking */
+          border:1px solid rgba(255,255,255,.20); padding: 8px 12px; border-radius:14px;
+          font-size: 14px;
           color:#fff; text-decoration:none; white-space:nowrap; background:rgba(255,255,255,.06);
           transition: background .2s ease, border-color .2s ease, transform .15s ease;
         }
         .nav-pill:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.28); transform:translateY(-1px); }
         .nav-pill--ghost { background:rgba(255,255,255,.04); }
-        .nav-pill--primary { background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.30); }
-        @media (min-width:640px) { .nav-bar { max-width:none; } .nav-pill { padding:10px 14px; border-radius:16px; } }
+        .nav-pill--primary {
+            background:rgba(255,255,255,.12);
+            border-color:rgba(255,255,255,.25);
+            font-weight: 600;
+        }
+        @media (min-width:640px) {
+          .nav-pill {
+            padding:10px 14px;
+            border-radius:16px;
+          }
+        }
         .menu-item {
           display:inline-flex; align-items:center; justify-content:space-between;
           padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
