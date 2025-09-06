@@ -434,7 +434,7 @@ function PartnersSection() {
   return (
     <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
       <SectionHeading kicker="Chapter III½" title="Allies & Partners" icon={<Crown size={20} className="text-white/70" />} />
-      <p className="text-white/80 leading-relaxed">Institutions that stand with Noir — strengthening access, study, and community.</p>
+      <p className="text-white/80 leading-relaxed">Institutions that stand with  — strengthening access, study, and community.</p>
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
         {FEATURED.map((p) => (
           <PartnerBadgeCard key={`${p.role}-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
