@@ -402,7 +402,8 @@ function VenuePill() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
             transition={{ duration: 0.5, ease: [0.22, 0.61, 0.36, 1] }}
-            className="absolute left-1/2 -translate-x-1/2 mt-2 w-[280px] rounded-2xl border bg-[#0a0a1a]/95 backdrop-blur p-3 shadow-xl z-20 hidden md:block"
+            // ↑↑ FIX: lift tooltip above hero buttons
+            className="absolute left-1/2 -translate-x-1/2 mt-2 w-[280px] rounded-2xl border bg-[#0a0a1a]/95 backdrop-blur p-3 shadow-xl z-50 hidden md:block"
             style={{ borderColor: "var(--noir-stroke)" }}
           >
             <div className="h-28 w-full rounded-xl bg-cover bg-center opacity-90" style={{ backgroundImage: `url(${VENUE.image})` }} aria-hidden />
@@ -479,7 +480,8 @@ function Prologue() {
           In marble and laurel, discipline met rhetoric. Noir brings that precision to diplomacy — a modern pantheon where words shape order.
         </QuoteCard>
 
-        <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
+        {/* ↓ Remove z-20 so this container doesn't sit above the venue tooltip */}
+        <div className="mt-9 relative flex flex-col sm:flex-row items-center justify-center gap-3">
           <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="click-safe inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-white w-full sm:w-auto justify-center"
              style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>
             Secure your seat <ChevronRight size={18} />
