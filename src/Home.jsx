@@ -769,72 +769,28 @@ function TalkToUs() {
             </div>
 
             <div className="px-3 pb-2 flex flex-wrap gap-2">
-              <button
-                onClick={() => {
-                  setInput("Dates?");
-                  setTimeout(send, 0);
-                }}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
+              <button onClick={() => { setInput("Dates?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">
                 Dates
               </button>
-              <button
-                onClick={() => {
-                  setInput("Fee?");
-                  setTimeout(send, 0);
-                }}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
+              <button onClick={() => { setInput("Fee?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">
                 Fee
               </button>
-              <button
-                onClick={() => {
-                  setInput("Venue?");
-                  setTimeout(send, 0);
-                }}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
+              <button onClick={() => { setInput("Venue?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">
                 Venue
               </button>
-              <button
-                onClick={() => {
-                  setInput("Committees");
-                  setTimeout(send, 0);
-                }}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
+              <button onClick={() => { setInput("Committees"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">
                 Committees
               </button>
-              <button
-                onClick={() => {
-                  setInput("Register");
-                  setTimeout(send, 0);
-                }}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
+              <button onClick={() => { setInput("Register"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">
                 Register
               </button>
-              <button
-                onClick={() => {
-                  setInput("Instagram");
-                  setTimeout(send, 0);
-                }}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
+              <button onClick={() => { setInput("Instagram"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">
                 Instagram
               </button>
-              <button
-                onClick={() => {
-                  setInput("Linktree");
-                  setTimeout(send, 0);
-                }}
-                className="text-xs rounded-full px-3 py-1 bg-white/15"
-              >
+              <button onClick={() => { setInput("Linktree"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">
                 Linktree
               </button>
-              <Link to="/assistance" className="text-xs rounded-full px-3 py-1 bg-white/15">
-                Open Assistance
-              </Link>
+              <Link to="/assistance" className="text-xs rounded-full px-3 py-1 bg-white/15">Open Assistance</Link>
             </div>
 
             <div className="p-3 flex items-center gap-2">
@@ -1196,7 +1152,7 @@ export default function Home() {
 
       {/* Header */}
       <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
+        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3 relative">
           {/* Left: Logo + Title */}
           <div className="flex items-center gap-3 flex-shrink-0 min-w-0" style={{ whiteSpace: "nowrap" }}>
             <img
@@ -1209,22 +1165,8 @@ export default function Home() {
               decoding="async"
               className="h-9 w-9 object-contain"
             />
-            <span className="font-semibold tracking-wide">Noir MUN</span>
+            <span className="font-semibold tracking-wide truncate max-w-[44vw] sm:max-w-none">Noir MUN</span>
           </div>
-
-          {/* spacer to push mobile register to center-right before hamburger */}
-          <div className="flex-1 sm:hidden" />
-
-          {/* Mobile Register pill — BETWEEN logo and hamburger */}
-          <a
-            href={REGISTER_HREF}
-            target="_blank"
-            rel="noreferrer"
-            className="sm:hidden inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-sm border border-white/20 bg-white/10"
-          >
-            Register
-            <ChevronRight size={14} />
-          </a>
 
           {/* Desktop nav */}
           <nav className="nav-bar hidden sm:flex ml-auto">
@@ -1254,13 +1196,25 @@ export default function Home() {
             </Link>
           </nav>
 
+          {/* Mobile: hard-pinned Register BETWEEN logo & hamburger */}
+          <a
+            href={REGISTER_HREF}
+            target="_blank"
+            rel="noreferrer"
+            className="sm:hidden absolute right-14 top-1/2 -translate-y-1/2 inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-sm border border-white/20 bg-white/10 z-10"
+          >
+            Register
+            <ChevronRight size={14} />
+          </a>
+
           {/* Hamburger (mobile) */}
           <button
-            className="sm:hidden rounded-2xl border border-white/20 p-2 ml-2"
+            className="sm:hidden rounded-2xl border border-white/20 p-2 ml-0 relative z-10"
             aria-label="Menu"
             aria-controls="mobile-menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(true)}
+            style={{ marginLeft: "auto" }}
           >
             <Menu size={18} />
           </button>
