@@ -145,8 +145,8 @@ function Atmosphere() {
       requestAnimationFrame(draw);
     };
     const onResize = () => {
-      w = (c.width = innerWidth);
-      h = (c.height = innerHeight);
+      w = c.width = innerWidth;
+      h = c.height = innerHeight;
     };
     addEventListener("resize", onResize);
     draw();
