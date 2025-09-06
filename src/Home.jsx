@@ -298,7 +298,7 @@ const CountdownSection = () => {
 // --- COUNCILS SECTION ---
 const CouncilsSection = ({ onCouncilClick }) => (
   <Section>
-    <SectionHeading kicker="Chapter II" title="The Pantheon of Councils" icon={Columns} />
+    <SectionHeading kicker="Chapter II." title="The Pantheon of Councils" icon={Columns} />
     <p className="text-white/80">Each chamber upholds a different creed — strategy, justice, history, negotiation. Choose your arena, study the agenda, and step into the role. Tap a poster to open its dossier.</p>
     <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {COMMITTEES.map((c, idx) => (
