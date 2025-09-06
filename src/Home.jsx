@@ -547,7 +547,7 @@ function CountdownSection() {
     <section className="mt-8 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5 text-center">
       <SectionHeading
         kicker="Chapter 0"
-        title="Countdown to Noir"
+        title="Countdown to "
         icon={<Sparkles size={20} className="text-white/70" />}
       />
       {!past ? (
