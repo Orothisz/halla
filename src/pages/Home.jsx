@@ -137,7 +137,7 @@ function RomanLayer() {
         />
       </div>
 
-      {/* Parallax statues */}
+      {/* Parallax statues (background only) */}
       <motion.img
         src={IMG_LEFT}
         alt=""
@@ -203,9 +203,6 @@ function useCountdown(targetISO) {
 
 /* =========================================================
  * Partner Marquee — bug-free rotation
- *  - GPU translate3d on one long inline track (duplicate items)
- *  - width: max-content to avoid reflow; two tracks for seamless loop
- *  - pauses on hover; disables on reduced motion
  * =======================================================*/
 function PartnerMarquee() {
   const reduce = useReducedMotion();
@@ -224,7 +221,6 @@ function PartnerMarquee() {
 
   if (CORE.length === 0) return null;
 
-  // Build one row and then duplicate
   const Row = ({ dup = false }) => (
     <div className="marquee-row" aria-hidden={dup}>
       {CORE.map((p, i) => (
@@ -429,56 +425,11 @@ function VenuePill() {
 }
 
 /* =========================================================
- * Prologue (hero)
+ * Prologue (hero) — statues removed from hero
  * =======================================================*/
-function RomanTriad() {
-  const { scrollYProgress } = useScroll();
-  const yLeft = useTransform(scrollYProgress, [0, 1], [0, 20]);
-  const yCenter = useTransform(scrollYProgress, [0, 1], [0, 12]);
-  const yRight = useTransform(scrollYProgress, [0, 1], [0, 24]);
-
-  const IMG_LEFT = "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png";
-  const IMG_RIGHT = "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png";
-  const IMG_CENTER = "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png";
-
-  return (
-    <>
-      <motion.img
-        src={IMG_LEFT}
-        alt="Roman statue left"
-        className="pointer-events-none select-none absolute -left-6 sm:-left-10 md:-left-16 bottom-0 h-[36%] sm:h-[52%] md:h-[60%] opacity-60 will-change-transform"
-        style={{ y: yLeft, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
-        draggable={false}
-        loading="lazy"
-        decoding="async"
-      />
-      <motion.img
-        src={IMG_CENTER}
-        alt="Roman statue center"
-        className="pointer-events-none select-none absolute left-1/2 -translate-x-1/2 bottom-0 h-[42%] sm:h-[62%] md:h-[72%] opacity-55 will-change-transform"
-        style={{ y: yCenter, filter: "grayscale(100%) contrast(1.05) brightness(0.98)" }}
-        draggable={false}
-        loading="lazy"
-        decoding="async"
-      />
-      <motion.img
-        src={IMG_RIGHT}
-        alt="Roman statue right"
-        className="pointer-events-none select-none absolute -right-6 sm:-right-10 md:-right-16 bottom-0 h-[36%] sm:h-[52%] md:h-[60%] opacity-60 will-change-transform"
-        style={{ y: yRight, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
-        draggable={false}
-        loading="lazy"
-        decoding="async"
-      />
-    </>
-  );
-}
-
 function Prologue() {
   return (
     <section className="relative isolate overflow-hidden rounded-[28px]" style={{ border: "1px solid var(--noir-stroke)", background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}>
-      <RomanTriad />
-
       <div className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
         <div className="mx-auto h-20 w-20 rounded-xl overflow-hidden relative">
           <img
@@ -735,9 +686,7 @@ function WhyNoir() {
 }
 
 /* =========================================================
- * Testimonials (content fixed per your notes)
- * - No AC mention in HOCO quote
- * - AC point for rooms moved separately
+ * Testimonials
  * =======================================================*/
 function Testimonials() {
   const items = [
@@ -1293,6 +1242,17 @@ export default function Home() {
             <Link to="/assistance" className="nav-pill">Assistance</Link>
             <Link to="/legal" className="nav-pill">Legal</Link>
           </nav>
+
+          {/* Mobile Register (to the left of hamburger) */}
+          <a
+            href={REGISTER_HREF}
+            target="_blank"
+            rel="noreferrer"
+            className="sm:hidden inline-flex items-center gap-1 rounded-xl px-3 py-2 text-white"
+            style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}
+          >
+            Register <ChevronRight size={14} />
+          </a>
 
           <button
             className="sm:hidden rounded-xl p-2"
