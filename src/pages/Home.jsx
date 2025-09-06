@@ -1,6 +1,6 @@
 // src/pages/Home.jsx
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
   Calendar,
@@ -88,7 +88,7 @@ function titleCase(s = "") {
 }
 const ROLE_TO_NAMES = Object.entries(STAFF).reduce((acc, [name, role]) => {
   const k = norm(role);
-  (acc[k] = acc[k] || []).push(name);
+  (acc[k] = (acc[k] || [])).push(name);
   return acc;
 }, {});
 const ROLE_SYNONYMS = {
@@ -125,46 +125,75 @@ function specialEDIntercept(q) {
 }
 
 /* --------------------------------------------------
- * Atmosphere (starfield)
+ * Atmosphere (starfield) — mobile-optimized (zero-jank)
  * -------------------------------------------------- */
 function Atmosphere() {
   const star = useRef(null);
+  const reduce = useReducedMotion();
+
   useEffect(() => {
     const c = star.current;
     if (!c) return;
-    const ctx = c.getContext("2d");
-    let w = (c.width = innerWidth),
-      h = (c.height = innerHeight);
-    const pts = Array.from({ length: 120 }, () => ({
+
+    const isSmall = matchMedia("(max-width: 640px)").matches;
+    const ctx = c.getContext("2d", { alpha: true, desynchronized: true });
+
+    let w = (c.width = innerWidth);
+    let h = (c.height = innerHeight);
+
+    const COUNT = reduce ? 0 : isSmall ? 36 : 90; // drop density on phones
+    const pts = Array.from({ length: COUNT }, () => ({
       x: Math.random() * w,
       y: Math.random() * h,
-      v: Math.random() * 0.35 + 0.1,
+      v: (Math.random() * 0.28 + 0.08) * (isSmall ? 0.8 : 1),
     }));
-    const draw = () => {
+
+    let raf = 0;
+    let last = 0;
+
+    const draw = (ts) => {
+      // Throttle to ~30fps on phones
+      const dt = ts - last;
+      const target = isSmall ? 33 : 16;
+      if (dt < target) {
+        raf = requestAnimationFrame(draw);
+        return;
+      }
+      last = ts;
+
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = "rgba(255,255,255,.4)";
-      pts.forEach((p) => {
+      ctx.fillStyle = "rgba(255,255,255,.38)";
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
         p.y += p.v;
         if (p.y > h) p.y = 0;
         ctx.fillRect(p.x, p.y, 1, 1);
-      });
-      requestAnimationFrame(draw);
+      }
+      raf = requestAnimationFrame(draw);
     };
+
     const onResize = () => {
       w = (c.width = innerWidth);
       h = (c.height = innerHeight);
     };
-    addEventListener("resize", onResize);
-    draw();
-    return () => removeEventListener("resize", onResize);
-  }, []);
+
+    addEventListener("resize", onResize, { passive: true });
+    if (!reduce) raf = requestAnimationFrame(draw);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      removeEventListener("resize", onResize);
+    };
+  }, [useReducedMotion]);
+
   return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
 }
 
 /* --------------------------------------------------
- * Roman Background Layer (tasteful, cinematic)
+ * Roman Background Layer (tasteful, cinematic, mobile-safe)
  * -------------------------------------------------- */
 function RomanLayer() {
+  const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll();
   const yBust = useTransform(scrollYProgress, [0, 1], [0, -90]);
   const yColumn = useTransform(scrollYProgress, [0, 1], [0, -140]);
@@ -180,34 +209,40 @@ function RomanLayer() {
             "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.14), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.10), rgba(0,0,0,0))",
         }}
       />
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <motion.div style={{ y: yBust }} className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl" />
-        <motion.div style={{ y: yColumn }} className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl" />
-      </div>
-      {/* Parallax statues — visible on mobile */}
+      {!reduce && (
+        <div className="pointer-events-none fixed inset-0 -z-10">
+          <motion.div style={{ y: yBust }} className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl will-change-transform" />
+          <motion.div style={{ y: yColumn }} className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl will-change-transform" />
+        </div>
+      )}
+
+      {/* Parallax statues — visible on mobile, GPU-accelerated */}
       <motion.img
         src={ROMAN_URLS.left}
         alt=""
         loading="lazy"
         decoding="async"
-        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[180px] sm:w-[260px] md:w-[320px] opacity-[.55] md:opacity-[.72] mix-blend-screen select-none -z-10"
-        style={{ y: yBust, filter: "grayscale(62%) contrast(108%)" }}
+        sizes="(max-width: 640px) 180px, (max-width: 1024px) 260px, 320px"
+        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[180px] sm:w-[260px] md:w-[320px] opacity-[.55] md:opacity-[.72] mix-blend-screen select-none -z-10 will-change-transform"
+        style={reduce ? {} : { y: yBust, filter: "grayscale(62%) contrast(108%)" }}
       />
       <motion.img
         src={ROMAN_URLS.right}
         alt=""
         loading="lazy"
         decoding="async"
-        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[170px] sm:w-[250px] md:w-[310px] opacity-[.50] md:opacity-[.70] mix-blend-screen select-none -z-10"
-        style={{ y: yColumn, filter: "grayscale(62%) contrast(110%)" }}
+        sizes="(max-width: 640px) 170px, (max-width: 1024px) 250px, 310px"
+        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[170px] sm:w-[250px] md:w-[310px] opacity-[.50] md:opacity-[.70] mix-blend-screen select-none -z-10 will-change-transform"
+        style={reduce ? {} : { y: yColumn, filter: "grayscale(62%) contrast(110%)" }}
       />
       <motion.img
         src={ROMAN_URLS.center}
         alt=""
         loading="lazy"
         decoding="async"
-        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[420px] sm:w-[520px] md:w-[560px] max-w-[92vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
-        style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
+        sizes="(max-width: 640px) 420px, (max-width: 1024px) 520px, 560px"
+        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[420px] sm:w-[520px] md:w-[560px] max-w-[92vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10 will-change-transform"
+        style={reduce ? {} : { y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
       />
       <div
         aria-hidden
@@ -307,6 +342,8 @@ function PartnerMedallion({ role, name, logo }) {
           src={logo}
           alt={`${name} logo`}
           className="w-9 h-9 object-contain"
+          loading="lazy"
+          decoding="async"
           onError={(e) => (e.currentTarget.style.opacity = 0.35)}
         />
       </div>
@@ -318,70 +355,20 @@ function PartnerMedallion({ role, name, logo }) {
   );
 }
 
-function HeroPartnersRibbon() {
-  const CORE = useCorePartners();
-  if (CORE.length === 0) return null;
-  return (
-    <div className="mt-8">
-      <div className="text-xs uppercase tracking-[0.35em] text-white/60 mb-3 flex items-center justify-start sm:justify-center gap-2">
-        <Star size={14} className="opacity-80" /> <span>In Proud Association</span> <Star size={14} className="opacity-80" />
-      </div>
-      <div className="flex flex-wrap items-stretch justify-start sm:justify-center gap-3 text-left">
-        {CORE.map((p) => (
-          <PartnerMedallion key={`hero-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
+/* --------------------------------------------------
+ * GPU CSS ticker (no JS rAF on mobile)
+ * -------------------------------------------------- */
 function PartnerTicker() {
   const CORE = useCorePartners();
-  const railRef = useRef(null);
-  const trackRef = useRef(null);
-  const animRef = useRef({ x: 0, last: 0 });
-  const SPEED_PX_PER_S = 44;
-
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!railRef.current || !track || CORE.length === 0) return;
-
-    const base = track.querySelector("[data-chunk='base']");
-    const cloneA = base.cloneNode(true);
-    const cloneB = base.cloneNode(true);
-    cloneA.setAttribute("data-chunk", "cloneA");
-    cloneB.setAttribute("data-chunk", "cloneB");
-    track.appendChild(cloneA);
-    track.appendChild(cloneB);
-
-    const chunkWidth = base.getBoundingClientRect().width;
-    const onFrame = (ts) => {
-      if (!animRef.current.last) animRef.current.last = ts;
-      const dt = (ts - animRef.current.last) / 1000;
-      animRef.current.last = ts;
-      animRef.current.x -= SPEED_PX_PER_S * dt;
-      if (-animRef.current.x >= chunkWidth) animRef.current.x += chunkWidth;
-      track.style.transform = `translate3d(${animRef.current.x}px,0,0)`;
-      requestAnimationFrame(onFrame);
-    };
-    const id = requestAnimationFrame(onFrame);
-    return () => {
-      cancelAnimationFrame(id);
-      try { cloneA.remove(); cloneB.remove(); } catch {}
-      animRef.current = { x: 0, last: 0 };
-      if (track) track.style.transform = "translate3d(0,0,0)";
-    };
-  }, [CORE.length]);
-
   if (CORE.length === 0) return null;
 
   return (
-    <div className="bg-white/[0.05] border-b border-white/10 backdrop-blur-sm overflow-hidden" style={{ contain: "paint", willChange: "transform" }}>
-      <div className="relative mx-auto max-w-7xl" ref={railRef}>
-        <div ref={trackRef} className="flex items-center gap-8 py-2" style={{ willChange: "transform", backfaceVisibility: "hidden", transform: "translate3d(0,0,0)" }}>
-          <div className="flex items-center gap-8" data-chunk="base">
+    <div className="bg-white/[0.05] border-b border-white/10 backdrop-blur-sm overflow-hidden" style={{ contain: "paint" }}>
+      <div className="relative mx-auto max-w-7xl">
+        <div className="noir-ticker will-change-transform">
+          <div className="noir-track" aria-hidden="true">
             {CORE.map((p, i) => (
-              <div key={`ticker-${p.name}-${i}`} className="flex items-center gap-2 text-white/70">
+              <div key={`ticker-a-${p.name}-${i}`} className="flex items-center gap-2 text-white/70 px-4">
                 <img
                   src={p.logo}
                   alt={`${p.name} logo`}
@@ -396,8 +383,46 @@ function PartnerTicker() {
               </div>
             ))}
           </div>
+          {/* duplicate for seamless loop */}
+          <div className="noir-track" aria-hidden="true">
+            {CORE.map((p, i) => (
+              <div key={`ticker-b-${p.name}-${i}`} className="flex items-center gap-2 text-white/70 px-4">
+                <img
+                  src={p.logo}
+                  alt=""
+                  className="h-6 w-6 object-contain"
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => (e.currentTarget.style.opacity = 0.35)}
+                />
+                <span className="text-[11px] whitespace-nowrap">
+                  <span className="text-white/55">{p.role}:</span> <span className="font-medium">{p.name}</span>
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+      <style>{`
+        .noir-ticker {
+          display: flex;
+          width: 200%;
+          animation: noirScroll 28s linear infinite;
+        }
+        .noir-track {
+          display: flex;
+          align-items: center;
+          width: 50%;
+          padding: 8px 0;
+        }
+        @keyframes noirScroll {
+          from { transform: translate3d(0,0,0); }
+          to   { transform: translate3d(-50%,0,0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .noir-ticker { animation: none; transform: translate3d(0,0,0); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -475,7 +500,7 @@ function PartnerBadgeCard({ role, name, logo }) {
     <div className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden text-left">
       <div className="flex items-center gap-3">
         <div className="shrink-0 rounded-xl border border-white/15 bg-white/5 w-14 h-14 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.05)_inset]">
-          <img src={logo} alt={`${name} logo`} className="w-10 h-10 object-contain" onError={(e) => (e.currentTarget.style.opacity = 0.35)} />
+          <img src={logo} alt={`${name} logo`} className="w-10 h-10 object-contain" loading="lazy" decoding="async" onError={(e) => (e.currentTarget.style.opacity = 0.35)} />
         </div>
         <div>
           <div className="text-xs uppercase tracking-[0.24em] text-white/60">{role}</div>
@@ -506,6 +531,7 @@ function PartnersSection() {
         ))}
       </div>
 
+      {/* Mobile quick chips */}
       <div className="mt-6 overflow-x-auto sm:hidden pl-1 [-webkit-overflow-scrolling:touch]">
         <div className="flex gap-3 min-w-max">
           {FEATURED.map((p) => (
@@ -523,6 +549,7 @@ function PartnersSection() {
  * Roman Triad (foreground in hero)
  * -------------------------------------------------- */
 function RomanTriad() {
+  const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll();
   const yLeft = useTransform(scrollYProgress, [0, 1], [0, 20]);
   const yCenter = useTransform(scrollYProgress, [0, 1], [0, 12]);
@@ -533,23 +560,29 @@ function RomanTriad() {
       <motion.img
         src={ROMAN_URLS.left}
         alt="Roman statue left"
-        className="pointer-events-none select-none absolute -left-6 sm:-left-10 md:-left-16 bottom-0 h-[36%] sm:h-[52%] md:h-[60%] opacity-60"
-        style={{ y: yLeft, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
+        className="pointer-events-none select-none absolute -left-6 sm:-left-10 md:-left-16 bottom-0 h-[36%] sm:h-[52%] md:h-[60%] opacity-60 will-change-transform"
+        style={reduce ? {} : { y: yLeft, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
         draggable={false}
+        loading="lazy"
+        decoding="async"
       />
       <motion.img
         src={ROMAN_URLS.center}
         alt="Roman statue center"
-        className="pointer-events-none select-none absolute left-1/2 -translate-x-1/2 bottom-0 h-[42%] sm:h-[62%] md:h-[72%] opacity-55"
-        style={{ y: yCenter, filter: "grayscale(100%) contrast(1.05) brightness(0.98)" }}
+        className="pointer-events-none select-none absolute left-1/2 -translate-x-1/2 bottom-0 h-[42%] sm:h-[62%] md:h-[72%] opacity-55 will-change-transform"
+        style={reduce ? {} : { y: yCenter, filter: "grayscale(100%) contrast(1.05) brightness(0.98)" }}
         draggable={false}
+        loading="lazy"
+        decoding="async"
       />
       <motion.img
         src={ROMAN_URLS.right}
         alt="Roman statue right"
-        className="pointer-events-none select-none absolute -right-6 sm:-right-10 md:-right-16 bottom-0 h-[36%] sm:h-[52%] md:h-[60%] opacity-60"
-        style={{ y: yRight, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
+        className="pointer-events-none select-none absolute -right-6 sm:-right-10 md:-right-16 bottom-0 h-[36%] sm:h-[52%] md:h-[60%] opacity-60 will-change-transform"
+        style={reduce ? {} : { y: yRight, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
         draggable={false}
+        loading="lazy"
+        decoding="async"
       />
     </>
   );
@@ -570,7 +603,7 @@ function Prologue() {
 
       <div className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
         {/* logo: fast + clean */}
-        <div className="mx-auto h-20 w-20 rounded-xl overflow-hidden relative">
+        <div className="mx-auto h-20 w-20 rounded-xl overflow-hidden relative will-change-transform">
           <img
             src={LOGO_URL}
             alt="Noir"
@@ -646,11 +679,7 @@ function CountdownSection() {
   const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
   return (
     <section className="mt-8 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5 text-center">
-      <SectionHeading
-        kicker="Chapter 0"
-        title="Countdown to Noir"
-        icon={<Sparkles size={20} className="text-white/70" />}
-      />
+      <SectionHeading kicker="Chapter 0" title="Countdown to Noir" icon={<Sparkles size={20} className="text-white/70" />} />
       {!past ? (
         <div className="mt-4 flex gap-5 flex-wrap justify-center">
           <BigBlock label="Days" value={d} />
@@ -678,6 +707,8 @@ function LogoBadge({ src, alt }) {
         onError={(e) => {
           e.currentTarget.style.opacity = 0.35;
         }}
+        loading="lazy"
+        decoding="async"
       />
     </div>
   );
@@ -842,35 +873,35 @@ function WhyNoir() {
 }
 
 /* --------------------------------------------------
- * Testimonials (exact, all Delegates, no em-dashes)
+ * Testimonials — varied content as requested
  * -------------------------------------------------- */
 function Testimonials() {
   const items = [
     {
       event: "HIAC MUN",
       text:
-        "I had great fun at HIAC MUN. Crisp committees, energetic blocs, and a vibe that makes you want to keep speaking.",
+        "HIAC MUN felt like the moment Faridabad’s MUN era truly began. Tight agendas, sharp moderation, and rooms that buzzed with intent.",
       name: "Aarav Mehta",
       role: "Delegate",
     },
     {
       event: "HIAC MUN",
       text:
-        "I had great fun at HIAC MUN. Crisp committees, energetic blocs, and a vibe that makes you want to keep speaking.",
+        "HIAC gave me the runway to start my MUN journey. I walked in nervous and walked out hunting for my next committee.",
       name: "Navya Kapoor",
       role: "Delegate",
     },
     {
       event: "MosaicMUN",
       text:
-        "The HOCO Night at MosaicMUN was genuinely fun. Perfect reset between heavy debate and drafting.",
+        "MosaicMUN was the first in Faridabad to promise socials like HOCO and actually deliver. It reset the room for Day 2.",
       name: "Raghav Malhotra",
       role: "Delegate",
     },
     {
       event: "MosaicMUN",
       text:
-        "The HOCO Night at MosaicMUN was genuinely fun. Perfect reset between heavy debate and drafting.",
+        "HOCO Night had lights, music, and working ACs. Exactly the breather you need between heavy debate and drafting.",
       name: "Sanya Arora",
       role: "Delegate",
     },
@@ -902,7 +933,7 @@ function Testimonials() {
 }
 
 /* --------------------------------------------------
- * FAQ (with cash-prize line already tiny-tentative above)
+ * FAQ
  * -------------------------------------------------- */
 function FAQ() {
   const QA = [
@@ -1162,6 +1193,8 @@ function InlineFooter() {
                   src={p.logo}
                   alt={`${p.name} logo`}
                   className="h-6 w-6 object-contain opacity-90"
+                  loading="lazy"
+                  decoding="async"
                   onError={(e) => (e.currentTarget.style.opacity = 0.35)}
                 />
                 <span className="text-xs">
@@ -1275,6 +1308,7 @@ function BriefModal({ idx, onClose }) {
  * Page
  * -------------------------------------------------- */
 export default function Home() {
+  const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll();
   const yHalo = useTransform(scrollYProgress, [0, 1], [0, -120]);
   const [briefIdx, setBriefIdx] = useState(null);
@@ -1297,8 +1331,12 @@ export default function Home() {
       <Atmosphere />
       <RomanLayer />
 
-      <motion.div className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
-      <motion.div className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
+      {!reduce && (
+        <>
+          <motion.div className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
+          <motion.div className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
+        </>
+      )}
 
       {/* Header */}
       <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
@@ -1465,6 +1503,7 @@ export default function Home() {
           border:1px solid rgba(255,255,255,.20); padding:8px 12px; border-radius:14px;
           color:#fff; text-decoration:none; white-space:nowrap; background:rgba(255,255,255,.06);
           transition: background .25s cubic-bezier(.22,.61,.36,1), border-color .25s cubic-bezier(.22,.61,.36,1), transform .2s ease;
+          will-change: transform;
         }
         .nav-pill:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.28); transform:translateY(-1px); }
         .nav-pill--ghost { background:rgba(255,255,255,.04); }
@@ -1476,6 +1515,7 @@ export default function Home() {
           display:inline-flex; align-items:center; justify-content:space-between;
           padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
           background:rgba(255,255,255,.06); color:#fff; text-decoration:none;
+          will-change: transform;
         }
         .menu-item--primary { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.24); }
 
@@ -1484,6 +1524,7 @@ export default function Home() {
         /* motion preference */
         @media (prefers-reduced-motion: reduce) {
           * { animation: none !important; transition: none !important; }
+          .will-change-transform { will-change: auto; }
         }
       `}</style>
     </div>
