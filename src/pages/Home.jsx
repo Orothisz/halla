@@ -38,217 +38,135 @@ import {
   ITINERARY,
 } from "../shared/constants";
 
-/* --------------------------------------------------
- * Local constants
- * -------------------------------------------------- */
-const REGISTER_HREF = "https://noirmun.com/register";
-const EB_APPLY_HREF =
-  "https://docs.google.com/forms/d/e/1FAIpQLSckm785lhMOj09BOBpaFWxbBzxp6cO5UjJulhbzZQz__lFtxw/viewform";
-const IG_HREF = "https://instagram.com/noirmodelun";
-const LINKTREE_HREF = "https://linktr.ee/noirmun";
-const VENUE_HOTEL_URL = "https://www.sarovarhotels.com/delite-sarovar-portico-faridabad/";
+/* =========================================================
+ * Palette (align with Assistance.jsx)
+ * =======================================================*/
+const GOLD = "#d6c089";
+const GOLD_SOFT = "rgba(214,192,137,.45)";
 
-const ROMAN_URLS = {
-  left: "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png",
-  center: "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png",
-  right: "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png",
-};
-
-/* --------------------------------------------------
- * Staff Directory (for WILT Mini lookups)
- * -------------------------------------------------- */
-const STAFF = {
-  "sameer jhamb": "Founder",
-  "maahir gulati": "Co-Founder",
-  "gautam khera": "President",
-  "daanesh narang": "Chief Advisor",
-  "daanish narang": "Chief Advisor",
-  "vishesh kumar": "Junior Advisor",
-  "jhalak batra": "Secretary General",
-  "anushka dua": "Director General",
-  "mahi choudharie": "Deputy Director General",
-  "namya negi": "Deputy Secretary General",
-  "shambhavi sharma": "Vice President",
-  "shubh dahiya": "Executive Director",
-  "nimay gupta": "Deputy Executive Director",
-  "gauri khatter": "Charge D'Affaires",
-  "garima": "Conference Director",
-  "madhav sadana": "Conference Director",
-  "shreyas kalra": "Chef D Cabinet",
-};
-
-/* --------------------------------------------------
- * Helpers
- * -------------------------------------------------- */
-function norm(s = "") {
-  return s.toLowerCase().replace(/\s+/g, " ").trim();
-}
-function titleCase(s = "") {
-  return s.replace(/\b\w/g, (c) => c.toUpperCase());
-}
-const ROLE_TO_NAMES = Object.entries(STAFF).reduce((acc, [name, role]) => {
-  const k = norm(role);
-  (acc[k] = (acc[k] || [])).push(name);
-  return acc;
-}, {});
-const ROLE_SYNONYMS = {
-  ed: "executive director",
-  "executive director": "executive director",
-  "deputy ed": "deputy executive director",
-  "deputy executive director": "deputy executive director",
-  cofounder: "co-founder",
-  "co founder": "co-founder",
-  "co-founder": "co-founder",
-  sg: "secretary general",
-  "sec gen": "secretary general",
-  dg: "director general",
-  vps: "vice president",
-  vp: "vice president",
-  pres: "president",
-  president: "president",
-  "junior advisor": "junior advisor",
-  "chief advisor": "chief advisor",
-  "charge d affaires": "charge d'affaires",
-  "charge d' affairs": "charge d'affaires",
-  "charge d'affaires": "charge d'affaires",
-  "chef d cabinet": "chef d cabinet",
-  "conference director": "conference director",
-  founder: "founder",
-};
-
-/* Special override: “Who is the ED?” */
-function specialEDIntercept(q) {
-  const isWho = /\bwho(\s+is|'?s)?\b/.test(q);
-  const mentionsED = /(\bthe\s+)?\bed\b|executive\s+director/.test(q);
-  if (isWho && mentionsED) return "Nimay Gupta — Deputy Executive Director (ED)";
-  return null;
+function setCSSVars() {
+  const root = document.documentElement;
+  root.style.setProperty("--noir-theme", THEME_HEX || "#0a0a1a");
+  root.style.setProperty("--noir-bg0", "#090918");
+  root.style.setProperty("--noir-bg1", "#0D0D1F");
+  root.style.setProperty("--noir-bg2", "#141429");
+  root.style.setProperty("--noir-ink", "rgba(255,255,255,.86)");
+  root.style.setProperty("--noir-ink-dim", "rgba(255,255,255,.72)");
+  root.style.setProperty("--noir-stroke", "rgba(255,255,255,.12)");
+  root.style.setProperty("--noir-stroke-soft", "rgba(255,255,255,.08)");
+  root.style.setProperty("--noir-glass", "rgba(255,255,255,.06)");
+  root.style.setProperty("--noir-glass-2", "rgba(255,255,255,.10)");
+  root.style.setProperty("--noir-gold", GOLD);
 }
 
-/* --------------------------------------------------
- * Atmosphere (starfield) — mobile-optimized
- * -------------------------------------------------- */
+/* =========================================================
+ * Atmosphere — EXACT match with Assistance.jsx
+ * =======================================================*/
 function Atmosphere() {
   const star = useRef(null);
-  const reduce = useReducedMotion();
-
   useEffect(() => {
     const c = star.current;
     if (!c) return;
-
-    const ctx = c.getContext("2d", { alpha: true, desynchronized: true });
-    const isSmall = matchMedia("(max-width: 640px)").matches;
-
-    let w = (c.width = innerWidth);
-    let h = (c.height = innerHeight);
-
-    const COUNT = reduce ? 0 : isSmall ? 36 : 90;
-    const pts = Array.from({ length: COUNT }, () => ({
+    const ctx = c.getContext("2d");
+    let w = (c.width = innerWidth),
+      h = (c.height = innerHeight);
+    const pts = Array.from({ length: 120 }, () => ({
       x: Math.random() * w,
       y: Math.random() * h,
-      v: (Math.random() * 0.28 + 0.08) * (isSmall ? 0.8 : 1),
+      v: Math.random() * 0.35 + 0.1,
     }));
-
     let raf = 0;
-    let last = 0;
-
-    const draw = (ts) => {
-      const dt = ts - last;
-      const target = isSmall ? 33 : 16;
-      if (dt < target) {
-        raf = requestAnimationFrame(draw);
-        return;
-      }
-      last = ts;
-
+    const draw = () => {
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = "rgba(255,255,255,.38)";
-      for (let i = 0; i < pts.length; i++) {
-        const p = pts[i];
+      ctx.fillStyle = "rgba(255,255,255,.4)";
+      pts.forEach((p) => {
         p.y += p.v;
         if (p.y > h) p.y = 0;
         ctx.fillRect(p.x, p.y, 1, 1);
-      }
+      });
       raf = requestAnimationFrame(draw);
     };
-
     const onResize = () => {
       w = (c.width = innerWidth);
       h = (c.height = innerHeight);
     };
-
-    addEventListener("resize", onResize, { passive: true });
-    if (!reduce) raf = requestAnimationFrame(draw);
-
+    addEventListener("resize", onResize);
+    draw();
     return () => {
       cancelAnimationFrame(raf);
       removeEventListener("resize", onResize);
     };
-  }, [useReducedMotion]);
-
-  return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full pointer-events-none" />;
+  }, []);
+  return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
 }
 
-/* --------------------------------------------------
- * Roman Background Layer (cinematic, mobile-safe)
- * -------------------------------------------------- */
+/* =========================================================
+ * RomanLayer — EXACT images/feel as Assistance.jsx
+ * =======================================================*/
 function RomanLayer() {
-  const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll();
-  const yBust = useTransform(scrollYProgress, [0, 1], [0, -90]);
-  const yColumn = useTransform(scrollYProgress, [0, 1], [0, -140]);
-  const yLaurel = useTransform(scrollYProgress, [0, 1], [0, -50]);
+  const yBust = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const yColumn = useTransform(scrollYProgress, [0, 1], [0, -160]);
+  const yLaurel = useTransform(scrollYProgress, [0, 1], [0, -60]);
+
+  const IMG_LEFT = "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png";
+  const IMG_RIGHT = "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png";
+  const IMG_CENTER = "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png";
 
   return (
     <>
-      {/* Subtle marble gradients */}
+      {/* Marble gradients */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[.14]"
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]"
         style={{
           backgroundImage:
-            "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.13), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.09), rgba(0,0,0,0))",
+            "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))",
         }}
       />
-      {!reduce && (
-        <div className="pointer-events-none fixed inset-0 -z-10">
-          <motion.div style={{ y: yBust }} className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl will-change-transform" />
-          <motion.div style={{ y: yColumn }} className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl will-change-transform" />
-        </div>
-      )}
 
-      {/* Parallax statues — visible on mobile */}
+      {/* Gold glints (subtle) */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <motion.div
+          style={{ y: yBust }}
+          className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+        />
+        <motion.div
+          style={{ y: yColumn }}
+          className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl"
+        />
+      </div>
+
+      {/* Parallax statues */}
       <motion.img
-        src={ROMAN_URLS.left}
+        src={IMG_LEFT}
         alt=""
         loading="lazy"
         decoding="async"
-        sizes="(max-width: 640px) 180px, (max-width: 1024px) 260px, 320px"
-        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[180px] sm:w-[260px] md:w-[320px] opacity-[.55] md:opacity-[.72] mix-blend-screen select-none -z-10 will-change-transform"
-        style={reduce ? {} : { y: yBust, filter: "grayscale(62%) contrast(108%)" }}
+        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[240px] md:w-[320px] opacity-[.55] md:opacity-[.75] mix-blend-screen select-none -z-10"
+        style={{ y: yBust, filter: "grayscale(60%) contrast(110%) blur(0.2px)" }}
       />
       <motion.img
-        src={ROMAN_URLS.right}
+        src={IMG_RIGHT}
         alt=""
         loading="lazy"
         decoding="async"
-        sizes="(max-width: 640px) 170px, (max-width: 1024px) 250px, 310px"
-        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[170px] sm:w-[250px] md:w-[310px] opacity-[.50] md:opacity-[.70] mix-blend-screen select-none -z-10 will-change-transform"
-        style={reduce ? {} : { y: yColumn, filter: "grayscale(62%) contrast(110%)" }}
+        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[230px] md:w-[310px] opacity-[.50] md:opacity-[.72] mix-blend-screen select-none -z-10"
+        style={{ y: yColumn, filter: "grayscale(60%) contrast(112%) blur(0.2px)" }}
       />
       <motion.img
-        src={ROMAN_URLS.center}
+        src={IMG_CENTER}
         alt=""
         loading="lazy"
         decoding="async"
-        sizes="(max-width: 640px) 420px, (max-width: 1024px) 520px, 560px"
-        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[420px] sm:w-[520px] md:w-[560px] max-w-[92vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10 will-change-transform"
-        style={reduce ? {} : { y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
+        className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[540px] max-w-[88vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
+        style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
       />
 
       {/* Film grain */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[.06] mix-blend-overlay"
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay"
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")",
@@ -258,9 +176,16 @@ function RomanLayer() {
   );
 }
 
-/* --------------------------------------------------
- * Countdown
- * -------------------------------------------------- */
+/* =========================================================
+ * Helpers / Data
+ * =======================================================*/
+const REGISTER_HREF = "https://noirmun.com/register";
+const EB_APPLY_HREF =
+  "https://docs.google.com/forms/d/e/1FAIpQLSckm785lhMOj09BOBpaFWxbBzxp6cO5UjJulhbzZQz__lFtxw/viewform";
+const IG_HREF = "https://instagram.com/noirmodelun";
+const LINKTREE_HREF = "https://linktr.ee/noirmun";
+const VENUE_HOTEL_URL = "https://www.sarovarhotels.com/delite-sarovar-portico-faridabad/";
+
 function useCountdown(targetISO) {
   const [diff, setDiff] = useState(() => new Date(targetISO).getTime() - Date.now());
   useEffect(() => {
@@ -275,6 +200,117 @@ function useCountdown(targetISO) {
   const s = Math.floor((abs / 1000) % 60);
   return { past, d, h, m, s };
 }
+
+/* =========================================================
+ * Partner Marquee — bug-free rotation
+ *  - GPU translate3d on one long inline track (duplicate items)
+ *  - width: max-content to avoid reflow; two tracks for seamless loop
+ *  - pauses on hover; disables on reduced motion
+ * =======================================================*/
+function PartnerMarquee() {
+  const reduce = useReducedMotion();
+  const CORE = useMemo(() => {
+    if (!Array.isArray(PARTNERS)) return [];
+    const rolesWanted = [
+      "study partner",
+      "gaming partner",
+      "rewards partner",
+      "kitchen partner",
+      "venue & catering partner",
+      "brand association partner",
+    ];
+    return PARTNERS.filter((p) => rolesWanted.includes((p.role || "").toLowerCase()));
+  }, []);
+
+  if (CORE.length === 0) return null;
+
+  // Build one row and then duplicate
+  const Row = ({ dup = false }) => (
+    <div className="marquee-row" aria-hidden={dup}>
+      {CORE.map((p, i) => (
+        <div key={`${dup ? "b" : "a"}-${p.name}-${i}`} className="item">
+          <img
+            src={p.logo}
+            alt={`${p.name} logo`}
+            className="logo"
+            loading="lazy"
+            decoding="async"
+            onError={(e) => (e.currentTarget.style.opacity = 0.35)}
+          />
+          <span className="label">
+            <span className="role">{p.role}:</span> <span className="name">{p.name}</span>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className={`marquee-wrap ${reduce ? "marquee-static" : ""}`}>
+      <div className="marquee-track">
+        <Row />
+        <Row dup />
+      </div>
+
+      <style>{`
+        .marquee-wrap {
+          position: relative;
+          overflow: hidden;
+          background: var(--noir-glass);
+          border-top: 1px solid var(--noir-stroke);
+          border-bottom: 1px solid var(--noir-stroke);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+        }
+        .marquee-track {
+          display: inline-flex;
+          align-items: center;
+          width: max-content;
+          will-change: transform;
+          animation: noir-marquee 28s linear infinite;
+        }
+        .marquee-wrap:hover .marquee-track { animation-play-state: paused; }
+
+        .marquee-row {
+          display: inline-flex;
+          align-items: center;
+          gap: 16px;
+          padding: 8px 12px;
+        }
+        .marquee-row .item {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 10px;
+          border: 1px solid var(--noir-stroke);
+          background: rgba(255,255,255,.05);
+          border-radius: 12px;
+          white-space: nowrap;
+        }
+        .marquee-row .item .logo {
+          height: 20px; width: 20px; object-fit: contain; opacity: .9;
+        }
+        .marquee-row .label { font-size: 11px; color: rgba(255,255,255,.85); }
+        .marquee-row .label .role { color: rgba(255,255,255,.60); }
+        .marquee-row .label .name { font-weight: 600; }
+
+        @keyframes noir-marquee {
+          from { transform: translate3d(0,0,0); }
+          to   { transform: translate3d(-50%,0,0); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .marquee-track { animation: none !important; transform: translate3d(0,0,0); }
+          .marquee-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/* =========================================================
+ * Small UI atoms
+ * =======================================================*/
 const BigBlock = ({ label, value }) => (
   <motion.div
     className="flex flex-col items-center"
@@ -288,17 +324,6 @@ const BigBlock = ({ label, value }) => (
     </div>
     <div className="mt-2 text-[10px] uppercase tracking-[0.25em] text-white/70">{label}</div>
   </motion.div>
-);
-
-/* --------------------------------------------------
- * UI bits
- * -------------------------------------------------- */
-const LaurelDivider = () => (
-  <div className="my-8 flex items-center justify-center gap-3 text-white/40">
-    <div className="h-px w-12 bg-white/20" />
-    <span className="tracking-[0.35em] text-xs uppercase">Laurels</span>
-    <div className="h-px w-12 bg-white/20" />
-  </div>
 );
 
 const QuoteCard = ({ children }) => (
@@ -316,26 +341,21 @@ const QuoteCard = ({ children }) => (
   </motion.div>
 );
 
-/* --------------------------------------------------
- * Partners helpers
- * -------------------------------------------------- */
-function useCorePartners() {
-  return useMemo(() => {
-    if (!Array.isArray(PARTNERS)) return [];
-    return PARTNERS.filter((p) => {
-      const role = (p.role || "").toLowerCase();
-      return (
-        role.includes("study partner") ||
-        role.includes("gaming partner") ||
-        role.includes("rewards partner") ||
-        role.includes("kitchen partner") ||
-        role.includes("venue & catering partner") ||
-        role.includes("brand association partner")
-      );
-    });
-  }, []);
+function SectionHeading({ kicker, title, icon }) {
+  return (
+    <div className="mb-6 text-left">
+      <div className="text-white/60 text-xs tracking-[0.35em] uppercase">{kicker}</div>
+      <div className="mt-2 flex items-center gap-3">
+        {icon}
+        <h2 className="text-2xl md:text-3xl font-extrabold">{title}</h2>
+      </div>
+    </div>
+  );
 }
 
+/* =========================================================
+ * Venue + Partner chip
+ * =======================================================*/
 function PartnerMedallion({ role, name, logo }) {
   return (
     <div className="group flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] transition backdrop-blur">
@@ -357,81 +377,6 @@ function PartnerMedallion({ role, name, logo }) {
   );
 }
 
-/* --------------------------------------------------
- * GPU CSS ticker (no JS rAF on mobile)
- * -------------------------------------------------- */
-function PartnerTicker() {
-  const CORE = useCorePartners();
-  if (CORE.length === 0) return null;
-
-  return (
-    <div className="bg-white/[0.05] border-b border-white/10 backdrop-blur-sm overflow-hidden" style={{ contain: "paint" }}>
-      <div className="relative mx-auto max-w-7xl">
-        <div className="noir-ticker will-change-transform">
-          <div className="noir-track" aria-hidden="true">
-            {CORE.map((p, i) => (
-              <div key={`ticker-a-${p.name}-${i}`} className="flex items-center gap-2 text-white/70 px-4">
-                <img
-                  src={p.logo}
-                  alt={`${p.name} logo`}
-                  className="h-6 w-6 object-contain"
-                  loading="lazy"
-                  decoding="async"
-                  onError={(e) => (e.currentTarget.style.opacity = 0.35)}
-                />
-                <span className="text-[11px] whitespace-nowrap">
-                  <span className="text-white/55">{p.role}:</span> <span className="font-medium">{p.name}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-          {/* duplicate for seamless loop */}
-          <div className="noir-track" aria-hidden="true">
-            {CORE.map((p, i) => (
-              <div key={`ticker-b-${p.name}-${i}`} className="flex items-center gap-2 text-white/70 px-4">
-                <img
-                  src={p.logo}
-                  alt=""
-                  className="h-6 w-6 object-contain"
-                  loading="lazy"
-                  decoding="async"
-                  onError={(e) => (e.currentTarget.style.opacity = 0.35)}
-                />
-                <span className="text-[11px] whitespace-nowrap">
-                  <span className="text-white/55">{p.role}:</span> <span className="font-medium">{p.name}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <style>{`
-        .noir-ticker {
-          display: flex;
-          width: 200%;
-          animation: noirScroll 28s linear infinite;
-        }
-        .noir-track {
-          display: flex;
-          align-items: center;
-          width: 50%;
-          padding: 8px 0;
-        }
-        @keyframes noirScroll {
-          from { transform: translate3d(0,0,0); }
-          to   { transform: translate3d(-50%,0,0); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .noir-ticker { animation: none; transform: translate3d(0,0,0); }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-/* --------------------------------------------------
- * Venue Pill
- * -------------------------------------------------- */
 function VenuePill() {
   const [hover, setHover] = useState(false);
   return (
@@ -444,9 +389,10 @@ function VenuePill() {
         onMouseLeave={() => setHover(false)}
         onFocus={() => setHover(true)}
         onBlur={() => setHover(false)}
-        className="inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs sm:text-sm border border-white/20 transition"
+        className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs sm:text-sm border transition"
         aria-label="Open venue website"
         title={VENUE.name}
+        style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)", color: "var(--noir-ink)" }}
       >
         <MapPin size={14} />
         <span className="truncate max-w-[62vw] sm:max-w-none">Venue: {VENUE.name}</span>
@@ -460,15 +406,18 @@ function VenuePill() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
             transition={{ duration: 0.5, ease: [0.22, 0.61, 0.36, 1] }}
-            className="absolute left-1/2 -translate-x-1/2 mt-2 w-[280px] rounded-2xl border border-white/15 bg-[#0a0a1a]/95 backdrop-blur p-3 shadow-xl z-20 hidden md:block"
+            className="absolute left-1/2 -translate-x-1/2 mt-2 w-[280px] rounded-2xl border bg-[#0a0a1a]/95 backdrop-blur p-3 shadow-xl z-20 hidden md:block"
+            style={{ borderColor: "var(--noir-stroke)" }}
           >
             <div className="h-28 w-full rounded-xl bg-cover bg-center opacity-90" style={{ backgroundImage: `url(${VENUE.image})` }} aria-hidden />
             <div className="mt-3 text-sm font-medium">{VENUE.name}</div>
             <div className="mt-2 flex gap-2">
-              <a href={VENUE_HOTEL_URL} target="_blank" rel="noreferrer" className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 border border-white/15 text-xs">
+              <a href={VENUE_HOTEL_URL} target="_blank" rel="noreferrer" className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 border text-xs"
+                 style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}>
                 <ExternalLink size={14} /> Explore Hotel
               </a>
-              <a href={VENUE.location} target="_blank" rel="noreferrer" className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 border border-white/15 text-xs">
+              <a href={VENUE.location} target="_blank" rel="noreferrer" className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 border text-xs"
+                 style={{ background: "var(--noir-glass)", borderColor: "var(--noir-stroke)" }}>
                 <Navigation size={14} /> Open in Maps
               </a>
             </div>
@@ -479,109 +428,44 @@ function VenuePill() {
   );
 }
 
-/* --------------------------------------------------
- * Section Heading
- * -------------------------------------------------- */
-function SectionHeading({ kicker, title, icon }) {
-  return (
-    <div className="mb-6 text-left">
-      <div className="text-white/60 text-xs tracking-[0.35em] uppercase">{kicker}</div>
-      <div className="mt-2 flex items-center gap-3">
-        {icon}
-        <h2 className="text-2xl md:text-3xl font-extrabold">{title}</h2>
-      </div>
-    </div>
-  );
-}
-
-/* --------------------------------------------------
- * Partners Cards
- * -------------------------------------------------- */
-function PartnerBadgeCard({ role, name, logo }) {
-  return (
-    <div className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden text-left">
-      <div className="flex items-center gap-3">
-        <div className="shrink-0 rounded-xl border border-white/15 bg-white/5 w-14 h-14 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.05)_inset]">
-          <img src={logo} alt={`${name} logo`} className="w-10 h-10 object-contain" loading="lazy" decoding="async" onError={(e) => (e.currentTarget.style.opacity = 0.35)} />
-        </div>
-        <div>
-          <div className="text-xs uppercase tracking-[0.24em] text-white/60">{role}</div>
-          <div className="text-sm font-semibold">{name}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-function PartnersSection() {
-  const FEATURED = useMemo(() => {
-    const roles = [
-      "venue & catering partner",
-      "rewards partner",
-      "kitchen partner",
-      "brand association partner",
-    ];
-    return (PARTNERS || []).filter((p) => roles.includes((p.role || "").toLowerCase()));
-  }, []);
-  if (FEATURED.length === 0) return null;
-  return (
-    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
-      <SectionHeading kicker="Chapter III½" title="Allies & Partners" icon={<Crown size={20} className="text-white/70" />} />
-      <p className="text-white/80 leading-relaxed">Institutions that stand with Noir — strengthening access, study, and community.</p>
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
-        {FEATURED.map((p) => (
-          <PartnerBadgeCard key={`${p.role}-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
-        ))}
-      </div>
-
-      {/* Mobile quick chips */}
-      <div className="mt-6 overflow-x-auto sm:hidden pl-1 [-webkit-overflow-scrolling:touch]">
-        <div className="flex gap-3 min-w-max">
-          {FEATURED.map((p) => (
-            <div key={`mini-${p.name}`} className="px-3 py-2 rounded-full border border-white/12 bg-white/[0.04] text-xs whitespace-nowrap">
-              {p.role}: <span className="font-medium">{p.name}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* --------------------------------------------------
- * Roman Triad (foreground in hero)
- * -------------------------------------------------- */
+/* =========================================================
+ * Prologue (hero)
+ * =======================================================*/
 function RomanTriad() {
-  const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll();
   const yLeft = useTransform(scrollYProgress, [0, 1], [0, 20]);
   const yCenter = useTransform(scrollYProgress, [0, 1], [0, 12]);
   const yRight = useTransform(scrollYProgress, [0, 1], [0, 24]);
 
+  const IMG_LEFT = "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png";
+  const IMG_RIGHT = "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png";
+  const IMG_CENTER = "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png";
+
   return (
     <>
       <motion.img
-        src={ROMAN_URLS.left}
+        src={IMG_LEFT}
         alt="Roman statue left"
         className="pointer-events-none select-none absolute -left-6 sm:-left-10 md:-left-16 bottom-0 h-[36%] sm:h-[52%] md:h-[60%] opacity-60 will-change-transform"
-        style={reduce ? {} : { y: yLeft, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
+        style={{ y: yLeft, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
         draggable={false}
         loading="lazy"
         decoding="async"
       />
       <motion.img
-        src={ROMAN_URLS.center}
+        src={IMG_CENTER}
         alt="Roman statue center"
         className="pointer-events-none select-none absolute left-1/2 -translate-x-1/2 bottom-0 h-[42%] sm:h-[62%] md:h-[72%] opacity-55 will-change-transform"
-        style={reduce ? {} : { y: yCenter, filter: "grayscale(100%) contrast(1.05) brightness(0.98)" }}
+        style={{ y: yCenter, filter: "grayscale(100%) contrast(1.05) brightness(0.98)" }}
         draggable={false}
         loading="lazy"
         decoding="async"
       />
       <motion.img
-        src={ROMAN_URLS.right}
+        src={IMG_RIGHT}
         alt="Roman statue right"
         className="pointer-events-none select-none absolute -right-6 sm:-right-10 md:-right-16 bottom-0 h-[36%] sm:h-[52%] md:h-[60%] opacity-60 will-change-transform"
-        style={reduce ? {} : { y: yRight, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
+        style={{ y: yRight, filter: "grayscale(100%) contrast(1.1) brightness(0.95)" }}
         draggable={false}
         loading="lazy"
         decoding="async"
@@ -590,22 +474,13 @@ function RomanTriad() {
   );
 }
 
-/* --------------------------------------------------
- * Prologue (Hero)
- * -------------------------------------------------- */
 function Prologue() {
   return (
-    <section className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
-      {/* glows */}
-      <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
-      <div className="pointer-events-none absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-white/10 blur-3xl rounded-full" />
-
-      {/* statues */}
+    <section className="relative isolate overflow-hidden rounded-[28px]" style={{ border: "1px solid var(--noir-stroke)", background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}>
       <RomanTriad />
 
       <div className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
-        {/* logo: fast + clean */}
-        <div className="mx-auto h-20 w-20 rounded-xl overflow-hidden relative will-change-transform">
+        <div className="mx-auto h-20 w-20 rounded-xl overflow-hidden relative">
           <img
             src={LOGO_URL}
             alt="Noir"
@@ -649,23 +524,26 @@ function Prologue() {
           </span>
         </div>
 
-        <HeroPartnersRibbon />
-
         <QuoteCard>
           In marble and laurel, discipline met rhetoric. Noir brings that precision to diplomacy — a modern pantheon where words shape order.
         </QuoteCard>
 
         <div className="mt-9 relative z-20 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center">
+          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="click-safe inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-white w-full sm:w-auto justify-center"
+             style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>
             Secure your seat <ChevronRight size={18} />
           </a>
-          <a href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center" title="Apply for the Executive Board">
+          <a href={EB_APPLY_HREF} target="_blank" rel="noreferrer" className="click-safe inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-white w-full sm:w-auto justify-center"
+             style={{ background: "var(--noir-glass)", border: "1px solid var(--noir-stroke)" }}
+             title="Apply for the Executive Board">
             EB Applications <ChevronRight size={18} />
           </a>
-          <Link to="/signup" className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center">
+          <Link to="/signup" className="click-safe inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-white w-full sm:w-auto justify-center"
+             style={{ background: "var(--noir-glass)", border: "1px solid var(--noir-stroke)" }}>
             Sign Up
           </Link>
-          <Link to="/assistance" className="click-safe inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 px-6 py-3 text-white border border-white/20 w-full sm:w-auto justify-center">
+          <Link to="/assistance" className="click-safe inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-white w-full sm:w-auto justify-center"
+             style={{ background: "var(--noir-glass)", border: "1px solid var(--noir-stroke)" }}>
             MUN Assistance
           </Link>
         </div>
@@ -674,13 +552,14 @@ function Prologue() {
   );
 }
 
-/* --------------------------------------------------
- * Countdown Section
- * -------------------------------------------------- */
+/* =========================================================
+ * Sections
+ * =======================================================*/
 function CountdownSection() {
   const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
   return (
-    <section className="mt-8 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5 text-center">
+    <section className="mt-8 rounded-[28px] p-6 md:p-10 text-center"
+             style={{ border: "1px solid var(--noir-stroke)", background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}>
       <SectionHeading kicker="Chapter 0" title="Countdown to Noir" icon={<Sparkles size={20} className="text-white/70" />} />
       {!past ? (
         <div className="mt-4 flex gap-5 flex-wrap justify-center">
@@ -696,12 +575,10 @@ function CountdownSection() {
   );
 }
 
-/* --------------------------------------------------
- * Councils grid
- * -------------------------------------------------- */
 function LogoBadge({ src, alt }) {
   return (
-    <div className="mx-auto mt-2 shrink-0 rounded-full border border-yellow-100/20 bg-white/[0.06] w-16 h-16 md:w-20 md:h-20 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.04)_inset]">
+    <div className="mx-auto mt-2 shrink-0 rounded-full w-16 h-16 md:w-20 md:h-20 grid place-items-center"
+         style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}>
       <img
         src={src}
         alt={alt}
@@ -713,6 +590,7 @@ function LogoBadge({ src, alt }) {
     </div>
   );
 }
+
 function PosterWall({ onOpen }) {
   return (
     <section className="mt-8">
@@ -736,7 +614,8 @@ function PosterWall({ onOpen }) {
           <motion.button
             key={c.name}
             onClick={() => onOpen(idx)}
-            className="group relative rounded-[26px] overflow-hidden border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.025] text-left focus:outline-none focus:ring-2 focus:ring-yellow-100/20"
+            className="group relative rounded-[26px] overflow-hidden text-left focus:outline-none"
+            style={{ border: "1px solid var(--noir-stroke)", background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}
             initial={{ opacity: 0, y: 6 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -751,7 +630,7 @@ function PosterWall({ onOpen }) {
             </div>
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ boxShadow: "inset 0 0 140px rgba(255,255,255,.09)" }} />
-              <div className="absolute inset-0 rounded-[26px] border border-yellow-200/0 group-hover:border-yellow-100/25 transition-colors" />
+              <div className="absolute inset-0 rounded-[26px]" style={{ border: "1px solid rgba(255,255,255,.18)" }} />
             </div>
           </motion.button>
         ))}
@@ -760,41 +639,25 @@ function PosterWall({ onOpen }) {
   );
 }
 
-/* --------------------------------------------------
- * Itinerary Section
- * -------------------------------------------------- */
-function DressIcon({ type }) {
-  if (type.toLowerCase().includes("indian")) {
-    return (
-      <svg viewBox="0 0 64 64" className="w-5 h-5">
-        <path d="M18 10h28l2 10-16 6-16-6 2-10zM32 26l-10 6v16h20V32l-10-6z" fill="currentColor" opacity="0.85" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 64 64" className="w-5 h-5">
-      <path d="M24 10h16l4 10-12 6-12-6 4-10zm-2 18h20l-2 20H24l-2-20z" fill="currentColor" opacity="0.85" />
-    </svg>
-  );
-}
 function ItinerarySection() {
   return (
-    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5 text-left">
+    <section className="mt-16 rounded-[28px] p-6 md:p-10 text-left"
+             style={{ border: "1px solid var(--noir-stroke)", background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}>
       <SectionHeading kicker="Chapter V" title="Itinerary & Dress Code  *Tentative" icon={<Sparkles size={20} className="text-white/70" />} />
       <div className="grid md:grid-cols-2 gap-6">
         {ITINERARY.map((day) => (
-          <div key={day.day} className="rounded-2xl border border-white/12 bg-white/[0.03] p-4">
+          <div key={day.day} className="rounded-2xl p-4" style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}>
             <div className="flex items-center justify-between">
               <div className="text-lg font-semibold">Day {day.day} — {day.dateText}</div>
               <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/70">
-                <DressIcon type={day.dressCode} />
+                <span className="inline-block w-2 h-2 rounded-full" style={{ background: GOLD }} />
                 {day.dressCode}
               </div>
             </div>
             <ul className="mt-3 space-y-2">
               {day.events.map((e, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <div className="mt-1 h-2 w-2 rounded-full bg-white/70" />
+                  <div className="mt-1 h-2 w-2 rounded-full" style={{ background: "rgba(255,255,255,.7)" }} />
                   <div>
                     <div className="text-sm font-medium">{e.title}</div>
                     <div className="text-xs text-white/70">{e.time}</div>
@@ -810,9 +673,6 @@ function ItinerarySection() {
   );
 }
 
-/* --------------------------------------------------
- * Why Noir Section (with tiny 'tentative' note)
- * -------------------------------------------------- */
 function WhyNoir() {
   const CARDS = [
     {
@@ -841,7 +701,8 @@ function WhyNoir() {
     },
   ];
   return (
-    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm">
+    <section className="mt-16 rounded-[28px] p-6 md:p-10"
+             style={{ border: "1px solid var(--noir-stroke)", background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}>
       <SectionHeading kicker="Chapter IV" title="Why Noir?" icon={<Info size={20} className="text-white/70" />} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {CARDS.map((c, i) => (
@@ -851,7 +712,8 @@ function WhyNoir() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, ease: [0.22, 0.61, 0.36, 1], delay: i * 0.03 }}
-            className="rounded-2xl border border-white/12 bg-white/[0.04] p-4"
+            className="rounded-2xl p-4"
+            style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}
           >
             <div className="flex items-center gap-2 text-white/80">
               {c.icon} <div className="font-semibold">{c.title}</div>
@@ -861,8 +723,8 @@ function WhyNoir() {
         ))}
       </div>
 
-      {/* Leadership flex */}
-      <div className="mt-6 rounded-2xl border border-white/12 bg-white/[0.03] p-4">
+      <div className="mt-6 rounded-2xl p-4"
+           style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}>
         <div className="text-xs uppercase tracking-[0.28em] text-white/60 mb-2">Leadership</div>
         <div className="text-white/85 text-sm">
           Sameer Jhamb — Founder • Maahir Gulati — Co-Founder • Gautam Khera — President
@@ -872,9 +734,11 @@ function WhyNoir() {
   );
 }
 
-/* --------------------------------------------------
- * Testimonials — varied content
- * -------------------------------------------------- */
+/* =========================================================
+ * Testimonials (content fixed per your notes)
+ * - No AC mention in HOCO quote
+ * - AC point for rooms moved separately
+ * =======================================================*/
 function Testimonials() {
   const items = [
     {
@@ -887,34 +751,36 @@ function Testimonials() {
     {
       event: "HIAC MUN",
       text:
-        "HIAC gave me the runway to start my MUN journey. I walked in nervous and walked out hunting for my next committee.",
+        "HIAC allowed me to begin my MUN journey. I walked in nervous and walked out hunting for my next committee.",
       name: "Navya Kapoor",
       role: "Delegate",
     },
     {
       event: "MosaicMUN",
       text:
-        "MosaicMUN was the first in Faridabad to promise socials like HOCO and actually deliver. It reset the room for Day 2.",
+        "MosaicMUN was the first in Faridabad to promise socials like HOCO and actually deliver. Committee rooms had working ACs — comfort dialed in.",
       name: "Raghav Malhotra",
       role: "Delegate",
     },
     {
       event: "MosaicMUN",
       text:
-        "HOCO Night had lights, music, and working ACs. Exactly the breather you need between heavy debate and drafting.",
+        "The HOCO Night at MosaicMUN was genuinely fun — the perfect reset between heavy debate and drafting.",
       name: "Sanya Arora",
       role: "Delegate",
     },
   ];
 
   return (
-    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm">
+    <section className="mt-16 rounded-[28px] p-6 md:p-10"
+             style={{ border: "1px solid var(--noir-stroke)", background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}>
       <SectionHeading kicker="Chapter VI" title="What People Loved" icon={<Quote size={20} className="text-white/70" />} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {items.map((t, i) => (
           <motion.figure
             key={t.name + i}
-            className="rounded-2xl border border-white/12 bg-white/[0.04] p-4 text-left"
+            className="rounded-2xl p-4 text-left"
+            style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}
             initial={{ opacity: 0, y: 6 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -932,9 +798,9 @@ function Testimonials() {
   );
 }
 
-/* --------------------------------------------------
+/* =========================================================
  * FAQ
- * -------------------------------------------------- */
+ * =======================================================*/
 function FAQ() {
   const QA = [
     {
@@ -963,7 +829,8 @@ function FAQ() {
     },
   ];
   return (
-    <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm">
+    <section className="mt-16 rounded-[28px] p-6 md:p-10"
+             style={{ border: "1px solid var(--noir-stroke)", background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}>
       <SectionHeading kicker="Chapter VII" title="FAQs" icon={<HelpCircle size={20} className="text-white/70" />} />
       <div className="grid md:grid-cols-2 gap-4">
         {QA.map((x, i) => (
@@ -973,7 +840,8 @@ function FAQ() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1], delay: i * 0.02 }}
-            className="rounded-2xl border border-white/12 bg-white/[0.035] p-4 open:bg-white/[0.05]"
+            className="rounded-2xl p-4 open:bg-white/[0.05]"
+            style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}
           >
             <summary className="cursor-pointer select-none list-none flex items-center gap-2">
               <CheckCircle2 size={16} className="text-white/70" />
@@ -987,9 +855,115 @@ function FAQ() {
   );
 }
 
-/* --------------------------------------------------
- * WILT Mini (chat)
- * -------------------------------------------------- */
+/* =========================================================
+ * Brief Modal
+ * =======================================================*/
+function BriefModal({ idx, onClose }) {
+  if (idx === null) return null;
+  const c = COMMITTEES[idx];
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.div
+          initial={{ y: 24, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 24, opacity: 0 }}
+          transition={{ duration: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
+          className="max-w-3xl w-full max-h-[85vh] overflow-auto rounded-2xl p-6 text-white"
+          style={{ border: "1px solid var(--noir-stroke)", background: "rgba(10,10,26,0.96)" }}
+        >
+          <div className="flex items-center gap-3">
+            <img src={c.logo} className="h-12 w-12 object-contain" alt={`${c.name} logo`} />
+            <h3 className="text-xl font-bold">{c.name}</h3>
+            <button onClick={onClose} className="ml-auto p-1 hover:opacity-80">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="mt-4 text-white/80">
+            <span className="font-semibold">Agenda:</span> {c.agenda}
+          </div>
+          <div className="mt-5 grid md:grid-cols-2 gap-5">
+            <div>
+              <div className="text-white font-semibold">Overview</div>
+              <p className="mt-2 text-white/80">{c.brief.overview}</p>
+              <div className="mt-4 text-white font-semibold">Objectives</div>
+              <ul className="mt-2 list-disc list-inside text-white/80 space-y-1">
+                {c.brief.objectives.map((o, i) => (
+                  <li key={i}>{o}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="text-white font-semibold">Format</div>
+              <p className="mt-2 text-white/80">{c.brief.format}</p>
+              <div className="mt-4 text-white font-semibold">Suggested Resources</div>
+              <ul className="mt-2 list-disc list-inside text-white/80 space-y-1">
+                {c.brief.resources.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+/* =========================================================
+ * Chat (WILT Mini)
+ * =======================================================*/
+const STAFF = {
+  "sameer jhamb": "Founder",
+  "maahir gulati": "Co-Founder",
+  "gautam khera": "President",
+  "daanesh narang": "Chief Advisor",
+  "daanish narang": "Chief Advisor",
+  "vishesh kumar": "Junior Advisor",
+  "jhalak batra": "Secretary General",
+  "anushka dua": "Director General",
+  "mahi choudharie": "Deputy Director General",
+  "namya negi": "Deputy Secretary General",
+  "shambhavi sharma": "Vice President",
+  "shubh dahiya": "Executive Director",
+  "nimay gupta": "Deputy Executive Director",
+  "gauri khatter": "Charge D'Affaires",
+  "garima": "Conference Director",
+  "madhav sadana": "Conference Director",
+  "shreyas kalra": "Chef D Cabinet",
+};
+
+function norm(s = "") { return s.toLowerCase().replace(/\s+/g, " ").trim(); }
+function titleCase(s = "") { return s.replace(/\b\w/g, (c) => c.toUpperCase()); }
+
+const ROLE_TO_NAMES = Object.entries(STAFF).reduce((acc, [name, role]) => {
+  const k = norm(role);
+  (acc[k] = (acc[k] || [])).push(name);
+  return acc;
+}, {});
+const ROLE_SYNONYMS = {
+  ed: "executive director", "executive director": "executive director",
+  "deputy ed": "deputy executive director", "deputy executive director": "deputy executive director",
+  cofounder: "co-founder", "co founder": "co-founder", "co-founder": "co-founder",
+  sg: "secretary general", "sec gen": "secretary general", dg: "director general",
+  vps: "vice president", vp: "vice president", pres: "president", president: "president",
+  "junior advisor": "junior advisor", "chief advisor": "chief advisor",
+  "charge d affaires": "charge d'affaires", "charge d' affairs": "charge d'affaires", "charge d'affaires": "charge d'affaires",
+  "chef d cabinet": "chef d cabinet", "conference director": "conference director", founder: "founder",
+};
+
+function specialEDIntercept(q) {
+  const isWho = /\bwho(\s+is|'?s)?\b/.test(q);
+  const mentionsED = /(\bthe\s+)?\bed\b|executive\s+director/.test(q);
+  if (isWho && mentionsED) return "Nimay Gupta — Deputy Executive Director (ED)";
+  return null;
+}
+
 function answerStaffQuery(qRaw) {
   const q = norm(qRaw);
   const special = specialEDIntercept(q);
@@ -1000,10 +974,7 @@ function answerStaffQuery(qRaw) {
     if (q.includes(n)) return `${titleCase(name)} — ${role}`;
   }
 
-  const possible = Object.keys(ROLE_TO_NAMES)
-    .concat(Object.keys(ROLE_SYNONYMS))
-    .sort((a, b) => b.length - a.length);
-
+  const possible = Object.keys(ROLE_TO_NAMES).concat(Object.keys(ROLE_SYNONYMS)).sort((a, b) => b.length - a.length);
   for (const token of possible) {
     const key = ROLE_SYNONYMS[token] ? ROLE_SYNONYMS[token] : token;
     if (q.includes(token)) {
@@ -1014,7 +985,6 @@ function answerStaffQuery(qRaw) {
       }
     }
   }
-
   const whoRole = q.match(/who(?:\s+is|'?s)?\s+(the\s+)?([a-z\s']{2,40})\??$/);
   if (whoRole) {
     const roleText = norm((whoRole[2] || "").replace(/\bof\b.*$/, "").trim());
@@ -1025,7 +995,6 @@ function answerStaffQuery(qRaw) {
       return `${pretty} — ${titleCase(key)}`;
     }
   }
-
   const whoName = q.match(/who(?:\s+is|'?s)?\s+([a-z\s']{2,40})\??$/);
   if (whoName) {
     const nameGuess = norm(whoName[1]);
@@ -1035,9 +1004,9 @@ function answerStaffQuery(qRaw) {
       }
     }
   }
-
   return null;
 }
+
 function TalkToUs() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -1111,9 +1080,10 @@ function TalkToUs() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.4, ease: [0.22, 0.61, 0.36, 1] }}
-            className="w-96 max-w-[92vw] rounded-2xl shadow-2xl overflow-hidden border border-white/15 backdrop-blur bg-white/10 text-white"
+            className="w-96 max-w-[92vw] rounded-2xl shadow-2xl overflow-hidden border backdrop-blur"
+            style={{ borderColor: "var(--noir-stroke)", background: "rgba(255,255,255,.10)", color: "var(--noir-ink)" }}
           >
-            <div className="flex items-center justify-between px-4 py-3 bg-white/10">
+            <div className="flex items-center justify-between px-4 py-3" style={{ background: "rgba(255,255,255,.10)" }}>
               <div className="font-semibold flex items-center gap-2">
                 <Crown size={16} className="opacity-80" />
                 Talk to us (WILT Mini)
@@ -1134,14 +1104,14 @@ function TalkToUs() {
             </div>
 
             <div className="px-3 pb-2 flex flex-wrap gap-2">
-              <button onClick={() => { setInput("Dates?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Dates</button>
-              <button onClick={() => { setInput("Fee?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Fee</button>
-              <button onClick={() => { setInput("Venue?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Venue</button>
-              <button onClick={() => { setInput("Committees"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Committees</button>
-              <button onClick={() => { setInput("Register"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Register</button>
-              <button onClick={() => { setInput("Instagram"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Instagram</button>
-              <button onClick={() => { setInput("Linktree"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1 bg-white/15">Linktree</button>
-              <Link to="/assistance" className="text-xs rounded-full px-3 py-1 bg-white/15">Open Assistance</Link>
+              <button onClick={() => { setInput("Dates?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>Dates</button>
+              <button onClick={() => { setInput("Fee?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>Fee</button>
+              <button onClick={() => { setInput("Venue?"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>Venue</button>
+              <button onClick={() => { setInput("Committees"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>Committees</button>
+              <button onClick={() => { setInput("Register"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>Register</button>
+              <button onClick={() => { setInput("Instagram"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>Instagram</button>
+              <button onClick={() => { setInput("Linktree"); setTimeout(send, 0); }} className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>Linktree</button>
+              <Link to="/assistance" className="text-xs rounded-full px-3 py-1" style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)" }}>Open Assistance</Link>
             </div>
 
             <div className="p-3 flex items-center gap-2">
@@ -1150,9 +1120,10 @@ function TalkToUs() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
                 placeholder="Ask anything… e.g., dates, fee, venue, committees"
-                className="flex-1 bg-white/15 px-3 py-2 rounded-xl outline-none placeholder-white/60"
+                className="flex-1 px-3 py-2 rounded-xl outline-none"
+                style={{ background: "var(--noir-glass-2)", border: "1px solid var(--noir-stroke)", color: "var(--noir-ink)" }}
               />
-              <button onClick={send} className="px-3 py-2 rounded-xl bg-white/20 hover:bg-white/30">
+              <button onClick={send} className="px-3 py-2 rounded-xl" style={{ background: "var(--noir-glass)", border: "1px solid var(--noir-stroke)" }}>
                 <Send size={16} />
               </button>
             </div>
@@ -1163,8 +1134,8 @@ function TalkToUs() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="flex items-center gap-2 px-4 py-3 rounded-2xl text-white shadow-xl bg-[--theme] border border-white/20 hover:shadow-2xl transition"
-          style={{ "--theme": THEME_HEX }}
+          className="flex items-center gap-2 px-4 py-3 rounded-2xl text-white shadow-xl border transition"
+          style={{ background: "var(--noir-glass-2)", borderColor: "var(--noir-stroke)" }}
         >
           <MessageCircle size={18} /> Talk to us
         </button>
@@ -1173,13 +1144,30 @@ function TalkToUs() {
   );
 }
 
-/* --------------------------------------------------
+/* =========================================================
  * Footer
- * -------------------------------------------------- */
+ * =======================================================*/
+function useCorePartners() {
+  return useMemo(() => {
+    if (!Array.isArray(PARTNERS)) return [];
+    return PARTNERS.filter((p) => {
+      const role = (p.role || "").toLowerCase();
+      return (
+        role.includes("study partner") ||
+        role.includes("gaming partner") ||
+        role.includes("rewards partner") ||
+        role.includes("kitchen partner") ||
+        role.includes("venue & catering partner") ||
+        role.includes("brand association partner")
+      );
+    });
+  }, []);
+}
+
 function InlineFooter() {
   const CORE = useCorePartners();
   return (
-    <footer className="mt-16 border-top border-white/10">
+    <footer className="mt-16">
       {CORE.length > 0 && (
         <div className="mx-auto max-w-7xl px-4 py-6">
           <div className="text-xs uppercase tracking-[0.28em] text-white/50 text-left sm:text-center mb-3">Partners</div>
@@ -1203,7 +1191,8 @@ function InlineFooter() {
         </div>
       )}
 
-      <div className="mx-auto max-w-7xl px-4 py-10 grid gap-8 md:grid-cols-4 text-white/80">
+      <div className="mx-auto max-w-7xl px-4 py-10 grid gap-8 md:grid-cols-4 text-white/80"
+           style={{ borderTop: "1px solid var(--noir-stroke)" }}>
         <div className="flex items-center gap-3">
           <img src={LOGO_URL} alt="Noir" className="h-10 w-10 object-contain" />
           <div>
@@ -1242,106 +1231,43 @@ function InlineFooter() {
   );
 }
 
-/* --------------------------------------------------
- * Brief Modal
- * -------------------------------------------------- */
-function BriefModal({ idx, onClose }) {
-  if (idx === null) return null;
-  const c = COMMITTEES[idx];
-  return (
-    <AnimatePresence>
-      <motion.div
-        className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        <motion.div
-          initial={{ y: 24, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 24, opacity: 0 }}
-          transition={{ duration: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
-          className="max-w-3xl w-full max-h-[85vh] overflow-auto rounded-2xl border border-white/15 bg-[#0a0a1a] text-white p-6"
-        >
-          <div className="flex items-center gap-3">
-            <img src={c.logo} className="h-12 w-12 object-contain" alt={`${c.name} logo`} />
-            <h3 className="text-xl font-bold">{c.name}</h3>
-            <button onClick={onClose} className="ml-auto p-1 hover:opacity-80">
-              <X size={18} />
-            </button>
-          </div>
-          <div className="mt-4 text-white/80">
-            <span className="font-semibold">Agenda:</span> {c.agenda}
-          </div>
-          <div className="mt-5 grid md:grid-cols-2 gap-5">
-            <div>
-              <div className="text-white font-semibold">Overview</div>
-              <p className="mt-2 text-white/80">{c.brief.overview}</p>
-              <div className="mt-4 text-white font-semibold">Objectives</div>
-              <ul className="mt-2 list-disc list-inside text-white/80 space-y-1">
-                {c.brief.objectives.map((o, i) => (
-                  <li key={i}>{o}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <div className="text-white font-semibold">Format</div>
-              <p className="mt-2 text-white/80">{c.brief.format}</p>
-              <div className="mt-4 text-white font-semibold">Suggested Resources</div>
-              <ul className="mt-2 list-disc list-inside text-white/80 space-y-1">
-                {c.brief.resources.map((r, i) => (
-                  <li key={i}>{r}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  );
-}
-
-/* --------------------------------------------------
+/* =========================================================
  * Page
- * -------------------------------------------------- */
+ * =======================================================*/
 export default function Home() {
-  const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll();
   const yHalo = useTransform(scrollYProgress, [0, 1], [0, -120]);
   const [briefIdx, setBriefIdx] = useState(null);
-
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setCSSVars();
+    document.documentElement.style.setProperty("--theme", THEME_HEX);
+    // EXACT behavior as Assistance: theme-backed body bg
+    document.body.style.background = THEME_HEX;
+    return () => {
+      // cleanup if needed
+    };
+  }, []);
+
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [menuOpen]);
 
-  useEffect(() => {
-    // Keep theme var for buttons, but DO NOT force body background (prevents solid blue screen)
-    document.documentElement.style.setProperty("--theme", THEME_HEX);
-  }, []);
-
   return (
-    <div
-      className="min-h-screen text-white relative"
-      style={{
-        // Safe, dark gradient background independent of THEME_HEX to prevent "all blue" pages
-        background:
-          "radial-gradient(1200px 800px at 50% -10%, rgba(108,118,255,.08), rgba(10,10,26,0)), linear-gradient(#0a0a1a, #0a0a1a)",
-      }}
-    >
+    <div className="min-h-[100dvh] text-white relative">
+      {/* Background (identical to Assistance) */}
       <Atmosphere />
       <RomanLayer />
 
-      {!reduce && (
-        <>
-          <motion.div className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
-          <motion.div className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
-        </>
-      )}
+      {/* Soft glows that scroll slightly */}
+      <motion.div className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
+      <motion.div className="pointer-events-none fixed -bottom-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
 
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
+      <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur"
+              style={{ borderBottom: "1px solid var(--noir-stroke)" }}>
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-shrink-0" style={{ whiteSpace: "nowrap" }}>
             <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain" />
@@ -1349,7 +1275,7 @@ export default function Home() {
           </div>
 
           {/* Desktop nav */}
-          <nav className="nav-bar hidden sm:flex">
+          <nav className="hidden sm:flex gap-2">
             <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="nav-pill nav-pill--primary">
               Register <ChevronRight size={16} style={{ marginLeft: 6 }} />
             </a>
@@ -1369,18 +1295,19 @@ export default function Home() {
           </nav>
 
           <button
-            className="sm:hidden rounded-xl border border-white/20 p-2"
+            className="sm:hidden rounded-xl p-2"
             aria-label="Menu"
             aria-controls="mobile-menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(true)}
+            style={{ border: "1px solid var(--noir-stroke)", background: "var(--noir-glass)" }}
           >
             <Menu size={18} />
           </button>
         </div>
 
-        {/* Partner ticker */}
-        <PartnerTicker />
+        {/* Partner marquee — fixed */}
+        <PartnerMarquee />
       </header>
 
       {/* Mobile Menu */}
@@ -1396,18 +1323,19 @@ export default function Home() {
             />
             <motion.div
               id="mobile-menu"
-              className="fixed top-0 left-0 right-0 z-50 rounded-b-2xl border-b border-white/15 bg-[#07071a]/95"
+              className="fixed top-0 left-0 right-0 z-50 rounded-b-2xl"
               initial={{ y: -18, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -18, opacity: 0 }}
               transition={{ duration: 0.4, ease: [0.22, 0.61, 0.36, 1] }}
+              style={{ borderBottom: "1px solid var(--noir-stroke)", background: "rgba(7,7,26,.95)" }}
             >
               <div className="px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <img src={LOGO_URL} alt="Noir" className="h-8 w-8 object-contain" />
                   <span className="font-semibold">Noir MUN</span>
                 </div>
-                <button className="p-2 rounded-lg border border-white/15" onClick={() => setMenuOpen(false)}>
+                <button className="p-2 rounded-lg" style={{ border: "1px solid var(--noir-stroke)" }} onClick={() => setMenuOpen(false)}>
                   <X size={18} />
                 </button>
               </div>
@@ -1440,30 +1368,46 @@ export default function Home() {
         <Prologue />
         <CountdownSection />
 
-        <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
+        <section className="mt-16 rounded-[28px] p-6 md:p-10"
+                 style={{ border: "1px solid var(--noir-stroke)", background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}>
           <SectionHeading kicker="Chapter I" title="The Origin" icon={<Shield size={20} className="text-white/70" />} />
           <div className="text-white/80 leading-relaxed">
             Born from a love of design and debate, Noir is led by a council of builders and diplomats.
-            <LaurelDivider />
+            <div className="my-8 flex items-center justify-center gap-3 text-white/40">
+              <div className="h-px w-12" style={{ background: "var(--noir-stroke)" }} />
+              <span className="tracking-[0.35em] text-xs uppercase">Laurels</span>
+              <div className="h-px w-12" style={{ background: "var(--noir-stroke)" }} />
+            </div>
             <div className="flex items-center gap-2 text-white/70 text-sm">
               <Landmark size={16} /> <em>Ordo • Disciplina • Dignitas</em>
             </div>
           </div>
         </section>
 
-        <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm ring-1 ring-white/5">
+        <section className="mt-16 rounded-[28px] p-6 md:p-10"
+                 style={{ border: "1px solid var(--noir-stroke)", background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}>
           <SectionHeading kicker="Chapter II" title="The Pantheon of Councils" icon={<Columns size={20} className="text-white/70" />} />
           <div className="text-white/80">Each chamber upholds a different creed — strategy, justice, history, negotiation. Choose your arena, study the agenda, and step into the role. Tap a poster to open its dossier.</div>
           <PosterWall onOpen={(i) => setBriefIdx(i)} />
         </section>
 
         <WhyNoir />
-        <PartnersSection />
+        <section className="mt-16 rounded-[28px] p-6 md:p-10"
+                 style={{ border: "1px solid var(--noir-stroke)", background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}>
+          <SectionHeading kicker="Chapter III½" title="Allies & Partners" icon={<Crown size={20} className="text-white/70" />} />
+          <p className="text-white/80 leading-relaxed">Institutions that stand with Noir — strengthening access, study, and community.</p>
+          <div className="mt-6 flex flex-wrap items-stretch gap-3">
+            {useCorePartners().map((p) => (
+              <PartnerMedallion key={`${p.role}-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
+            ))}
+          </div>
+        </section>
         <ItinerarySection />
         <Testimonials />
         <FAQ />
 
-        <section className="mt-16 rounded-[28px] border border-white/12 p-8 md:p-10 bg-white/[0.04] text-center backdrop-blur-sm">
+        <section className="mt-16 rounded-[28px] p-8 md:p-10 text-center"
+                 style={{ border: "1px solid var(--noir-stroke)", background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04)" }}>
           <div className="text-[28px] md:text-[36px] font-extrabold leading-tight">
             <span
               className="bg-clip-text text-transparent"
@@ -1476,7 +1420,8 @@ export default function Home() {
             </span>
           </div>
           <div className="mt-2 text-white/70">Two days. One stage. Bring your discipline, your design, your diplomacy.</div>
-          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-6 py-3 text-white border border-white/20">
+          <a href={REGISTER_HREF} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-white border"
+             style={{ background: "var(--noir-glass-2)", borderColor: "var(--noir-stroke)" }}>
             Register Now <ChevronRight size={18} />
           </a>
         </section>
@@ -1487,7 +1432,7 @@ export default function Home() {
 
       <BriefModal idx={briefIdx} onClose={() => setBriefIdx(null)} />
 
-      {/* inline styles */}
+      {/* Inline styles for nav/menu (premium) */}
       <style>{`
         :root { --theme: ${THEME_HEX}; }
         .line-clamp-3 {
@@ -1496,62 +1441,34 @@ export default function Home() {
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
-
-        /* premium nav */
-        .nav-bar { display:flex; gap:8px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; max-width:70vw; }
-        .nav-bar::-webkit-scrollbar { display:none; }
         .nav-pill {
           display:inline-flex; align-items:center; justify-content:center;
-          border:1px solid rgba(255,255,255,.20); padding:8px 12px; border-radius:14px;
-          color:#fff; text-decoration:none; white-space:nowrap; background:rgba(255,255,255,.06);
-          transition: background .25s cubic-bezier(.22,.61,.36,1), border-color .25s cubic-bezier(.22,.61,.36,1), transform .2s ease;
+          padding:10px 14px; border-radius:16px; color:#fff; text-decoration:none; white-space:nowrap;
+          background: var(--noir-glass);
+          border: 1px solid var(--noir-stroke);
+          transition: background .25s cubic-bezier(.22,.61,.36,1), transform .2s ease, border-color .25s;
           will-change: transform;
         }
-        .nav-pill:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.28); transform:translateY(-1px); }
-        .nav-pill--ghost { background:rgba(255,255,255,.04); }
-        .nav-pill--primary { background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.30); }
-        @media (min-width:640px) { .nav-bar { max-width:none; } .nav-pill { padding:10px 14px; border-radius:16px; } }
+        .nav-pill:hover { background: var(--noir-glass-2); transform: translateY(-1px); border-color: rgba(255,255,255,.18); }
+        .nav-pill--ghost { background: rgba(255,255,255,.04); }
+        .nav-pill--primary { background: var(--noir-glass-2); border-color: rgba(255,255,255,.30); }
 
-        /* menu */
         .menu-item {
           display:inline-flex; align-items:center; justify-content:space-between;
-          padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
-          background:rgba(255,255,255,.06); color:#fff; text-decoration:none;
-          will-change: transform;
+          padding:12px 14px; border-radius:12px;
+          color:#fff; text-decoration:none;
+          background: var(--noir-glass);
+          border: 1px solid var(--noir-stroke);
         }
-        .menu-item--primary { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.24); }
+        .menu-item--primary { background: var(--noir-glass-2); border-color: rgba(255,255,255,.24); }
 
-        .click-safe { position:relative; z-index:30; pointer-events:auto; }
+        /* Ensure app always sits on dark base (theme) */
+        body { background: ${THEME_HEX}; }
 
-        /* Hard override to prevent solid body fills from elsewhere */
-        body { background: #0a0a1a !important; }
-
-        /* motion preference */
         @media (prefers-reduced-motion: reduce) {
           * { animation: none !important; transition: none !important; }
-          .will-change-transform { will-change: auto; }
         }
       `}</style>
-    </div>
-  );
-}
-
-/* --------------------------------------------------
- * Hero partners ribbon (kept last for hoist)
- * -------------------------------------------------- */
-function HeroPartnersRibbon() {
-  const CORE = useCorePartners();
-  if (CORE.length === 0) return null;
-  return (
-    <div className="mt-8">
-      <div className="text-xs uppercase tracking-[0.35em] text-white/60 mb-3 flex items-center justify-start sm:justify-center gap-2">
-        <Star size={14} className="opacity-80" /> <span>In Proud Association</span> <Star size={14} className="opacity-80" />
-      </div>
-      <div className="flex flex-wrap items-stretch justify-start sm:justify-center gap-3 text-left">
-        {CORE.map((p) => (
-          <PartnerMedallion key={`hero-${p.name}`} role={p.role} name={p.name} logo={p.logo} />
-        ))}
-      </div>
     </div>
   );
 }
