@@ -105,7 +105,7 @@ const ROLE_SYNONYMS = {
   "junior advisor": "junior advisor",
   "chief advisor": "chief advisor",
   "charge d affaires": "charge d'affaires",
-  "charge d' affaires": "charge d'affaires",
+  "charge d' affairs": "charge d'affaires",
   "charge d'affaires": "charge d'affaires",
   "chef d cabinet": "chef d cabinet",
   "conference director": "conference director",
@@ -457,7 +457,6 @@ function PartnersSection() {
 
 /* ---------- Roman Triad Overlays ---------- */
 function RomanTriad() {
-  // Parallax with scroll progress; subtle opacity on small screens
   const { scrollYProgress } = useScroll();
   const yLeft = useTransform(scrollYProgress, [0, 1], [0, 30]);
   const yCenter = useTransform(scrollYProgress, [0, 1], [0, 20]);
@@ -1026,6 +1025,18 @@ export default function Home() {
             <Link to="/legal" className="nav-pill">Legal</Link>
           </nav>
 
+          {/* >>> Mobile 'Register' button (new) <<< */}
+          <a
+            href={REGISTER_HREF}
+            target="_blank"
+            rel="noreferrer"
+            className="sm:hidden inline-flex items-center gap-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm"
+            aria-label="Register for Noir MUN"
+          >
+            Register <ChevronRight size={14} />
+          </a>
+
+          {/* Mobile hamburger */}
           <button
             className="sm:hidden rounded-xl border border-white/20 p-2"
             aria-label="Menu"
