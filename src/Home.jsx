@@ -1000,6 +1000,8 @@ export default function Home() {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-gradient-to-b from-[#000026]/60 to-transparent backdrop-blur border-b border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
+
+          {/* Left: brand */}
           <div className="flex items-center gap-3 flex-shrink-0" style={{ whiteSpace: "nowrap" }}>
             <img src={LOGO_URL} alt="Noir" className="h-9 w-9 object-contain" />
             <span className="font-semibold tracking-wide">Noir MUN</span>
@@ -1025,27 +1027,28 @@ export default function Home() {
             <Link to="/legal" className="nav-pill">Legal</Link>
           </nav>
 
-          {/* >>> Mobile 'Register' button (new) <<< */}
-          <a
-            href={REGISTER_HREF}
-            target="_blank"
-            rel="noreferrer"
-            className="sm:hidden inline-flex items-center gap-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm"
-            aria-label="Register for Noir MUN"
-          >
-            Register <ChevronRight size={14} />
-          </a>
+          {/* Mobile controls: Register + Hamburger (grouped on the right) */}
+          <div className="sm:hidden flex items-center gap-2">
+            <a
+              href={REGISTER_HREF}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm shrink-0"
+              aria-label="Register for Noir MUN"
+            >
+              Register <ChevronRight size={14} />
+            </a>
 
-          {/* Mobile hamburger */}
-          <button
-            className="sm:hidden rounded-xl border border-white/20 p-2"
-            aria-label="Menu"
-            aria-controls="mobile-menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen(true)}
-          >
-            <Menu size={18} />
-          </button>
+            <button
+              className="rounded-xl border border-white/20 p-2 shrink-0"
+              aria-label="Menu"
+              aria-controls="mobile-menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(true)}
+            >
+              <Menu size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Partner ticker directly under header (filtered & smooth) */}
