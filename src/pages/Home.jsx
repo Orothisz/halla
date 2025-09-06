@@ -124,7 +124,9 @@ function specialEDIntercept(q) {
   return null;
 }
 
-/* ---------- Atmosphere (subtle starfield) ---------- */
+/* --------------------------------------------------
+ * Atmosphere (starfield)
+ * -------------------------------------------------- */
 function Atmosphere() {
   const star = useRef(null);
   useEffect(() => {
@@ -159,53 +161,45 @@ function Atmosphere() {
   return <canvas ref={star} className="fixed inset-0 -z-20 w-full h-full" />;
 }
 
-/* ---------- Roman Background Layer (match Assistance.jsx) ---------- */
+/* --------------------------------------------------
+ * Roman Background Layer (tasteful, cinematic)
+ * -------------------------------------------------- */
 function RomanLayer() {
   const { scrollYProgress } = useScroll();
-  const yBust = useTransform(scrollYProgress, [0, 1], [0, -100]);
-  const yColumn = useTransform(scrollYProgress, [0, 1], [0, -160]);
-  const yLaurel = useTransform(scrollYProgress, [0, 1], [0, -60]);
+  const yBust = useTransform(scrollYProgress, [0, 1], [0, -90]);
+  const yColumn = useTransform(scrollYProgress, [0, 1], [0, -140]);
+  const yLaurel = useTransform(scrollYProgress, [0, 1], [0, -50]);
 
   return (
     <>
-      {/* Marble gradients */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[.18]"
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.16]"
         style={{
           backgroundImage:
-            "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.16), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.11), rgba(0,0,0,0))",
+            "radial-gradient(1100px 700px at 80% -10%, rgba(255,255,255,.14), rgba(0,0,0,0)), radial-gradient(900px 600px at 12% 20%, rgba(255,255,255,.10), rgba(0,0,0,0))",
         }}
       />
-
-      {/* Glows */}
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <motion.div
-          style={{ y: yBust }}
-          className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
-        />
-        <motion.div
-          style={{ y: yColumn }}
-          className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl"
-        />
+        <motion.div style={{ y: yBust }} className="absolute -top-28 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl" />
+        <motion.div style={{ y: yColumn }} className="absolute -bottom-28 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl" />
       </div>
-
-      {/* Parallax statues — now visible on mobile too */}
+      {/* Parallax statues — visible on mobile */}
       <motion.img
         src={ROMAN_URLS.left}
         alt=""
         loading="lazy"
         decoding="async"
-        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[180px] sm:w-[260px] md:w-[320px] opacity-[.55] md:opacity-[.75] mix-blend-screen select-none -z-10"
-        style={{ y: yBust, filter: "grayscale(60%) contrast(110%) blur(0.2px)" }}
+        className="pointer-events-none fixed left-[-26px] top-[16vh] w-[180px] sm:w-[260px] md:w-[320px] opacity-[.55] md:opacity-[.72] mix-blend-screen select-none -z-10"
+        style={{ y: yBust, filter: "grayscale(62%) contrast(108%)" }}
       />
       <motion.img
         src={ROMAN_URLS.right}
         alt=""
         loading="lazy"
         decoding="async"
-        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[170px] sm:w-[250px] md:w-[310px] opacity-[.50] md:opacity-[.72] mix-blend-screen select-none -z-10"
-        style={{ y: yColumn, filter: "grayscale(60%) contrast(112%) blur(0.2px)" }}
+        className="pointer-events-none fixed right-[-10px] top-[30vh] w-[170px] sm:w-[250px] md:w-[310px] opacity-[.50] md:opacity-[.70] mix-blend-screen select-none -z-10"
+        style={{ y: yColumn, filter: "grayscale(62%) contrast(110%)" }}
       />
       <motion.img
         src={ROMAN_URLS.center}
@@ -215,11 +209,9 @@ function RomanLayer() {
         className="pointer-events-none fixed left-1/2 -translate-x-1/2 bottom-[4vh] w-[420px] sm:w-[520px] md:w-[560px] max-w-[92vw] opacity-[.40] md:opacity-[.55] mix-blend-screen select-none -z-10"
         style={{ y: yLaurel, filter: "grayscale(55%) contrast(108%)" }}
       />
-
-      {/* Film grain */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[.07] mix-blend-overlay"
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[.06] mix-blend-overlay"
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 .9'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)' /></svg>\")",
@@ -229,7 +221,9 @@ function RomanLayer() {
   );
 }
 
-/* ---------- Countdown ---------- */
+/* --------------------------------------------------
+ * Countdown
+ * -------------------------------------------------- */
 function useCountdown(targetISO) {
   const [diff, setDiff] = useState(() => new Date(targetISO).getTime() - Date.now());
   useEffect(() => {
@@ -247,10 +241,10 @@ function useCountdown(targetISO) {
 const BigBlock = ({ label, value }) => (
   <motion.div
     className="flex flex-col items-center"
-    initial={{ y: 8, opacity: 0 }}
-    whileInView={{ y: 0, opacity: 1 }}
+    initial={{ opacity: 0, y: 6 }}
+    whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
-    transition={{ type: "spring", stiffness: 100, damping: 16 }}
+    transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1] }}
   >
     <div className="w-20 h-24 md:w-24 md:h-28 rounded-2xl bg-white/8 border border-white/15 grid place-items-center text-4xl md:text-5xl font-black">
       {String(value).padStart(2, "0")}
@@ -259,7 +253,9 @@ const BigBlock = ({ label, value }) => (
   </motion.div>
 );
 
-/* ---------- Visual Bits ---------- */
+/* --------------------------------------------------
+ * UI bits
+ * -------------------------------------------------- */
 const LaurelDivider = () => (
   <div className="my-8 flex items-center justify-center gap-3 text-white/40">
     <div className="h-px w-12 bg-white/20" />
@@ -270,10 +266,10 @@ const LaurelDivider = () => (
 
 const QuoteCard = ({ children }) => (
   <motion.div
-    initial={{ opacity: 0, y: 8 }}
+    initial={{ opacity: 0, y: 6 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
-    transition={{ type: "spring", stiffness: 120, damping: 18 }}
+    transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1] }}
     className="mt-6 rounded-2xl border border-white/15 bg-white/[0.05] p-4 text-white/80 backdrop-blur-sm"
   >
     <div className="flex items-start gap-3">
@@ -283,22 +279,9 @@ const QuoteCard = ({ children }) => (
   </motion.div>
 );
 
-function Gilded({ children }) {
-  return (
-    <div
-      className="relative rounded-2xl"
-      style={{
-        background: "linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.03))",
-        border: "1px solid rgba(255,255,255,.12)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,.04), 0 10px 30px rgba(0,0,0,.35)",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-/* ---------- Partner filtering (now includes new roles) ---------- */
+/* --------------------------------------------------
+ * Partners helpers
+ * -------------------------------------------------- */
 function useCorePartners() {
   return useMemo(() => {
     if (!Array.isArray(PARTNERS)) return [];
@@ -316,13 +299,9 @@ function useCorePartners() {
   }, []);
 }
 
-/* ---------- Partner Medallion (hero ribbon) ---------- */
 function PartnerMedallion({ role, name, logo }) {
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      className="group flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] transition backdrop-blur"
-    >
+    <div className="group flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] transition backdrop-blur">
       <div className="shrink-0 w-12 h-12 rounded-xl border border-white/15 bg-white/5 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.06)_inset]">
         <img
           src={logo}
@@ -335,11 +314,10 @@ function PartnerMedallion({ role, name, logo }) {
         <div className="text-[10px] uppercase tracking-[0.28em] text-white/60">{role}</div>
         <div className="text-sm font-semibold">{name}</div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-/* Hero ribbon with large partner presence (filtered) */
 function HeroPartnersRibbon() {
   const CORE = useCorePartners();
   if (CORE.length === 0) return null;
@@ -357,18 +335,16 @@ function HeroPartnersRibbon() {
   );
 }
 
-/* Super-smooth, constant-speed marquee (filtered) */
 function PartnerTicker() {
   const CORE = useCorePartners();
   const railRef = useRef(null);
   const trackRef = useRef(null);
   const animRef = useRef({ x: 0, last: 0 });
-  const SPEED_PX_PER_S = 48;
+  const SPEED_PX_PER_S = 44;
 
   useEffect(() => {
-    const rail = railRef.current;
     const track = trackRef.current;
-    if (!rail || !track || CORE.length === 0) return;
+    if (!railRef.current || !track || CORE.length === 0) return;
 
     const base = track.querySelector("[data-chunk='base']");
     const cloneA = base.cloneNode(true);
@@ -379,27 +355,19 @@ function PartnerTicker() {
     track.appendChild(cloneB);
 
     const chunkWidth = base.getBoundingClientRect().width;
-
     const onFrame = (ts) => {
       if (!animRef.current.last) animRef.current.last = ts;
       const dt = (ts - animRef.current.last) / 1000;
       animRef.current.last = ts;
-
       animRef.current.x -= SPEED_PX_PER_S * dt;
-      if (-animRef.current.x >= chunkWidth) {
-        animRef.current.x += chunkWidth;
-      }
+      if (-animRef.current.x >= chunkWidth) animRef.current.x += chunkWidth;
       track.style.transform = `translate3d(${animRef.current.x}px,0,0)`;
       requestAnimationFrame(onFrame);
     };
-
     const id = requestAnimationFrame(onFrame);
     return () => {
       cancelAnimationFrame(id);
-      try {
-        cloneA.remove();
-        cloneB.remove();
-      } catch {}
+      try { cloneA.remove(); cloneB.remove(); } catch {}
       animRef.current = { x: 0, last: 0 };
       if (track) track.style.transform = "translate3d(0,0,0)";
     };
@@ -434,7 +402,9 @@ function PartnerTicker() {
   );
 }
 
-/* ---------- Venue Pill ---------- */
+/* --------------------------------------------------
+ * Venue Pill
+ * -------------------------------------------------- */
 function VenuePill() {
   const [hover, setHover] = useState(false);
   return (
@@ -462,6 +432,7 @@ function VenuePill() {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.5, ease: [0.22, 0.61, 0.36, 1] }}
             className="absolute left-1/2 -translate-x-1/2 mt-2 w-[280px] rounded-2xl border border-white/15 bg-[#0a0a1a]/95 backdrop-blur p-3 shadow-xl z-20 hidden md:block"
           >
             <div className="h-28 w-full rounded-xl bg-cover bg-center opacity-90" style={{ backgroundImage: `url(${VENUE.image})` }} aria-hidden />
@@ -481,7 +452,9 @@ function VenuePill() {
   );
 }
 
-/* ---------- Section Heading ---------- */
+/* --------------------------------------------------
+ * Section Heading
+ * -------------------------------------------------- */
 function SectionHeading({ kicker, title, icon }) {
   return (
     <div className="mb-6 text-left">
@@ -494,13 +467,12 @@ function SectionHeading({ kicker, title, icon }) {
   );
 }
 
-/* ---------- Partners Section (cards) ---------- */
+/* --------------------------------------------------
+ * Partners Cards
+ * -------------------------------------------------- */
 function PartnerBadgeCard({ role, name, logo }) {
   return (
-    <motion.div
-      whileHover={{ scale: 1.01 }}
-      className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden text-left"
-    >
+    <div className="group rounded-2xl border border-white/12 bg-white/[0.04] p-4 backdrop-blur-sm hover:bg-white/[0.07] transition relative overflow-hidden text-left">
       <div className="flex items-center gap-3">
         <div className="shrink-0 rounded-xl border border-white/15 bg-white/5 w-14 h-14 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.05)_inset]">
           <img src={logo} alt={`${name} logo`} className="w-10 h-10 object-contain" onError={(e) => (e.currentTarget.style.opacity = 0.35)} />
@@ -510,7 +482,7 @@ function PartnerBadgeCard({ role, name, logo }) {
           <div className="text-sm font-semibold">{name}</div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 function PartnersSection() {
@@ -534,7 +506,6 @@ function PartnersSection() {
         ))}
       </div>
 
-      {/* Mobile quick chips row (left-aligned) */}
       <div className="mt-6 overflow-x-auto sm:hidden pl-1 [-webkit-overflow-scrolling:touch]">
         <div className="flex gap-3 min-w-max">
           {FEATURED.map((p) => (
@@ -548,12 +519,14 @@ function PartnersSection() {
   );
 }
 
-/* ---------- Roman Triad (kept for hero foreground, but now mobile too) ---------- */
+/* --------------------------------------------------
+ * Roman Triad (foreground in hero)
+ * -------------------------------------------------- */
 function RomanTriad() {
   const { scrollYProgress } = useScroll();
-  const yLeft = useTransform(scrollYProgress, [0, 1], [0, 24]);
-  const yCenter = useTransform(scrollYProgress, [0, 1], [0, 14]);
-  const yRight = useTransform(scrollYProgress, [0, 1], [0, 28]);
+  const yLeft = useTransform(scrollYProgress, [0, 1], [0, 20]);
+  const yCenter = useTransform(scrollYProgress, [0, 1], [0, 12]);
+  const yRight = useTransform(scrollYProgress, [0, 1], [0, 24]);
 
   return (
     <>
@@ -582,19 +555,21 @@ function RomanTriad() {
   );
 }
 
-/* ---------- Prologue (Hero) ---------- */
+/* --------------------------------------------------
+ * Prologue (Hero) — cinematic entrance
+ * -------------------------------------------------- */
 function Prologue() {
   return (
     <section className="relative isolate overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur">
-      {/* soft glows */}
+      {/* glows */}
       <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-white/10 blur-3xl rounded-full" />
 
-      {/* Roman statues */}
+      {/* statues */}
       <RomanTriad />
 
       <div className="relative z-10 px-6 md:px-10 pt-12 pb-14 text-center">
-        {/* Faster logo: fixed dims + fetchpriority + shimmer */}
+        {/* logo: fast + clean */}
         <div className="mx-auto h-20 w-20 rounded-xl overflow-hidden relative">
           <img
             src={LOGO_URL}
@@ -603,18 +578,18 @@ function Prologue() {
             height="80"
             fetchpriority="high"
             decoding="async"
-            className="h-20 w-20 object-contain drop-shadow transition-opacity duration-300 opacity-0"
+            className="h-20 w-20 object-contain drop-shadow transition-opacity duration-500 opacity-0"
             onLoad={(e) => (e.currentTarget.style.opacity = 1)}
           />
-          <div className="absolute inset-0 animate-pulse bg-white/5" aria-hidden />
+          <div className="absolute inset-0 bg-white/[0.06]" aria-hidden />
         </div>
 
         <motion.h1
           className="mt-6 text-[40px] md:text-[68px] leading-none font-black tracking-tight"
-          initial={{ y: 8, opacity: 0 }}
-          whileInView={{ y: 0, opacity: 1 }}
+          initial={{ opacity: 0, y: 8 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ type: "spring", stiffness: 120, damping: 16 }}
+          transition={{ duration: 0.8, ease: [0.22, 0.61, 0.36, 1] }}
         >
           NOIR&nbsp;MUN&nbsp;2025
         </motion.h1>
@@ -664,7 +639,9 @@ function Prologue() {
   );
 }
 
-/* ---------- Separate Countdown Section ---------- */
+/* --------------------------------------------------
+ * Countdown Section
+ * -------------------------------------------------- */
 function CountdownSection() {
   const { past, d, h, m, s } = useCountdown(TARGET_DATE_IST);
   return (
@@ -688,7 +665,9 @@ function CountdownSection() {
   );
 }
 
-/* ---------- Councils grid ---------- */
+/* --------------------------------------------------
+ * Councils grid
+ * -------------------------------------------------- */
 function LogoBadge({ src, alt }) {
   return (
     <div className="mx-auto mt-2 shrink-0 rounded-full border border-yellow-100/20 bg-white/[0.06] w-16 h-16 md:w-20 md:h-20 grid place-items-center shadow-[0_0_0_1px_rgba(255,255,255,.04)_inset]">
@@ -724,13 +703,13 @@ function PosterWall({ onOpen }) {
       <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {COMMITTEES.map((c, idx) => (
           <motion.button
-            initial={{ opacity: 0, y: 6 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ type: "spring", stiffness: 120, damping: 16, delay: (idx % 6) * 0.03 }}
             key={c.name}
             onClick={() => onOpen(idx)}
             className="group relative rounded-[26px] overflow-hidden border border-white/12 bg-gradient-to-b from-white/[0.06] to-white/[0.025] text-left focus:outline-none focus:ring-2 focus:ring-yellow-100/20"
+            initial={{ opacity: 0, y: 6 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: [0.22, 0.61, 0.36, 1], delay: (idx % 6) * 0.03 }}
           >
             <div className="aspect-[16/10] md:aspect-[16/9] w-full grid place-items-center px-6 text-center">
               <LogoBadge src={c.logo} alt={`${c.name} logo`} />
@@ -750,7 +729,9 @@ function PosterWall({ onOpen }) {
   );
 }
 
-/* ---------- Itinerary Section ---------- */
+/* --------------------------------------------------
+ * Itinerary Section
+ * -------------------------------------------------- */
 function DressIcon({ type }) {
   if (type.toLowerCase().includes("indian")) {
     return (
@@ -798,12 +779,14 @@ function ItinerarySection() {
   );
 }
 
-/* ---------- Why Noir Section ---------- */
+/* --------------------------------------------------
+ * Why Noir Section (with tiny 'tentative' note)
+ * -------------------------------------------------- */
 function WhyNoir() {
   const CARDS = [
     {
       title: "First hotel-hosted MUN in Faridabad",
-      desc: "Premium venue experience at Delite Sarovar Portico — serious rooms, serious diplomacy.",
+      desc: "Premium venue experience at Delite Sarovar Portico. Serious rooms for serious diplomacy.",
       icon: <MapPin size={18} />,
     },
     {
@@ -813,7 +796,11 @@ function WhyNoir() {
     },
     {
       title: "Cash prizes & Prestige",
-      desc: "Normal committee prizes + Secretary General’s Best Delegate (T&C apply).",
+      desc: (
+        <>
+          Normal committee prizes + Secretary General’s Best Delegate <span className="text-[10px] opacity-75">(T&amp;C apply, tentative)</span>.
+        </>
+      ),
       icon: <Award size={18} />,
     },
     {
@@ -828,11 +815,11 @@ function WhyNoir() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {CARDS.map((c, i) => (
           <motion.div
-            key={c.title}
-            initial={{ opacity: 0, y: 8 }}
+            key={typeof c.title === "string" ? c.title : `card-${i}`}
+            initial={{ opacity: 0, y: 6 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ type: "spring", stiffness: 110, damping: 18, delay: i * 0.04 }}
+            transition={{ duration: 0.6, ease: [0.22, 0.61, 0.36, 1], delay: i * 0.03 }}
             className="rounded-2xl border border-white/12 bg-white/[0.04] p-4"
           >
             <div className="flex items-center gap-2 text-white/80">
@@ -854,59 +841,57 @@ function WhyNoir() {
   );
 }
 
-/* ---------- Testimonials Section ---------- */
+/* --------------------------------------------------
+ * Testimonials (exact, all Delegates, no em-dashes)
+ * -------------------------------------------------- */
 function Testimonials() {
-  // authentic-sounding Indian names
-  const NAMES = [
-    "Aarav Mehta",
-    "Ishita Bansal",
-    "Raghav Malhotra",
-    "Navya Kapoor",
-    "Pranav Sethi",
-    "Sanya Arora",
-    "Devanshi Bhatt",
-    "Kabir Khurana",
-  ];
   const items = [
     {
       event: "HIAC MUN",
-      quote:
-        "I had great fun at HIAC MUN — crisp committees, energetic blocs, and a vibe that makes you want to keep speaking.",
+      text:
+        "I had great fun at HIAC MUN. Crisp committees, energetic blocs, and a vibe that makes you want to keep speaking.",
+      name: "Aarav Mehta",
+      role: "Delegate",
+    },
+    {
+      event: "HIAC MUN",
+      text:
+        "I had great fun at HIAC MUN. Crisp committees, energetic blocs, and a vibe that makes you want to keep speaking.",
+      name: "Navya Kapoor",
+      role: "Delegate",
     },
     {
       event: "MosaicMUN",
-      quote:
+      text:
         "The HOCO Night at MosaicMUN was genuinely fun. Perfect reset between heavy debate and drafting.",
+      name: "Raghav Malhotra",
+      role: "Delegate",
+    },
+    {
+      event: "MosaicMUN",
+      text:
+        "The HOCO Night at MosaicMUN was genuinely fun. Perfect reset between heavy debate and drafting.",
+      name: "Sanya Arora",
+      role: "Delegate",
     },
   ];
-  const picks = items.flatMap((it, i) => {
-    // pair each with two random names
-    const a = NAMES[(i * 2) % NAMES.length];
-    const b = NAMES[(i * 2 + 3) % NAMES.length];
-    return [
-      { ...it, name: a, role: "Delegate" },
-      { ...it, name: b, role: "Executive Board" },
-    ];
-  });
 
   return (
     <section className="mt-16 rounded-[28px] border border-white/12 p-6 md:p-10 bg-white/[0.04] backdrop-blur-sm">
       <SectionHeading kicker="Chapter VI" title="What People Loved" icon={<Quote size={20} className="text-white/70" />} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {picks.map((t, i) => (
+        {items.map((t, i) => (
           <motion.figure
             key={t.name + i}
             className="rounded-2xl border border-white/12 bg-white/[0.04] p-4 text-left"
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ type: "spring", stiffness: 110, damping: 18, delay: i * 0.03 }}
+            transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1], delay: i * 0.02 }}
           >
-            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/60">
-              {t.event}
-            </div>
-            <div className="mt-2 text-sm text-white/85 leading-relaxed">{t.quote}</div>
-            <div className="mt-3 text-[13px] text-white/70">
+            <div className="text-[11px] uppercase tracking-[0.26em] text-white/60">{t.event}</div>
+            <div className="mt-2 text-sm text-white/85 leading-relaxed">{t.text}</div>
+            <div className="mt-3 text-[13px] text-white/80">
               <span className="font-medium text-white/90">{t.name}</span> • {t.role}
             </div>
           </motion.figure>
@@ -916,16 +901,22 @@ function Testimonials() {
   );
 }
 
-/* ---------- FAQ Section ---------- */
+/* --------------------------------------------------
+ * FAQ (with cash-prize line already tiny-tentative above)
+ * -------------------------------------------------- */
 function FAQ() {
   const QA = [
     {
       q: "How big are the cash prizes?",
-      a: "We award normal committee prizes and a special Secretary General’s Best Delegate. T&C apply.",
+      a: (
+        <>
+          We award normal committee prizes and a special Secretary General’s Best Delegate. <span className="text-[11px] opacity-75">(T&amp;C apply, tentative)</span>
+        </>
+      ),
     },
     {
       q: "I’m a first-timer. Can I still attend?",
-      a: "Absolutely. Use our MUN Assistance panel for prep, tips, and committee matching. Open Assistance from the homepage or go to /assistance.",
+      a: "Absolutely. Use our MUN Assistance for prep, tips, and committee matching. Open Assistance from the homepage or go to /assistance.",
     },
     {
       q: "What happens after I register?",
@@ -950,7 +941,7 @@ function FAQ() {
             initial={{ opacity: 0, y: 6 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ type: "spring", stiffness: 120, damping: 18, delay: i * 0.02 }}
+            transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1], delay: i * 0.02 }}
             className="rounded-2xl border border-white/12 bg-white/[0.035] p-4 open:bg-white/[0.05]"
           >
             <summary className="cursor-pointer select-none list-none flex items-center gap-2">
@@ -965,7 +956,9 @@ function FAQ() {
   );
 }
 
-/* ---------- WILT Mini (chat) ---------- */
+/* --------------------------------------------------
+ * WILT Mini (chat)
+ * -------------------------------------------------- */
 function answerStaffQuery(qRaw) {
   const q = norm(qRaw);
   const special = specialEDIntercept(q);
@@ -1086,9 +1079,10 @@ function TalkToUs() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ duration: 0.4, ease: [0.22, 0.61, 0.36, 1] }}
             className="w-96 max-w-[92vw] rounded-2xl shadow-2xl overflow-hidden border border-white/15 backdrop-blur bg-white/10 text-white"
           >
             <div className="flex items-center justify-between px-4 py-3 bg-white/10">
@@ -1139,22 +1133,21 @@ function TalkToUs() {
       </AnimatePresence>
 
       {!open && (
-        <motion.button
+        <button
           onClick={() => setOpen(true)}
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          whileHover={{ y: -2 }}
-          className="flex items-center gap-2 px-4 py-3 rounded-2xl text-white shadow-xl bg-[--theme] border border-white/20 hover:shadow-2xl"
+          className="flex items-center gap-2 px-4 py-3 rounded-2xl text-white shadow-xl bg-[--theme] border border-white/20 hover:shadow-2xl transition"
           style={{ "--theme": THEME_HEX }}
         >
           <MessageCircle size={18} /> Talk to us
-        </motion.button>
+        </button>
       )}
     </div>
   );
 }
 
-/* ---------- Footer ---------- */
+/* --------------------------------------------------
+ * Footer
+ * -------------------------------------------------- */
 function InlineFooter() {
   const CORE = useCorePartners();
   return (
@@ -1219,7 +1212,9 @@ function InlineFooter() {
   );
 }
 
-/* ---------- Brief Modal ---------- */
+/* --------------------------------------------------
+ * Brief Modal
+ * -------------------------------------------------- */
 function BriefModal({ idx, onClose }) {
   if (idx === null) return null;
   const c = COMMITTEES[idx];
@@ -1232,9 +1227,10 @@ function BriefModal({ idx, onClose }) {
         exit={{ opacity: 0 }}
       >
         <motion.div
-          initial={{ y: 30, opacity: 0 }}
+          initial={{ y: 24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 30, opacity: 0 }}
+          exit={{ y: 24, opacity: 0 }}
+          transition={{ duration: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
           className="max-w-3xl w-full max-h-[85vh] overflow-auto rounded-2xl border border-white/15 bg-[#0a0a1a] text-white p-6"
         >
           <div className="flex items-center gap-3">
@@ -1275,7 +1271,9 @@ function BriefModal({ idx, onClose }) {
   );
 }
 
-/* ---------- Page ---------- */
+/* --------------------------------------------------
+ * Page
+ * -------------------------------------------------- */
 export default function Home() {
   const { scrollYProgress } = useScroll();
   const yHalo = useTransform(scrollYProgress, [0, 1], [0, -120]);
@@ -1297,7 +1295,6 @@ export default function Home() {
   return (
     <div className="min-h-screen text-white relative">
       <Atmosphere />
-      {/* New global Roman background layer */}
       <RomanLayer />
 
       <motion.div className="pointer-events-none fixed -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-3xl" style={{ y: yHalo }} />
@@ -1342,7 +1339,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Partner ticker directly under header (filtered & smooth) */}
+        {/* Partner ticker */}
         <PartnerTicker />
       </header>
 
@@ -1360,10 +1357,10 @@ export default function Home() {
             <motion.div
               id="mobile-menu"
               className="fixed top-0 left-0 right-0 z-50 rounded-b-2xl border-b border-white/15 bg-[#07071a]/95"
-              initial={{ y: -20, opacity: 0 }}
+              initial={{ y: -18, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -20, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 260, damping: 24 }}
+              exit={{ y: -18, opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.22, 0.61, 0.36, 1] }}
             >
               <div className="px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -1398,7 +1395,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Main Narrative */}
+      {/* Main */}
       <main className="mx-auto max-w-7xl px-4 py-10">
         <Prologue />
         <CountdownSection />
@@ -1459,25 +1456,35 @@ export default function Home() {
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
+
+        /* premium nav */
         .nav-bar { display:flex; gap:8px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; max-width:70vw; }
         .nav-bar::-webkit-scrollbar { display:none; }
         .nav-pill {
           display:inline-flex; align-items:center; justify-content:center;
           border:1px solid rgba(255,255,255,.20); padding:8px 12px; border-radius:14px;
           color:#fff; text-decoration:none; white-space:nowrap; background:rgba(255,255,255,.06);
-          transition: background .2s ease, border-color .2s ease, transform .15s ease;
+          transition: background .25s cubic-bezier(.22,.61,.36,1), border-color .25s cubic-bezier(.22,.61,.36,1), transform .2s ease;
         }
         .nav-pill:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.28); transform:translateY(-1px); }
         .nav-pill--ghost { background:rgba(255,255,255,.04); }
         .nav-pill--primary { background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.30); }
         @media (min-width:640px) { .nav-bar { max-width:none; } .nav-pill { padding:10px 14px; border-radius:16px; } }
+
+        /* menu */
         .menu-item {
           display:inline-flex; align-items:center; justify-content:space-between;
           padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.14);
           background:rgba(255,255,255,.06); color:#fff; text-decoration:none;
         }
         .menu-item--primary { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.24); }
+
         .click-safe { position:relative; z-index:30; pointer-events:auto; }
+
+        /* motion preference */
+        @media (prefers-reduced-motion: reduce) {
+          * { animation: none !important; transition: none !important; }
+        }
       `}</style>
     </div>
   );
