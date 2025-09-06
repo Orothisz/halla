@@ -1028,7 +1028,7 @@ export default function Home() {
           </nav>
 
           {/* Mobile controls: Register + Hamburger (grouped on the right) */}
-          <div className="sm:hidden flex items-center gap-2">
+          <div className="sm:hidden flex items-center gap-2 shrink-0">
             <a
               href={REGISTER_HREF}
               target="_blank"
