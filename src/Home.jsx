@@ -45,9 +45,9 @@ const VENUE_HOTEL_URL =
   "https://www.sarovarhotels.com/delite-sarovar-portico-faridabad/";
 
 const ROMAN_URLS = {
-  left: "https://i.postimg.cc/sDqGkrr6/Untitled-design-5.png",
-  center: "https://i.postimg.cc/J0ttFTdC/Untitled-design-6.png",
-  right: "https://i.postimg.cc/66DGSKwH/Untitled-design-7.png",
+  left: "https://www.noirmun.com/roman1.png",
+  center: "https://www.noirmun.com/roman%202.png",
+  right: "https://www.noirmun.com/roman3.png",
 };
 
 /* --------------------------------------------------
