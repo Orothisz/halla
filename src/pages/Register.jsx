@@ -23,7 +23,7 @@ const DRAFT_KEY = "noir_registration_draft_v4";
 const UPI_PRIMARY = "kheragautam16@okaxis";     // default (Gautam Khera)
 const UPI_ALT     = "9811588040@ptyes";
 const BANK_LINE   = "A/C 4049010060672314 • IFSC JSFB0004049 • BANK JANA SMALL FINANCE BANK";
-const QR_URL      = "https://i.postimg.cc/FK1VQQC7/Untitled-design-8.png";
+const QR_URL      = "https://i.postimg.cc/P5gMM8wF/image.png";
 const MATRIX_HREF = "https://docs.google.com/spreadsheets/d/1TpOtx8yuidK4N1baPSh1t7efjQeY0_B1wz24yVl3UI8/edit?usp=sharing";
 
 /* ----------- Turnstile widget ----------- */
