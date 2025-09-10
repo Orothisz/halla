@@ -220,12 +220,12 @@ export const PARTNERS = [
     role: "Venue & Catering Partner",
     name: "Delite Sarovar Portico, Faridabad",
     logo:
-      "https://i.postimg.cc/vBsFB36D/Hotel-Facade-xfqdhj.avif", // swap to ASSET('delite') when you add it locally
+      "https://noirmun.com/Hotel-Facade-xfqdhj.avif", // swap to ASSET('delite') when you add it locally
   },
   {
     role: "Rewards Partner",
     name: "Benefitzz",
-    logo: ASSET("benefitzz") || "https://i.postimg.cc/qqNknH84/Whats-App-Image-2025-09-04-at-01-15-57-971acd46.jpg",
+    logo: ASSET("benefitzz") || "https://noirmun.com/",
   },
   {
     role: "Kitchen Partner",
