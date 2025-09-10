@@ -36,12 +36,12 @@ export const WHATSAPP_ESCALATE = "https://wa.me/918595511056";
 
 // ---------- Committee logos (local) ----------
 const LOGO_UN    = ASSET("unga");     // used for UNGA & UNCSW (same)
-const LOGO_AIPPM = ASSET("aippm");
+const LOGO_AIPPM = ASSET("aipm");
 const LOGO_IPL   = ASSET("ipl");
 const LOGO_IP    = ASSET("ip");
 // If you add a local YouTube icon (e.g., folder/file named "o" or "youtube") it’ll pick it.
 // Otherwise, it falls back to the official vector.
-const LOGO_YT = ASSET("o") || ASSET("youtube") ||
+const LOGO_YT = ASSET("youtube-icon-app-logo-png-9") || ASSET("youtube-icon-app-logo-png-9") ||
   "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/512px-YouTube_full-color_icon_%282017%29.svg.png";
 
 // ---------- Committees ----------
