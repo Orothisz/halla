@@ -1,26 +1,50 @@
 // src/shared/constants.js
-// Pure JS — no JSX here.
+// Pure JS — no JSX. Local images resolved from halla/src/assests/*
+// NOTE: path uses "assests" intentionally to match your repo.
 
+//
+// ---------- Local asset resolver (Vite) ----------
+const IMAGES = import.meta.glob("../assests/**/*.{png,jpg,jpeg,webp,avif,svg}", {
+  eager: true,
+  as: "url",
+});
+
+// case-insensitive finder for anything under /assests/<needle>*
+const pick = (needle) => {
+  const low = needle.toLowerCase();
+  const hit = Object.entries(IMAGES).find(([p]) =>
+    p.toLowerCase().includes(`/assests/${low}`)
+  );
+  return hit ? hit[1] : undefined;
+};
+
+// Fallback to Noir main logo if available, else keep empty (components can guard)
+const FALLBACK = pick("mainlogo");
+
+// Convenience export if other files want quick access
+export const ASSET = (name) => pick(name) || FALLBACK || "";
+
+// ---------- Brand & Core ----------
 export const EVENT_NAME = "Noir Model United Nations";
 export const DATES_TEXT = "31 October - 1 November, 2025";
 export const TARGET_DATE_IST = "2025-10-31T09:00:00+05:30"; // IST
 export const THEME_HEX = "#000026";
 export const REGISTER_URL = "https://noirmun.com";
-export const LOGO_URL =
-  "https://i.postimg.cc/MZhZ9Nsm/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45.png";
+export const LOGO_URL = ASSET("mainlogo") || "https://noirmun.com/favicon.png"; // local first
+
 export const WHATSAPP_ESCALATE = "https://wa.me/918595511056";
 
-// Committee logos
-const LOGO_UN =
-  "https://i.postimg.cc/htVHK31g/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45-5.png"; // UNGA & UNCSW
-const LOGO_AIPPM =
-  "https://i.postimg.cc/4xZTHgdn/AIPPM-removebg-preview-pmv7kqpcqpe18txaiaahkwoafmvqa378hd5tcs7x8g.png";
-const LOGO_IPL =
-  "https://i.postimg.cc/JnYFTwM3/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45-7.png";
-const LOGO_IP =
-  "https://i.postimg.cc/PJ8S2P6h/Black-and-White-Graffiti-Clothing-Logo-Instagram-Post-45-8.png"; // International Press
+// ---------- Committee logos (local) ----------
+const LOGO_UN    = ASSET("unga");     // used for UNGA & UNCSW (same)
+const LOGO_AIPPM = ASSET("aippm");
+const LOGO_IPL   = ASSET("ipl");
+const LOGO_IP    = ASSET("ip");
+// If you add a local YouTube icon (e.g., folder/file named "o" or "youtube") it’ll pick it.
+// Otherwise, it falls back to the official vector.
+const LOGO_YT = ASSET("o") || ASSET("youtube") ||
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/512px-YouTube_full-color_icon_%282017%29.svg.png";
 
-// Committees (used by Home + Brief modal)
+// ---------- Committees ----------
 export const COMMITTEES = [
   {
     name: "United Nations General Assembly (UNGA)",
@@ -81,8 +105,7 @@ export const COMMITTEES = [
   {
     name: "YouTube All Stars",
     agenda: "Classified",
-    logo:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/512px-YouTube_full-color_icon_%282017%29.svg.png",
+    logo: LOGO_YT,
     brief: {
       overview:
         "Crisis-lite entertainment diplomacy. Expect brand safety, creator economy shocks, and live audience sentiment injections.",
@@ -129,7 +152,7 @@ export const COMMITTEES = [
   },
 ];
 
-// Assistance page short text (avoid backticks for safe builds)
+// ---------- Assistance text ----------
 export const ASSIST_TEXT = [
   "UNA-USA ROPs (Very Short):",
   "• Roll Call → Setting the agenda → General Speakers’ List (GSL) → Moderated/Unmoderated Caucuses → Drafts → Amendments → Voting.",
@@ -143,21 +166,21 @@ export const ASSIST_TEXT = [
   "• Awards weigh consistency, bloc-building, drafting, and crisis handling (where applicable).",
 ].join("\n");
 
-// Optional helpers for older components that expect these:
+// ---------- Optional helpers for older components ----------
 export const POSTERS = COMMITTEES.map((c) => c.logo);
 export const BRIEFS = COMMITTEES.map((c) => `${c.name}: ${c.agenda}`);
 
-// Venue details
+// ---------- Venue ----------
 export const VENUE = {
   name: "Delite Sarovar Portico, Faridabad",
-  image: "https://i.postimg.cc/vBsFB36D/Hotel-Facade-xfqdhj.avif",
+  // keep remote until you add a local venue image (e.g., /assests/venue/delite.jpg)
+  image:
+    "https://i.postimg.cc/vBsFB36D/Hotel-Facade-xfqdhj.avif",
   location:
     "https://www.google.com/maps?sca_esv=e85bf51f2ebe9d69&output=search&q=delite+sarovar+portico+fbd&source=lnms&fbs=AIIjpHxU7SXXniUZfeShr2fp4giZ1Y6MJ25_tmWITc7uy4KIeuYzzFkfneXafNx6OMdA4MRT57TpI4o2tavIRfF1e7-xTLfbOlRZsi_SKi4JeEBY7pnUnsYZ2YolLXlDdpWd5X8Dl3ww1kgiAU4MTvhlsxynlXYG66bQ0LfJUkXjx90u6LziqyMljOah4l7FbuzQ5ppUaZOESIdhGWk6sqjHiMsayGn74Q&entry=mc&ved=1t:200715&ictx=111",
 };
 
-/* -------------------------
- * Itinerary & Dress Code
- * ------------------------- */
+// ---------- Itinerary ----------
 export const ITINERARY = [
   {
     day: 1,
@@ -190,58 +213,60 @@ export const ITINERARY = [
   },
 ];
 
-/* -------------------------
- * Partners
- * ------------------------- */
+// ---------- Partners ----------
+// Uses local logos where you’ve added folders/files; others keep current remote until you add them under /assests/.
 export const PARTNERS = [
   {
     role: "Venue & Catering Partner",
     name: "Delite Sarovar Portico, Faridabad",
-    logo: "https://i.postimg.cc/vBsFB36D/Hotel-Facade-xfqdhj.avif", // using VENUE.image
+    logo:
+      "https://i.postimg.cc/vBsFB36D/Hotel-Facade-xfqdhj.avif", // swap to ASSET('delite') when you add it locally
   },
   {
     role: "Rewards Partner",
     name: "Benefitzz",
-    logo:
-      "https://i.postimg.cc/qqNknH84/Whats-App-Image-2025-09-04-at-01-15-57-971acd46.jpg",
+    logo: ASSET("benefitzz") || "https://i.postimg.cc/qqNknH84/Whats-App-Image-2025-09-04-at-01-15-57-971acd46.jpg",
   },
   {
     role: "Kitchen Partner",
     name: "SettoGo Kiitchen & Consulting",
-    logo:
-      "https://i.postimg.cc/BnTJ2g1L/Whats-App-Image-2025-09-04-at-01-15-58-5f06bbb5.jpg",
+    logo: ASSET("settogo") || "https://i.postimg.cc/BnTJ2g1L/Whats-App-Image-2025-09-04-at-01-15-58-5f06bbb5.jpg",
   },
   {
     role: "Brand Association Partner",
     name: "Royal Bliss",
-    logo:
-      "https://i.postimg.cc/Mpv37rQd/Whats-App-Image-2025-09-04-at-00-42-53-1764d3f9.jpg",
+    logo: ASSET("royal") || "https://i.postimg.cc/Mpv37rQd/Whats-App-Image-2025-09-04-at-00-42-53-1764d3f9.jpg",
   },
   {
     role: "Institutional Partner",
     name: "DPS Ballabgarh",
-    logo: "https://i.postimg.cc/43GPYWjq/Untitled-design-12.png",
+    logo: ASSET("dps") || "https://i.postimg.cc/43GPYWjq/Untitled-design-12.png",
   },
   {
     role: "Study Partner",
     name: "Study Anchor",
-    logo:
-      "https://i.postimg.cc/Bvwt9Hnw/Whats-App-Image-2025-09-03-at-17-26-52-ed8e1170.jpg",
+    logo: ASSET("study") || "https://i.postimg.cc/Bvwt9Hnw/Whats-App-Image-2025-09-03-at-17-26-52-ed8e1170.jpg",
   },
   {
     role: "Study Partner",
     name: "Sam Institute of English Language and Personality Development",
-    logo:
-      "https://i.postimg.cc/RhSY76c4/sam-institute-of-english-language-personality-development-logo-1.jpg",
+    logo: ASSET("sam") || "https://i.postimg.cc/RhSY76c4/sam-institute-of-english-language-personality-development-logo-1.jpg",
   },
   {
     role: "Gaming Partner",
     name: "Galaxy Laser Tag",
-    logo: "https://i.postimg.cc/Qd1qMNTb/Untitled-design-16.png",
+    logo: ASSET("galaxy") || "https://i.postimg.cc/Qd1qMNTb/Untitled-design-16.png",
   },
   {
     role: "Food Partner",
     name: "Bistro 57",
-    logo: "https://i.postimg.cc/wMFMkjBD/Untitled-design-14.png",
+    logo: ASSET("bistro") || "https://i.postimg.cc/wMFMkjBD/Untitled-design-14.png",
   },
 ];
+
+// ---------- Roman figure exports (for hero/bg, etc.) ----------
+export const ROMAN_IMAGES = [
+  ASSET("roman1"),
+  ASSET("roman 2"), // folder/file is literally named with a space in your repo
+  ASSET("roman3"),
+].filter(Boolean);
