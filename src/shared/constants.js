@@ -220,7 +220,7 @@ export const PARTNERS = [
     role: "Venue & Catering Partner",
     name: "Delite Sarovar Portico, Faridabad",
     logo:
-      "https://noirmun.com/Hotel-Facade-xfqdhj.avif", // swap to ASSET('delite') when you add it locally
+      "https://noirmun.com/Hotel_Facade_xfqdhj.avif", // swap to ASSET('delite') when you add it locally
   },
   {
     role: "Rewards Partner",
