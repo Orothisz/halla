@@ -978,7 +978,7 @@ function TalkToUs() {
       return add({ from: "bot", text: `Dates: ${DATES_TEXT}.` });
     }
     if (/\b(fee|price|cost|charges?)\b/.test(q)) {
-      return add({ from: "bot", text: "Delegate fee: ₹2300." });
+      return add({ from: "bot", text: "Delegate fee: ₹2400." });
     }
     if (/\b(venue|where|location|address)\b/.test(q)) {
       try { window.open(VENUE_HOTEL_URL, "_blank"); } catch {}
