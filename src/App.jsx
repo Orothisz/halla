@@ -10,6 +10,7 @@ import Signup from "./pages/Signup.jsx";
 
 import Admin from "./pages/Admin.jsx";
 import Adminv1 from "./pages/Adminv1.jsx";      // NEW
+import Verified from "./pages/Verified.jsx";   // NEW
 
 import BestMunDelhi from "./pages/BestMunDelhi.jsx";
 import Register from "./pages/Register.jsx";
@@ -33,6 +34,9 @@ export default function App() {
 
       {/* Registration */}
       <Route path="/register" element={<Register />} />
+
+      {/* Verified page (public) */}
+      <Route path="/verified" element={<Verified />} />
 
       {/* Auth pages (hide if already logged in) */}
       <Route
