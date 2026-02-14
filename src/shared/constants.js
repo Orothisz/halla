@@ -233,9 +233,9 @@ export const PARTNERS = [
     logo: ASSET("settogo") || "https://i.postimg.cc/BnTJ2g1L/Whats-App-Image-2025-09-04-at-01-15-58-5f06bbb5.jpg",
   },
   {
-    role: "Brand Association Partner",
-    name: "Royal Bliss",
-    logo: ASSET("royal") || "https://i.postimg.cc/Mpv37rQd/Whats-App-Image-2025-09-04-at-00-42-53-1764d3f9.jpg",
+    role: "Step Partner",
+    name: "Natyanayak",
+    logo: ASSET("royal") || "https://ibb.co/SDKz9X8G",
   },
   {
     role: "Institutional Partner",
